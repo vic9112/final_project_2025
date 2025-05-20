@@ -10,210 +10,49 @@ module stage_top
 
     input   wire               [1:0] in1_sw,
 
-    //========================== 1st Kernel =============================//
-    // Use 5 interface since SDF deep-feedback of 1024 FFT/NTT have 5 stages
-    // BPE1 
-    input   wire                     k1_iop1_vld, //Stream-in to memory
-    output  wire                     k1_iop1_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k1_iop1_dat,
-    output  wire                     k1_bpe1_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k1_bpe1_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe1_a,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe1_b,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe1_c,
+    // SS/SM interface:
+    // FFT/iFFT SS: concat 4 32-bit data to 128-bit
+    // FFT/iFFT SM: split 128-bit data to 32-bit
+    input   wire                     ss_vld, 
+    input   wire [(pDATA_WIDTH-1):0] ss_dat, 
+    input   wire                     ss_lst, 
+    output  wire                     ss_rdy, 
+    input   wire                     sm_rdy, 
+    output  wire                     sm_vld, 
+    output  wire [(pDATA_WIDTH-1):0] sm_dat, 
+    output  wire                     sm_lst,
 
-    // BPE2
-    input   wire                     k1_iop2_vld, //Stream-in to memory
-    output  wire                     k1_iop2_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k1_iop2_dat,
-    output  wire                     k1_bpe2_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k1_bpe2_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe2_a,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe2_b,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe2_c,
+    // 1st Kernel
+    output  wire                     k1_ld_vld,  // Stream: X[a], X[b], GM constant
+    input   wire                     k1_ld_rdy,
+    output  wire [(pDATA_WIDTH-1):0] k1_ld_dat,
+    input   wire                     k1_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
+    output  wire                     k1_sw_rdy,
+    input   wire [(pDATA_WIDTH-1):0] k1_sw_d,
     
-    // BPE3
-    input   wire                     k1_iop3_vld, //Stream-in to memory
-    output  wire                     k1_iop3_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k1_iop3_dat,
-    output  wire                     k1_bpe3_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k1_bpe3_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe3_a,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe3_b,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe3_c,
+    // 2nd Kernel
+    output  wire                     k2_ld_vld,  // Stream: X[a], X[b], GM constant
+    input   wire                     k2_ld_rdy,
+    output  wire [(pDATA_WIDTH-1):0] k2_ld_dat,
+    input   wire                     k2_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
+    output  wire                     k2_sw_rdy,
+    input   wire [(pDATA_WIDTH-1):0] k2_sw_d,
     
-    // BPE4
-    input   wire                     k1_iop4_vld, //Stream-in to memory
-    output  wire                     k1_iop4_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k1_iop4_dat,
-    output  wire                     k1_bpe4_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k1_bpe4_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe4_a,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe4_b,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe4_c,
+    // 3rd Kernel
+    output  wire                     k3_ld_vld,  // Stream: X[a], X[b], GM constant
+    input   wire                     k3_ld_rdy,
+    output  wire [(pDATA_WIDTH-1):0] k3_ld_dat,
+    input   wire                     k3_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
+    output  wire                     k3_sw_rdy,
+    input   wire [(pDATA_WIDTH-1):0] k3_sw_d,
     
-    // BPE5
-    input   wire                     k1_iop5_vld, //Stream-in to memory
-    output  wire                     k1_iop5_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k1_iop5_dat,
-    output  wire                     k1_bpe5_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k1_bpe5_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe5_a,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe5_b,
-    output  wire [(pDATA_WIDTH-1):0] k1_bpe5_c,
-    
-    //========================== 2nd Kernel =============================//
-    // BPE1 
-    input   wire                     k2_iop1_vld, //Stream-in to memory
-    output  wire                     k2_iop1_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k2_iop1_dat,
-    output  wire                     k2_bpe1_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k2_bpe1_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe1_a,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe1_b,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe1_c,
-
-    // BPE2
-    input   wire                     k2_iop2_vld, //Stream-in to memory
-    output  wire                     k2_iop2_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k2_iop2_dat,
-    output  wire                     k2_bpe2_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k2_bpe2_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe2_a,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe2_b,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe2_c,
-    
-    // BPE3
-    input   wire                     k2_iop3_vld, //Stream-in to memory
-    output  wire                     k2_iop3_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k2_iop3_dat,
-    output  wire                     k2_bpe3_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k2_bpe3_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe3_a,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe3_b,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe3_c,
-    
-    // BPE4
-    input   wire                     k2_iop4_vld, //Stream-in to memory
-    output  wire                     k2_iop4_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k2_iop4_dat,
-    output  wire                     k2_bpe4_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k2_bpe4_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe4_a,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe4_b,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe4_c,
-    
-    // BPE5
-    input   wire                     k2_iop5_vld, //Stream-in to memory
-    output  wire                     k2_iop5_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k2_iop5_dat,
-    output  wire                     k2_bpe5_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k2_bpe5_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe5_a,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe5_b,
-    output  wire [(pDATA_WIDTH-1):0] k2_bpe5_c,
-    
-    //========================== 3rd Kernel =============================//
-    // BPE1 
-    input   wire                     k3_iop1_vld, //Stream-in to memory
-    output  wire                     k3_iop1_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k3_iop1_dat,
-    output  wire                     k3_bpe1_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k3_bpe1_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe1_a,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe1_b,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe1_c,
-
-    // BPE2
-    input   wire                     k3_iop2_vld, //Stream-in to memory
-    output  wire                     k3_iop2_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k3_iop2_dat,
-    output  wire                     k3_bpe2_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k3_bpe2_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe2_a,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe2_b,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe2_c,
-    
-    // BPE3
-    input   wire                     k3_iop3_vld, //Stream-in to memory
-    output  wire                     k3_iop3_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k3_iop3_dat,
-    output  wire                     k3_bpe3_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k3_bpe3_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe3_a,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe3_b,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe3_c,
-    
-    // BPE4
-    input   wire                     k3_iop4_vld, //Stream-in to memory
-    output  wire                     k3_iop4_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k3_iop4_dat,
-    output  wire                     k3_bpe4_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k3_bpe4_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe4_a,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe4_b,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe4_c,
-    
-    // BPE5
-    input   wire                     k3_iop5_vld, //Stream-in to memory
-    output  wire                     k3_iop5_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k3_iop5_dat,
-    output  wire                     k3_bpe5_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k3_bpe5_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe5_a,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe5_b,
-    output  wire [(pDATA_WIDTH-1):0] k3_bpe5_c,
-    
-    //========================== 4st Kernel =============================//
-    // BPE1 
-    input   wire                     k4_iop1_vld, //Stream-in to memory
-    output  wire                     k4_iop1_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k4_iop1_dat,
-    output  wire                     k4_bpe1_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k4_bpe1_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe1_a,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe1_b,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe1_c,
-
-    // BPE2
-    input   wire                     k4_iop2_vld, //Stream-in to memory
-    output  wire                     k4_iop2_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k4_iop2_dat,
-    output  wire                     k4_bpe2_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k4_bpe2_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe2_a,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe2_b,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe2_c,
-    
-    // BPE3
-    input   wire                     k4_iop3_vld, //Stream-in to memory
-    output  wire                     k4_iop3_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k4_iop3_dat,
-    output  wire                     k4_bpe3_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k4_bpe3_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe3_a,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe3_b,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe3_c,
-    
-    // BPE4
-    input   wire                     k4_iop4_vld, //Stream-in to memory
-    output  wire                     k4_iop4_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k4_iop4_dat,
-    output  wire                     k4_bpe4_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k4_bpe4_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe4_a,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe4_b,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe4_c,
-    
-    // BPE5
-    input   wire                     k4_iop5_vld, //Stream-in to memory
-    output  wire                     k4_iop5_rdy,
-    input   wire [(pDATA_WIDTH-1):0] k4_iop5_dat,
-    output  wire                     k4_bpe5_vld, // Stream-out: X[a], X[b], GM constant
-    input   wire                     k4_bpe5_rdy,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe5_a,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe5_b,
-    output  wire [(pDATA_WIDTH-1):0] k4_bpe5_c
+    // 4th Kernel
+    output  wire                     k4_ld_vld,  // Stream: X[a], X[b], GM constant
+    input   wire                     k4_ld_rdy,
+    output  wire [(pDATA_WIDTH-1):0] k4_ld_dat,
+    input   wire                     k4_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
+    output  wire                     k4_sw_rdy,
+    input   wire [(pDATA_WIDTH-1):0] k4_sw_d
 
 );
 

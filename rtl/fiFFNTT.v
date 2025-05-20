@@ -32,21 +32,96 @@ module fiFFNTT
     output  wire                     sm_tlast
 );
 
+    
+    /*================================================================================================
+    #                                     AXI Configuration                                          #
+    ================================================================================================*/
     reg ap_done, ap_idle; // 0x00: Kernel status (configuration address: 0x3000_0000) read by middleware
     reg coef_done;        // 0x10: Indicate coefficient is initialized
 
     /*================================================================================================
-    #                                       Tasks for FSM                                            #
-    ==================================================================================================
-    1. Stream-in gm constants 
-      - FFT/iFFT constants: 64-bit real part + 64-bit imaginary part => needs 4 cycles (32-bit * 4) to complete 1 constant
-        - Double the bandwidth of SRAM for real part and imaginary part, store into same address
-      - 16-bit NTT constants + 16-bit iNTT constants
-        - Use 2 SRAMs => 1 stream-in cycle (32-bit) can store both NTT and iNTT constants in same address
-    2. Stream-in data into IOP buffer
-    3. Stream-in data from PE to IOP
+    #                                            IOP                                                 #
     ================================================================================================*/
+    stage_top IOP (
+      .clk          (clk),
+      .rstn         (rstn),
 
+      .ss_tvalid    (ss_vld),
+      .ss_tdata     (ss_dat),
+      .ss_tlast     (ss_lst),
+      .ss_tready    (ss_rdy),
+      .sm_tready    (sm_rdy),
+      .sm_tvalid    (sm_vld),
+      .sm_tdata     (sm_dat),
+      .sm_tlast     (sm_lst),
+
+      .k1_load_vld  (k1_ld_vld),
+      .k1_load_rdy  (k1_ld_rdy),
+      .k1_load_dat  (k1_ld_dat),
+      .k1_store_vld (k1_sw_vld),
+      .k1_store_rdy (k1_sw_rdy),
+      .k1_store_dat (k1_sw_dat),
+
+      .k2_load_vld  (k2_ld_vld),
+      .k2_load_rdy  (k2_ld_rdy),
+      .k2_load_dat  (k2_ld_dat),
+      .k2_store_vld (k2_sw_vld),
+      .k2_store_rdy (k2_sw_rdy),
+      .k2_store_dat (k2_sw_dat),
+      
+      .k3_load_vld  (k3_ld_vld),
+      .k3_load_rdy  (k3_ld_rdy),
+      .k3_load_dat  (k3_ld_dat),
+      .k3_store_vld (k3_sw_vld),
+      .k3_store_rdy (k3_sw_rdy),
+      .k3_store_dat (k3_sw_dat),
+      
+      .k4_load_vld  (k4_ld_vld),
+      .k4_load_rdy  (k4_ld_rdy),
+      .k4_load_dat  (k4_ld_dat),
+      .k4_store_vld (k4_sw_vld),
+      .k4_store_rdy (k4_sw_rdy),
+      .k4_store_dat (k4_sw_dat)
+    );
+
+    /*================================================================================================
+    #                                          Kernels                                               #
+    ================================================================================================*/
+    kernel K1 (
+      .ld_vld  (k1_ld_vld),
+      .ld_rdy  (k1_ld_rdy),
+      .ld_dat  (k1_ld_dat),
+      .sw_vld  (k1_sw_vld),
+      .sw_rdy  (k1_sw_rdy),
+      .sw_dat  (k1_sw_dat)
+    );
+
+    kernel K2 (
+      .ld_vld  (k2_ld_vld),
+      .ld_rdy  (k2_ld_rdy),
+      .ld_dat  (k2_ld_dat),
+      .sw_vld  (k2_sw_vld),
+      .sw_rdy  (k2_sw_rdy),
+      .sw_dat  (k2_sw_dat)
+    );
+
+    kernel K3 (
+      .ld_vld  (k3_ld_vld),
+      .ld_rdy  (k3_ld_rdy),
+      .ld_dat  (k3_ld_dat),
+      .sw_vld  (k3_sw_vld),
+      .sw_rdy  (k3_sw_rdy),
+      .sw_dat  (k3_sw_dat)
+    );
+
+    kernel K4 (
+      .ld_vld  (k4_ld_vld),
+      .ld_rdy  (k4_ld_rdy),
+      .ld_dat  (k4_ld_dat),
+      .sw_vld  (k4_sw_vld),
+      .sw_rdy  (k4_sw_rdy),
+      .sw_dat  (k4_sw_dat)
+    );
 
 endmodule
 
