@@ -1,3 +1,4 @@
+
 module kernel 
 #(  
     parameter pDATA_WIDTH = 128 // two 64-bit numbers
@@ -94,3 +95,4 @@ module kernel
     );
 
 endmodule
+

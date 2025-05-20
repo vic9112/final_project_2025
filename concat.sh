@@ -1,6 +1,7 @@
 cat \
 ./rtl/fiFFNTT.v \
 ./rtl/stage_top.v \
+./rtl/kernel.v \
 ./rtl/butterfly.v \
 ./rtl/fmul64.v \
 ./rtl/fadd64.v \
