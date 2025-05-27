@@ -1,5 +1,3 @@
-
-// Author: Jesse, Hsuan-Jung
 `timescale 1ns / 1ps
 `include "cmul.v"
 
