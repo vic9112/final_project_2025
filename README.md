@@ -4,5 +4,5 @@
 
 | Date | Description |
 | ---- | ----------- |
-| 0528 | |
+| 0528 | Update SPEC |
 
