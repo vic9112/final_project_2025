@@ -6,8 +6,5 @@
 | ---- | ----------- | -------- |
 | 0528 | Update SPEC | Vic |
 
-## Issue Report
+## Report Issues
 
-| Description | Module | Designer |
-| ----------- | ------ | -------- |
-||||
