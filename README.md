@@ -2,7 +2,7 @@
 
 ## Status Update
 
-| Date | Description |
-| ---- | ----------- |
-| 0528 | Update SPEC |
+| Date | Description | Designer |
+| ---- | ----------- | -------- |
+| 0528 | Update SPEC | Vic |
 
