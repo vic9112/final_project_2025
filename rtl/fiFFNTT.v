@@ -45,44 +45,48 @@ module fiFFNTT
     stage_top IOP (
       .clk          (clk),
       .rstn         (rstn),
-
-      .ss_tvalid    (ss_vld),
-      .ss_tdata     (ss_dat),
-      .ss_tlast     (ss_lst),
-      .ss_tready    (ss_rdy),
-      .sm_tready    (sm_rdy),
-      .sm_tvalid    (sm_vld),
-      .sm_tdata     (sm_dat),
-      .sm_tlast     (sm_lst),
-
-      .k1_load_vld  (k1_ld_vld),
-      .k1_load_rdy  (k1_ld_rdy),
-      .k1_load_dat  (k1_ld_dat),
-      .k1_store_vld (k1_sw_vld),
-      .k1_store_rdy (k1_sw_rdy),
-      .k1_store_dat (k1_sw_dat),
-
-      .k2_load_vld  (k2_ld_vld),
-      .k2_load_rdy  (k2_ld_rdy),
-      .k2_load_dat  (k2_ld_dat),
-      .k2_store_vld (k2_sw_vld),
-      .k2_store_rdy (k2_sw_rdy),
-      .k2_store_dat (k2_sw_dat),
       
-      .k3_load_vld  (k3_ld_vld),
-      .k3_load_rdy  (k3_ld_rdy),
-      .k3_load_dat  (k3_ld_dat),
-      .k3_store_vld (k3_sw_vld),
-      .k3_store_rdy (k3_sw_rdy),
-      .k3_store_dat (k3_sw_dat),
+      .in1_sw       (     ),
+
+      .ss_vld       (ss_tvalid),
+      .ss_dat       (ss_tdata),
+      .ss_lst       (ss_tlast),
+      .ss_rdy       (ss_tready),
       
-      .k4_load_vld  (k4_ld_vld),
-      .k4_load_rdy  (k4_ld_rdy),
-      .k4_load_dat  (k4_ld_dat),
-      .k4_store_vld (k4_sw_vld),
-      .k4_store_rdy (k4_sw_rdy),
-      .k4_store_dat (k4_sw_dat)
+      .sm_rdy       (sm_tready),
+      .sm_vld       (sm_tvalid),
+      .sm_dat       (sm_tdata),
+      .sm_lst       (sm_tlast),
+
+      .k1_ld_vld    (k1_load_vld),
+      .k1_ld_rdy    (k1_load_rdy),
+      .k1_ld_dat    (k1_load_dat),
+      .k1_sw_vld    (k1_store_vld),
+      .k1_sw_rdy    (k1_store_rdy),
+      .k1_sw_dat    (k1_store_dat),
+
+      .k2_ld_vld    (k2_load_vld),
+      .k2_ld_rdy    (k2_load_rdy),
+      .k2_ld_dat    (k2_load_dat),
+      .k2_sw_vld    (k2_store_vld),
+      .k2_sw_rdy    (k2_store_rdy),
+      .k2_sw_dat    (k2_store_dat),
+      
+      .k3_ld_vld    (k3_load_vld),
+      .k3_ld_rdy    (k3_load_rdy),
+      .k3_ld_dat    (k3_load_dat),
+      .k3_sw_vld    (k3_store_vld),
+      .k3_sw_rdy    (k3_store_rdy),
+      .k3_sw_dat    (k3_store_dat),
+      
+      .k4_ld_vld    (k4_load_vld),
+      .k4_ld_rdy    (k4_load_rdy),
+      .k4_ld_dat    (k4_load_dat),
+      .k4_sw_vld    (k4_store_vld),
+      .k4_sw_rdy    (k4_store_rdy),
+      .k4_sw_dat    (k4_store_dat)
     );
+
 
     /*================================================================================================
     #                                          Kernels                                               #
