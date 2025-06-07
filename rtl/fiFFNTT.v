@@ -31,13 +31,111 @@ module fiFFNTT
     output  wire [(pDATA_WIDTH-1):0] sm_tdata, 
     output  wire                     sm_tlast
 );
+    //========================== Declaration ==========================
+    // =============== axi-lite =============== //
+    wire [31:0] ap_ctrl;
+    wire [31:0] coef_ctrl;
+    // axi write seems to be useless in the current plan
+    reg awready_tmp;
+    reg awready_next;
+    reg wready_tmp;
+    reg wready_next;
 
-    
-    /*================================================================================================
-    #                                     AXI Configuration                                          #
-    ================================================================================================*/
-    reg ap_done, ap_idle; // 0x00: Kernel status (configuration address: 0x3000_0000) read by middleware
-    reg coef_done;        // 0x10: Indicate coefficient is initialized
+    // axi read is used to read the ap_state of the kenel
+    // coef_done can be determined by the metadata -> dont need axi write for now
+    reg arready_tmp;
+    reg arready_next;
+    reg rvalid_tmp;
+    reg rvalid_next;
+    reg [(pADDR_WIDTH-1):0] araddr_tmp;
+    reg [(pADDR_WIDTH-1):0] araddr_next;
+    reg [(pDATA_WIDTH-1):0] rdata_tmp;
+
+    // telling IOP that done is read
+    reg read_ap_stat_tmp;
+    reg read_ap_stat_next;
+    wire ap_read;
+
+    // local parameter
+    localparam PULL_DN = 0; // pull down
+    localparam PULL_UP = 1; 
+    localparam AP_STAT = 32'h00; // 0x00
+    localparam COEF_STAT = 32'h10; // 0x10
+
+    //========================== Function ==========================
+    // =============== axi-lite =============== //
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        awready_tmp <= PULL_DN;
+        wready_tmp <= PULL_DN;
+        arready_tmp <= PULL_DN;
+        rvalid <= PULL_DN;
+        araddr_tmp <= PULL_DN;
+        read_ap_stat_tmp <= PULL_DN;
+      end else begin
+        awready_tmp <= awready_next;
+        wready_tmp <= wready_next;
+        arready_tmp <= arready_next;
+        rvalid <= rvalid_next;
+        araddr_tmp <= araddr_next;
+        read_ap_stat_tmp <= read_ap_stat_next;
+      end
+    end
+
+    always @(*) begin
+      // axi write (not used for now)
+      if (awvalid && wvalid && !wready) begin
+        awready_next = PULL_UP;
+        wready_next = PULL_UP;
+      end else begin
+        awready_next = PULL_DN;
+        wready_next = PULL_DN;
+      end
+      // axi read - arready
+      if (arvalid && !arready) begin
+        arready_next = PULL_UP;
+      end else begin
+        arready_next = PULL_DN;
+      end
+      // axi read - rvalid
+      if (arready) begin
+        rvalid_next = PULL_UP;
+      end else if (rready) begin
+        rvalid_next = PULL_DN;
+      end else begin
+        rvalid_next = rvalid_tmp;
+      end
+      // axi read - araddr_buffer
+      if (arvalid) begin
+        araddr_next = araddr;
+      end else if (rready && rvalid) begin
+        araddr_next = PULL_DN;
+      end else begin
+        araddr_next = araddr_tmp;
+      end
+      // determine rdata
+      if (araddr_tmp == AP_STAT) begin
+        rdata_tmp = ap_ctrl;
+      end else if (araddr_tmp == COEF_STAT) begin
+        rdata_tmp = coef_ctrl;
+      end else begin
+        rdata_tmp = PULL_DN;
+      end
+      // read_ap_stat
+      if (araddr_tmp == AP_STAT && rready && rvalid && !read_ap_stat_tmp) begin
+        read_ap_stat_next = PULL_UP;
+      end else begin
+        read_ap_stat_next = PULL_DN;
+      end
+    end
+
+    // assign to port wire
+    assign awready = awready_tmp;
+    assign wready = wready_tmp;
+    assign arready = arready_tmp;
+    assign rvalid = rvalid_tmp;
+    assign rdata = rdata_tmp;
+    assign ap_read = read_ap_stat_tmp;
 
     /*================================================================================================
     #                                            IOP                                                 #
@@ -47,6 +145,9 @@ module fiFFNTT
       .rstn         (rstn),
       
       .in1_sw       (     ),
+      .ap_crtl      (ap_crtl),
+      .coef_crtl    (coef_crtl),
+      .ap_read      (ap_read),
 
       .ss_vld       (ss_tvalid),
       .ss_dat       (ss_tdata),
