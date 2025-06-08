@@ -322,15 +322,21 @@ module stage_top
       end else begin
         read_meta_next = read_meta_tmp;
       end
-      // decode_meta & meta_buffer & meta_cnter
+      // decode_meta & meta_buffer 
       if (ss_rdy && read_meta_tmp) begin
         decode_meta_next = PULL_UP;
         meta_buffer_next = ss_dat;
-        meta_cnter_next = PULL_UP; // set to 1
       end else begin
         decode_meta_next = PULL_DN;
         meta_buffer_next = meta_buffer_tmp;
-        meta_cnter_next = meta_cnter_tmp + 1; // set to 1
+      end
+      // meta_cnter
+      if (ss_rdy && read_meta_tmp) begin
+        meta_cnter_next = PULL_UP; // set to 1
+      end else if (ss_rdy && !read_meta_tmp) begin
+        meta_cnter_next = meta_cnter_tmp + 1; 
+      end else begin
+        meta_cnter_next = meta_cnter_tmp;
       end
     end
 
