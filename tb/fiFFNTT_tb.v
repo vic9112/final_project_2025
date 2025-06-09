@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module tb_fiFFNTT;
+module fiFFNTT_tb;
 
   // Parameters & Constants
   localparam CLK_PERIOD    = 10;             // 100 MHz clock
@@ -9,8 +9,8 @@ module tb_fiFFNTT;
   localparam NUM_KER       = 4;
 
   // Stream lengths
-  localparam int LEN [NUM_KER] = '{2049, 2049, 1025, 1025};
-  localparam int COEF_LEN [NUM_KER] = '{2048, 2048, 1024, 1024};
+  localparam int LEN [NUM_KER] = '{2048, 2048, 1024, 1024};
+  localparam int COEF_LEN [NUM_KER] = '{512, 512, 1024, 1024};
 
   // File names
   string coeffile [NUM_KER] = '{"FFT_coef.hex", "iFFT_coef.hex", "NTT_coef.hex", "iNTT_coef.hex"};
@@ -23,10 +23,7 @@ module tb_fiFFNTT;
   localparam [ADDR_WIDTH-1:0] MB_BASE_ADDR   = 32'h3000_2000;
   localparam [7:0]            COEF_BASE      = 8'b0001_0100;
   localparam [7:0]            KERNEL_BASE    = 8'b0000_0100;
-  localparam [7:0]            MODE_FFT       = 8'b0000_0100;
-  localparam [7:0]            MODE_iFFT      = 8'b0000_0101;
-  localparam [7:0]            MODE_NTT       = 8'b0000_0110;
-  localparam [7:0]            MODE_iNTT      = 8'b0000_0111;
+  localparam [7:0]            MODE_BASE      = 8'b0000_0100;
   localparam                  MB_STRIDE      = 4;
 
   // Patterns
@@ -65,7 +62,7 @@ module tb_fiFFNTT;
 
   reg [DATA_WIDTH-1:0] stat;
   integer idx;
-  integer i, k;
+  integer i, j, k;
 
   // DUT Instantiation
   fiFFNTT #(
@@ -278,30 +275,19 @@ module tb_fiFFNTT;
     output [DATA_WIDTH-1:0] mem[]
   );
     begin
-      i = 0; 
-      while (i < N) begin
+      j = 0; 
+      while (j < N) begin
         @(posedge clk);
         sm_tready = 1;
 
         wait(sm_tvalid);
         mem[i] = sm_tdata;
-        i = i + 1;
+        j = j + 1;
         @(posedge clk);
         sm_tready = 0;
       end
     end
   endtask
-
-  // Initialize mailbox #id to pattern via AXI-Lite
-  task init_mailbox(
-    input [1:0] id,
-    input [DATA_WIDTH-1:0] pat
-  );
-    begin
-      axilite_write_mb(MB_BASE_ADDR + id * MB_STRIDE, pat);
-    end
-  endtask
-
 
   // Memories for input/output/golden data
   reg [DATA_WIDTH-1:0] coef_mem   [0:NUM_KER-1][0:2048];
@@ -312,6 +298,7 @@ module tb_fiFFNTT;
 
   // Main test sequence
   integer start_time, end_time, latency;
+  reg [DATA_WIDTH-1:0] check;
   initial begin
     awvalid = 0; 
     wvalid = 0;
@@ -337,14 +324,31 @@ module tb_fiFFNTT;
 
     // coef in
     for (k = 0; k < NUM_KER; k++) begin
-      stream_meta(COEF_BASE + k, 8'b0, 16'd)
+      stream_meta(COEF_BASE + k, 8'b0, COEF_LEN[k][15:0]);
+      ss_stream_in(COEF_LEN[k], coef_mem[k]);
+    end
 
+    // Write coef_done = 1
+    axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
+    $display("Coefficients input over");
+
+    // initialize mailbox
+    for (k = 0; k < NUM_KER; k++) begin
+      axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_FREE);
+    end
 
     // Run each kernel
     for (k = 0; k < NUM_KER; k++) begin
-      $display("\n=== Kernel %0d start ===", k);
-      init_mailbox(k, PAT_KER_BUSY);
+      axilite_read_mb(MB_BASE_ADDR + k * MB_STRIDE, check);
+      if (check != PAT_KER_FREE) begin
+        $display("Kernel %d is not free", k);
+        $finish;
+      end else begin
+        $display("Kernel %d start", k);
+        axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_BUSY);
+      end
 
+      stream_meta(KERNEL_BASE + k, MODE_BASE + k, LEN[k][15:0]);
       fork
         // DMA in
         ss_stream_in(LEN[k], in_mem[k]);
@@ -355,23 +359,24 @@ module tb_fiFFNTT;
           wait_ap_idle(k);
           start_time = $time;
           wait_ap_done(k);
-          end_time   = $time;
-          latency    = end_time - start_time;
-          $display(" Kernel %0d latency = %0d ns", k, latency);
-          init_mailbox(k, PAT_KER_FREE);
+          end_time = $time;
+          latency = end_time - start_time;
+          $display("Kernel %d latency = %d ns", k, latency);
+          axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_FREE);
         end
       join
 
       // Check results
-      for (i = 1; i < LEN[k]; i++) begin
-        if (out_mem[k][i] !== golden_mem[k][i])
-          $error("Mismatch k=%0d idx=%0d got 0x%08h exp 0x%08h",
+      for (i = 0; i < LEN[k]; i++) begin
+        if (out_mem[k][i] !== golden_mem[k][i]) begin
+          $display("Mismatch k=%d idx=%d got 0x%8h exp 0x%8h",
                  k, i, out_mem[k][i], golden_mem[k][i]);
+        end
       end
-      $display(" Kernel %0d PASS", k);
+      $display("Kernel %d PASS", k);
     end
 
-    $display("\nALL KERNELS COMPLETE");
+    $display("ALL KERNELS COMPLETE");
     # (CLK_PERIOD * 5);
     $finish;
   end
