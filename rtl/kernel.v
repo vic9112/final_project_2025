@@ -80,7 +80,7 @@ module kernel
     butterfly BPE1 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (),
+        .mode  (butterfly_mode),
         .i_vld (),
         .i_rdy (),
         .o_vld (),
