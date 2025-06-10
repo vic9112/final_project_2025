@@ -10,8 +10,8 @@ module stage_top
     input   wire                     rstn,
 
     //input   wire               [1:0] in1_sw,  // not used for now
-    output   wire             [31:0] ap_crtl,
-    output   wire             [31:0] coef_crtl,
+    output   wire             [31:0] ap_ctrl,
+    output   wire             [31:0] coef_ctrl,
     input   wire                     ap_read,
     // SS/SM interface:
     // FFT/iFFT SS: concat 4 32-bit data to 128-bit
@@ -189,8 +189,8 @@ module stage_top
 
     // 0x00: Kernel status (configuration address: 0x3000_0000) read by middleware
     //reg coef_done;        // 0x10: Indicate coefficient is initialized
-    reg coef_crtl_tmp;
-    reg coef_crtl_next;
+    reg coef_ctrl_tmp;
+    reg coef_ctrl_next;
 
     // =============== address generator for tap =============== //
     
@@ -487,7 +487,7 @@ module stage_top
     // =============== ap_ctrl & coef_ctrl =============== //
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
-        coef_crtl_tmp <= PULL_DN;
+        coef_ctrl_tmp <= PULL_DN;
         ap_idle1_tmp <= PULL_UP;
         ap_idle2_tmp <= PULL_UP;
         ap_idle3_tmp <= PULL_UP;
@@ -497,7 +497,7 @@ module stage_top
         ap_done3_tmp <= PULL_DN;
         ap_done4_tmp <= PULL_DN;
       end else begin
-        coef_crtl_tmp <= coef_crtl_next;
+        coef_ctrl_tmp <= coef_ctrl_next;
         ap_idle1_tmp <= ap_idle1_next;
         ap_idle2_tmp <= ap_idle2_next;
         ap_idle3_tmp <= ap_idle3_next;
@@ -511,11 +511,11 @@ module stage_top
 
     // assume that coef length is as same as 1024
     always @(*) begin
-      // coef_crtl
+      // coef_ctrl
       if ((meta_cnter_tmp == MAX_LEN) && ss_rdy && (dst_tmp == COEF)) begin
-        coef_crtl_next = PULL_UP;
+        coef_ctrl_next = PULL_UP;
       end else begin
-        coef_crtl_next = coef_crtl_tmp;
+        coef_ctrl_next = coef_ctrl_tmp;
       end
       // ap_idle1
       if (decode_meta_tmp == PULL_UP && dst_tmp == KERNEL_1) begin
@@ -583,7 +583,7 @@ module stage_top
       end
     end
 
-    assign coef_crtl = coef_crtl_tmp;
+    assign coef_ctrl = coef_ctrl_tmp;
     assign ap_ctrl = {ap_idle4_next, ap_done4_next, ap_idle3_next, ap_done3_next, ap_idle2_next, ap_done2_next, ap_idle1_next, ap_done1_next};
 
     // =============== address generator for tap =============== //

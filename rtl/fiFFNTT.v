@@ -61,7 +61,24 @@ module fiFFNTT
     localparam PULL_UP = 1; 
     localparam AP_STAT = 32'h00; // 0x00
     localparam COEF_STAT = 32'h10; // 0x10
-
+    // =============== IOP =============== //
+    wire clk1, clk2, clk3, clk4;
+    wire [7:0] k1_mode;    
+    wire decode1;          
+    wire k1_sw_lst;         
+  
+    wire [7:0] k2_mode;
+    wire decode2;
+    wire k2_sw_lst;
+    
+    wire [7:0] k3_mode;
+    wire decode3;
+    wire k3_sw_lst;
+    
+    wire [7:0] k4_mode;
+    wire decode4;
+    wire k4_sw_lst;
+    
     // =============== Kernel interface =============== //
     // Kernel 1
     wire k1_load_vld;
@@ -180,8 +197,8 @@ module fiFFNTT
       .rstn         (rstn),
       
       //.in1_sw       (     ),
-      .ap_crtl      (ap_crtl),
-      .coef_crtl    (coef_crtl),
+      .ap_ctrl      (ap_ctrl),
+      .coef_ctrl    (coef_ctrl),
       .ap_read      (ap_read),
 
       .ss_vld       (ss_tvalid),
@@ -193,6 +210,9 @@ module fiFFNTT
       .sm_vld       (sm_tvalid),
       .sm_dat       (sm_tdata),
       .sm_lst       (sm_tlast),
+      //---------- kernel 1  ----------//
+      .clk1        (clk1),
+      .rstn1       (rstn),
 
       .k1_ld_vld    (k1_load_vld),
       .k1_ld_rdy    (k1_load_rdy),
@@ -201,13 +221,29 @@ module fiFFNTT
       .k1_sw_rdy    (k1_store_rdy),
       .k1_sw_dat    (k1_store_dat),
 
+      .k1_mode     (k1_mode),
+      .decode1     (decode1),
+      .k1_sw_lst   (k1_sw_lst),
+
+      //---------- kernel 2  ----------//
+      .clk2        (clk2),
+      .rstn2       (rstn),
+
       .k2_ld_vld    (k2_load_vld),
       .k2_ld_rdy    (k2_load_rdy),
       .k2_ld_dat    (k2_load_dat),
       .k2_sw_vld    (k2_store_vld),
       .k2_sw_rdy    (k2_store_rdy),
       .k2_sw_dat    (k2_store_dat),
-      
+
+      .k2_mode     (k2_mode),
+      .decode2     (decode2),
+      .k2_sw_lst   (k2_sw_lst),
+
+      //---------- kernel 3  ----------//
+      .clk3        (clk3),
+      .rstn3       (rstn),
+
       .k3_ld_vld    (k3_load_vld),
       .k3_ld_rdy    (k3_load_rdy),
       .k3_ld_dat    (k3_load_dat),
@@ -215,12 +251,24 @@ module fiFFNTT
       .k3_sw_rdy    (k3_store_rdy),
       .k3_sw_dat    (k3_store_dat),
       
+      .k3_mode     (k3_mode),
+      .decode3     (decode3),
+      .k3_sw_lst   (k3_sw_lst),
+
+      //---------- kernel 4  ----------//
+      .clk4        (clk4),
+      .rstn4       (rstn),
+
       .k4_ld_vld    (k4_load_vld),
       .k4_ld_rdy    (k4_load_rdy),
       .k4_ld_dat    (k4_load_dat),
       .k4_sw_vld    (k4_store_vld),
       .k4_sw_rdy    (k4_store_rdy),
-      .k4_sw_dat    (k4_store_dat)
+      .k4_sw_dat    (k4_store_dat),
+      
+      .k4_mode     (k4_mode),
+      .decode4     (decode4),
+      .k4_sw_lst   (k4_sw_lst) 
     );
 
 
