@@ -62,6 +62,38 @@ module fiFFNTT
     localparam AP_STAT = 32'h00; // 0x00
     localparam COEF_STAT = 32'h10; // 0x10
 
+    // =============== Kernel interface =============== //
+    // Kernel 1
+    wire k1_load_vld;
+    wire k1_load_rdy;
+    wire [(pDATA_WIDTH-1):0] k1_load_dat;
+    wire k1_store_vld;
+    wire k1_store_rdy;
+    wire [(pDATA_WIDTH-1):0] k1_store_dat;
+    
+    // Kernel 2
+    wire k2_load_vld;
+    wire k2_load_rdy;
+    wire [(pDATA_WIDTH-1):0] k2_load_dat;
+    wire k2_store_vld;
+    wire k2_store_rdy;
+    wire [(pDATA_WIDTH-1):0] k2_store_dat;
+    
+    // Kernel 3
+    wire k3_load_vld;
+    wire k3_load_rdy;
+    wire [(pDATA_WIDTH-1):0] k3_load_dat;
+    wire k3_store_vld;
+    wire k3_store_rdy;
+    wire [(pDATA_WIDTH-1):0] k3_store_dat;
+    
+    // Kernel 4
+    wire k4_load_vld;
+    wire k4_load_rdy;
+    wire [(pDATA_WIDTH-1):0] k4_load_dat;
+    wire k4_store_vld;
+    wire k4_store_rdy;
+    wire [(pDATA_WIDTH-1):0] k4_store_dat;
     //========================== Function ==========================
     // =============== axi-lite =============== //
     always @(posedge clk or negedge rstn) begin
@@ -140,11 +172,14 @@ module fiFFNTT
     /*================================================================================================
     #                                            IOP                                                 #
     ================================================================================================*/
-    stage_top IOP (
+    stage_top #(
+      .pDATA_WIDTH (128), 
+      .pSS_WIDTH (32)
+      ) IOP (
       .clk          (clk),
       .rstn         (rstn),
       
-      .in1_sw       (     ),
+      //.in1_sw       (     ),
       .ap_crtl      (ap_crtl),
       .coef_crtl    (coef_crtl),
       .ap_read      (ap_read),
@@ -191,42 +226,41 @@ module fiFFNTT
 
     /*================================================================================================
     #                                          Kernels                                               #
-    ================================================================================================*/
+    ================================================================================================*/    
     kernel K1 (
-      .ld_vld  (k1_ld_vld),
-      .ld_rdy  (k1_ld_rdy),
-      .ld_dat  (k1_ld_dat),
-      .sw_vld  (k1_sw_vld),
-      .sw_rdy  (k1_sw_rdy),
-      .sw_dat  (k1_sw_dat)
+      .ld_vld  (k1_load_vld),  
+      .ld_rdy  (k1_load_rdy),
+      .ld_dat  (k1_load_dat),
+      .sw_vld  (k1_store_vld),
+      .sw_rdy  (k1_store_rdy),
+      .sw_dat  (k1_store_dat)
     );
 
     kernel K2 (
-      .ld_vld  (k2_ld_vld),
-      .ld_rdy  (k2_ld_rdy),
-      .ld_dat  (k2_ld_dat),
-      .sw_vld  (k2_sw_vld),
-      .sw_rdy  (k2_sw_rdy),
-      .sw_dat  (k2_sw_dat)
+      .ld_vld  (k2_load_vld),
+      .ld_rdy  (k2_load_rdy),
+      .ld_dat  (k2_load_dat),
+      .sw_vld  (k2_store_vld),
+      .sw_rdy  (k2_store_rdy),
+      .sw_dat  (k2_store_dat)
     );
 
     kernel K3 (
-      .ld_vld  (k3_ld_vld),
-      .ld_rdy  (k3_ld_rdy),
-      .ld_dat  (k3_ld_dat),
-      .sw_vld  (k3_sw_vld),
-      .sw_rdy  (k3_sw_rdy),
-      .sw_dat  (k3_sw_dat)
+      .ld_vld  (k3_load_vld),
+      .ld_rdy  (k3_load_rdy),
+      .ld_dat  (k3_load_dat),
+      .sw_vld  (k3_store_vld),
+      .sw_rdy  (k3_store_rdy),
+      .sw_dat  (k3_store_dat)
     );
 
     kernel K4 (
-      .ld_vld  (k4_ld_vld),
-      .ld_rdy  (k4_ld_rdy),
-      .ld_dat  (k4_ld_dat),
-      .sw_vld  (k4_sw_vld),
-      .sw_rdy  (k4_sw_rdy),
-      .sw_dat  (k4_sw_dat)
+      .ld_vld  (k4_load_vld),
+      .ld_rdy  (k4_load_rdy),
+      .ld_dat  (k4_load_dat),
+      .sw_vld  (k4_store_vld),
+      .sw_rdy  (k4_store_rdy),
+      .sw_dat  (k4_store_dat)
     );
-
 endmodule
 

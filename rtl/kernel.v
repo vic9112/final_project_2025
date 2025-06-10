@@ -17,7 +17,7 @@ module kernel
 
     input  wire               [7:0] mode,
     input  wire                     decode,
-    output wire                     sw_lst,  // this is set when handshake
+    output wire                     sw_lst  // this is set when handshake
 );
 
     //========================== Declaration ==========================
@@ -95,7 +95,7 @@ module kernel
     butterfly BPE2 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (),
+        .mode  (butterfly_mode),
         .i_vld (),
         .i_rdy (),
         .o_vld (),
@@ -110,7 +110,7 @@ module kernel
     butterfly BPE3 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (),
+        .mode  (butterfly_mode),
         .i_vld (),
         .i_rdy (),
         .o_vld (),
@@ -125,7 +125,7 @@ module kernel
     butterfly BPE4 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (),
+        .mode  (butterfly_mode),
         .i_vld (),
         .i_rdy (),
         .o_vld (),
@@ -140,7 +140,7 @@ module kernel
     butterfly BPE5 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (),
+        .mode  (butterfly_mode),
         .i_vld (),
         .i_rdy (),
         .o_vld (),

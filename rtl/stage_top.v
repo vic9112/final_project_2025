@@ -2,14 +2,14 @@
 // Using Deep-Feedback structure, we will have
 module stage_top
 #(  
-    parameter pDATA_WIDTH = 128 // two 64-bit numbers
+    parameter pDATA_WIDTH = 128, // two 64-bit numbers
     parameter pSS_WIDTH = 32 // two 64-bit numbers
 )
 (
     input   wire                     clk,
     input   wire                     rstn,
 
-    input   wire               [1:0] in1_sw,  // not used for now
+    //input   wire               [1:0] in1_sw,  // not used for now
     output   wire             [31:0] ap_crtl,
     output   wire             [31:0] coef_crtl,
     input   wire                     ap_read,
