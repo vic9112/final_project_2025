@@ -126,6 +126,7 @@ module stage_top
     // destination & mode
     wire [7:0] dst_tmp; // destination
     wire [7:0] mode_tmp;
+    wire [15:0] stream_length_tmp;
 
     // local parameter
     localparam MAX_LEN = 1024;
@@ -134,7 +135,7 @@ module stage_top
     localparam KERNEL_2 = 8'b00000101;
     localparam KERNEL_3 = 8'b00000110;
     localparam KERNEL_4 = 8'b00000111;
-    localparam COEF = 8'b00010000;
+    localparam COEF = 8'b00010100;
     
     // =============== kernel =============== //
     // kernel handshake
@@ -232,7 +233,7 @@ module stage_top
       // pack_cnter
       if (ss_rdy && !(pack_cnter_tmp == INDEX_3) && !read_meta_tmp) begin
         pack_cnter_next = pack_cnter_tmp + 1;
-      end else if (pack_cnter_tmp == INDEX_3 && !read_meta_tmp) begin
+      end else if ((pack_cnter_tmp == INDEX_3) && !read_meta_tmp) begin
         pack_cnter_next = PULL_DN;
       end else begin
         pack_cnter_next = pack_cnter_tmp;
@@ -317,7 +318,7 @@ module stage_top
       // read_meta
       if (ss_rdy && !(meta_cnter_tmp == MAX_LEN)) begin
         read_meta_next = PULL_DN;
-      end else (ss_rdy && meta_cnter_tmp == MAX_LEN) begin
+      end else if (ss_rdy && meta_cnter_tmp == MAX_LEN) begin
         read_meta_next = PULL_UP;
       end else begin
         read_meta_next = read_meta_tmp;
@@ -339,11 +340,10 @@ module stage_top
         meta_cnter_next = meta_cnter_tmp;
       end
     end
-
+    // decode meta data
     assign dst_tmp = meta_buffer_tmp[31:24];
     assign mode_tmp = meta_buffer_tmp[23:16];
-    // I did not extract data length here
-    // add it if u need
+    assign stream_length_tmp = meta_buffer_tmp[15:0];
 
     // =============== kernel =============== //
     always @(posedge clk or negedge rstn) begin
@@ -519,7 +519,7 @@ module stage_top
       end
       // ap_idle1
       if (decode_meta_tmp == PULL_UP && dst_tmp == KERNEL_1) begin
-        ap_idle1_next = PULL_DN
+        ap_idle1_next = PULL_DN;
       end else if (k1_sw_lst) begin
         ap_idle1_next = PULL_UP;
       end else begin
@@ -527,7 +527,7 @@ module stage_top
       end
       // ap_idle2
       if (decode_meta_tmp == PULL_UP && dst_tmp == KERNEL_2) begin
-        ap_idle2_next = PULL_DN
+        ap_idle2_next = PULL_DN;
       end else if (k2_sw_lst) begin
         ap_idle2_next = PULL_UP;
       end else begin
@@ -535,7 +535,7 @@ module stage_top
       end
       // ap_idle3
       if (decode_meta_tmp == PULL_UP && dst_tmp == KERNEL_3) begin
-        ap_idle3_next = PULL_DN
+        ap_idle3_next = PULL_DN;
       end else if (k3_sw_lst) begin
         ap_idle3_next = PULL_UP;
       end else begin
@@ -543,7 +543,7 @@ module stage_top
       end
       // ap_idle4
       if (decode_meta_tmp == PULL_UP && dst_tmp == KERNEL_4) begin
-        ap_idle4_next = PULL_DN
+        ap_idle4_next = PULL_DN;
       end else if (k4_sw_lst) begin
         ap_idle4_next = PULL_UP;
       end else begin
@@ -588,6 +588,11 @@ module stage_top
 
     // =============== address generator for tap =============== //
    
+    
+
+
+
+
 
 
     
