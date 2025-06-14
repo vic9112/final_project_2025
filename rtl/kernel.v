@@ -15,6 +15,11 @@ module kernel
     input  wire                     sw_rdy,
     output wire [(pDATA_WIDTH-1):0] sw_dat,
 
+    
+    input  wire                     coef_vld,
+    output wire                     coef_rdy,
+    input  wire [(pDATA_WIDTH-1):0] coef_dat, 
+
     input  wire               [7:0] mode,
     input  wire                     decode,
     output wire                     sw_lst  // this is set when handshake
