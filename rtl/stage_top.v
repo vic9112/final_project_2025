@@ -639,14 +639,23 @@ module stage_top
     );
   
     
-    bram1024x16 NTT_COEF_RAM (
-      .CLK  (clk),
-      .WE   (dst_tmp == 8'b00010101),
-      .EN   (ss_rdy),
-      .Di   (ss_buffer),
-      .Do   (),
-      .A    ()
-    );
+    // bram1024x16 NTT_COEF_RAM (
+    //   .CLK  (clk),
+    //   .WE   (dst_tmp == 8'b00010101),
+    //   .EN   (ss_rdy),
+    //   .Di   (ss_buffer),
+    //   .Do   (),
+    //   .A    ()
+    // );
+
+    // bram1024x16 iNTT_COEF_RAM (
+    //   .CLK  (clk),
+    //   .WE   (dst_tmp == 8'b00010101),
+    //   .EN   (ss_rdy),
+    //   .Di   (ss_buffer),
+    //   .Do   (),
+    //   .A    ()
+    // );
     
 
 endmodule

@@ -259,12 +259,12 @@ module fiFFNTT
       .clk4        (clk4),
       .rstn4       (rstn),
 
-      .k4_ld_vld    (k4_load_vld),
-      .k4_ld_rdy    (k4_load_rdy),
-      .k4_ld_dat    (k4_load_dat),
-      .k4_sw_vld    (k4_store_vld),
       .k4_sw_rdy    (k4_store_rdy),
-      .k4_sw_dat    (k4_store_dat),
+      .k4_ld_vld   (k4_load_vld),
+      .k4_ld_rdy   (k4_load_rdy),
+      .k4_ld_dat   (k4_load_dat),
+      .k4_sw_vld   (k4_store_vld),
+      .k4_sw_dat   (k4_store_dat),
       
       .k4_mode     (k4_mode),
       .decode4     (decode4),

@@ -5,6 +5,7 @@ module kernel
 )
 (
     input  wire                     clk,
+    input  wire                     clk_2x,//for dataRAM (double-speed)
     input  wire                     rstn,
 
     input  wire                     ld_vld,
