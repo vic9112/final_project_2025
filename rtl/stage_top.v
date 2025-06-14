@@ -33,6 +33,10 @@ module stage_top
     input   wire                     k1_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
     output  wire                     k1_sw_rdy,
     input   wire [(pDATA_WIDTH-1):0] k1_sw_dat,
+    output  wire                     k1_coef_vld,
+    input   wire                     k1_coef_rdy,
+    output  wire   [pDATA_WIDTH-1:0] k1_coef_dat,
+    input   wire               [3:0] k1_bpe_act,
     output  wire               [7:0] k1_mode,
     output  wire                     decode1,
     input   wire                     k1_sw_lst,
@@ -46,6 +50,10 @@ module stage_top
     input   wire                     k2_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
     output  wire                     k2_sw_rdy,
     input   wire [(pDATA_WIDTH-1):0] k2_sw_dat,
+    output  wire                     k2_coef_vld,
+    input   wire                     k2_coef_rdy,
+    output  wire   [pDATA_WIDTH-1:0] k2_coef_dat,
+    input  wire                [3:0] k2_bpe_act,
     output  wire               [7:0] k2_mode,
     output  wire                     decode2, 
     input   wire                     k2_sw_lst,
@@ -59,6 +67,10 @@ module stage_top
     input   wire                     k3_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
     output  wire                     k3_sw_rdy,
     input   wire [(pDATA_WIDTH-1):0] k3_sw_dat,
+    output  wire                     k3_coef_vld,
+    input   wire                     k3_coef_rdy,
+    output  wire   [pDATA_WIDTH-1:0] k3_coef_dat,
+    input   wire               [3:0] k3_bpe_act,
     output  wire               [7:0] k3_mode,
     output  wire                     decode3, 
     input   wire                     k3_sw_lst,
@@ -72,6 +84,10 @@ module stage_top
     input   wire                     k4_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
     output  wire                     k4_sw_rdy,
     input   wire [(pDATA_WIDTH-1):0] k4_sw_dat,
+    output  wire                     k4_coef_vld,
+    input   wire                     k4_coef_rdy,
+    output  wire   [pDATA_WIDTH-1:0] k4_coef_dat,
+    input   wire               [3:0] k4_bpe_act,
     output  wire               [7:0] k4_mode,
     output  wire                     decode4,
     input   wire                     k4_sw_lst
