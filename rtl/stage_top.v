@@ -1,4 +1,3 @@
-
 // Using Deep-Feedback structure, we will have
 module stage_top
 #(  
@@ -92,17 +91,17 @@ module stage_top
     reg [(pSS_WIDTH-1):0] ss_buffer_next2;
     reg [(pSS_WIDTH-1):0] ss_buffer_next3;
     reg [(pSS_WIDTH-1):0] ss_buffer_next4;
-    wire [(pDATA_WIDTH-1):0] ss_buffer;
-    wire [3:0] condition;
-
+    reg [(pDATA_WIDTH-1):0] ss_buffer;
+    wire [5:0] condition;
+    wire [10:0] data_length;
     reg sm_vld_tmp;
     reg sm_vld_next;
     reg [(pDATA_WIDTH-1):0] sm_buffer_tmp;
     reg [(pDATA_WIDTH-1):0] sm_buffer_next;
 
     // cnter for packing 128 bit
-    reg [1:0] pack_cnter_tmp;
-    reg [1:0] pack_cnter_next;
+    reg [3:0] pack_cnter_tmp;
+    reg [3:0] pack_cnter_next;
     // local parameter
     localparam PULL_DN = 0;
     localparam PULL_UP = 1;
@@ -120,8 +119,8 @@ module stage_top
     reg [(pSS_WIDTH-1):0] meta_buffer_next;
 
     // cnter for data length
-    reg [10:0] meta_cnter_tmp;
-    reg [10:0] meta_cnter_next;
+    reg [12:0] meta_cnter_tmp;
+    reg [12:0] meta_cnter_next;
 
     // destination & mode
     wire [7:0] dst_tmp; // destination
@@ -129,7 +128,7 @@ module stage_top
     wire [15:0] stream_length_tmp;
 
     // local parameter
-    localparam MAX_LEN = 1024;
+    localparam MAX_LEN = 63;
     // parameter for destination
     localparam KERNEL_1 = 8'b00000100;
     localparam KERNEL_2 = 8'b00000101;
@@ -206,7 +205,7 @@ module stage_top
         ss_buffer_tmp2 <= PULL_DN;
         ss_buffer_tmp3 <= PULL_DN;
         ss_buffer_tmp4 <= PULL_DN;
-        pack_cnter_tmp <= PULL_DN;
+        pack_cnter_tmp <= 4'hF;
         sm_vld_tmp <= PULL_DN;
         sm_buffer_tmp <= PULL_DN;
       end else begin
@@ -231,44 +230,53 @@ module stage_top
         ss_rdy_next = PULL_DN;
       end
       // pack_cnter
-      if (ss_rdy && !(pack_cnter_tmp == INDEX_3) && !read_meta_tmp) begin
+      if (ss_rdy && ss_vld && !(pack_cnter_tmp == INDEX_3)) begin
         pack_cnter_next = pack_cnter_tmp + 1;
-      end else if ((pack_cnter_tmp == INDEX_3) && !read_meta_tmp) begin
+      end else if (ss_rdy && ss_vld && (pack_cnter_tmp == INDEX_3) && (meta_cnter_tmp != MAX_LEN)) begin
         pack_cnter_next = PULL_DN;
+      end else if (ss_rdy && ss_vld && (pack_cnter_tmp == INDEX_3) && (meta_cnter_tmp == MAX_LEN)) begin
+        pack_cnter_next = 4'hF;
       end else begin
         pack_cnter_next = pack_cnter_tmp;
       end
       // fill in buffer
       case (condition)
-        4'b0100: begin
+        6'b010000: begin
           ss_buffer_next1 = ss_dat;
           ss_buffer_next2 = ss_buffer_tmp2;
           ss_buffer_next3 = ss_buffer_tmp3;
           ss_buffer_next4 = ss_buffer_tmp4;
         end
-        4'b0101: begin
+        6'b010001: begin
           ss_buffer_next1 = ss_buffer_tmp1;
           ss_buffer_next2 = ss_dat;
           ss_buffer_next3 = ss_buffer_tmp3;
           ss_buffer_next4 = ss_buffer_tmp4;
         end
-        4'b0110: begin
+        6'b010010: begin
           ss_buffer_next1 = ss_buffer_tmp1;
           ss_buffer_next2 = ss_buffer_tmp2;
           ss_buffer_next3 = ss_dat;
           ss_buffer_next4 = ss_buffer_tmp4;
         end
-        4'b0111: begin
+        6'b010011: begin
           ss_buffer_next1 = ss_buffer_tmp1;
           ss_buffer_next2 = ss_buffer_tmp2;
           ss_buffer_next3 = ss_buffer_tmp3;
           ss_buffer_next4 = ss_dat;
         end
+        6'b111111: begin
+          ss_buffer_next1 = ss_buffer_tmp1;
+          ss_buffer_next2 = ss_buffer_tmp2;
+          ss_buffer_next3 = ss_buffer_tmp3;
+          ss_buffer_next4 = ss_dat;
+;
+        end
         default: begin
-          ss_buffer_next1 = PULL_DN;
-          ss_buffer_next2 = PULL_DN;
-          ss_buffer_next3 = PULL_DN;
-          ss_buffer_next4 = PULL_DN;
+          ss_buffer_next1 = ss_buffer_tmp1;
+          ss_buffer_next2 = ss_buffer_tmp2;
+          ss_buffer_next3 = ss_buffer_tmp3;
+          ss_buffer_next4 = ss_buffer_tmp4;
         end
       endcase
       // sm_vld
@@ -293,21 +301,26 @@ module stage_top
       end
     end
 
-    assign ss_buffer = {ss_buffer_tmp1, ss_buffer_tmp2, ss_buffer_tmp3, ss_buffer_tmp4};
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        ss_buffer <= 0;
+      end else begin
+        ss_buffer <= ((pack_cnter_tmp == 0 || pack_cnter_tmp == 4'hF) && meta_cnter_tmp != 0) ? {ss_buffer_tmp4, ss_buffer_tmp3, ss_buffer_tmp2, ss_buffer_tmp1} : ss_buffer;
+      end
+    end
     // assign to port wire
-    assign ss_rdy = ss_rdy_tmp;
+    assign ss_rdy = rstn;
     assign sm_vld = sm_vld_tmp;
     assign sm_dat = sm_buffer_tmp;
 
     // =============== metadata =============== //
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
-        read_meta_tmp <= PULL_UP;
         decode_meta_tmp <= PULL_DN;
         meta_buffer_tmp <= PULL_DN;
-        meta_cnter_tmp <= PULL_DN;
+        meta_cnter_tmp <= 13'h1FFF;
       end else begin
-        read_meta_tmp <= read_meta_next;
+
         decode_meta_tmp <= decode_meta_next;
         meta_buffer_tmp <= meta_buffer_next;
         meta_cnter_tmp <= meta_cnter_next;
@@ -315,14 +328,10 @@ module stage_top
     end
 
     always @(*) begin
-      // read_meta
-      if (ss_rdy && !(meta_cnter_tmp == MAX_LEN)) begin
-        read_meta_next = PULL_DN;
-      end else if (ss_rdy && meta_cnter_tmp == MAX_LEN) begin
-        read_meta_next = PULL_UP;
-      end else begin
-        read_meta_next = read_meta_tmp;
-      end
+      read_meta_tmp = (pack_cnter_tmp == 4'hF);
+    end
+
+    always @(*) begin
       // decode_meta & meta_buffer 
       if (ss_rdy && read_meta_tmp) begin
         decode_meta_next = PULL_UP;
@@ -331,11 +340,14 @@ module stage_top
         decode_meta_next = PULL_DN;
         meta_buffer_next = meta_buffer_tmp;
       end
+
       // meta_cnter
-      if (ss_rdy && read_meta_tmp) begin
-        meta_cnter_next = PULL_UP; // set to 1
-      end else if (ss_rdy && !read_meta_tmp) begin
-        meta_cnter_next = meta_cnter_tmp + 1; 
+      if (ss_rdy && ss_vld && read_meta_tmp) begin
+        meta_cnter_next = PULL_DN;
+      end else if (ss_rdy && ss_vld && !read_meta_tmp && meta_cnter_tmp == MAX_LEN) begin
+        meta_cnter_next = 13'h1FFF;
+      end else if (ss_rdy && ss_vld && !read_meta_tmp && meta_cnter_tmp != MAX_LEN) begin
+        meta_cnter_next = meta_cnter_tmp + 1;
       end else begin
         meta_cnter_next = meta_cnter_tmp;
       end
@@ -585,26 +597,57 @@ module stage_top
 
     assign coef_ctrl = coef_ctrl_tmp;
     assign ap_ctrl = {ap_idle4_next, ap_done4_next, ap_idle3_next, ap_done3_next, ap_idle2_next, ap_done2_next, ap_idle1_next, ap_done1_next};
-
+    assign data_length = meta_buffer_tmp[15:0];
     // =============== address generator for tap =============== //
-   
+
+    reg  [13 :0] FFT_COEF_RAM_Addr;
+    wire [13 :0] FFT_COEF_RAM_Addr_wire; 
+    wire [127:0] FFT_COEF_RAM_Do_wire;
+
+    assign FFT_COEF_RAM_Addr_wire = FFT_COEF_RAM_Addr;
+    reg [3:0] FFT_COEF_RAM_We;
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        FFT_COEF_RAM_We <= 0;
+      end else begin
+        FFT_COEF_RAM_We <= (ss_rdy && ss_vld) ? {4{(pack_cnter_tmp == 4'h0 || pack_cnter_tmp == 4'hF ) && dst_tmp == 8'b00010100}}: 0;
+      end
+    end
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        FFT_COEF_RAM_Addr <= 14'h0;
+      end else begin
+        FFT_COEF_RAM_Addr <= (ss_rdy && ss_vld && dst_tmp == 8'b00010100) ?
+                              (pack_cnter_tmp == 2'd3 && meta_cnter_tmp == 3) ? 0 :
+                              (pack_cnter_tmp == 2'd3 && meta_cnter_tmp != 3) ? FFT_COEF_RAM_Addr + 4: FFT_COEF_RAM_Addr
+                              : 0;
+      end
+    end
+
     
 
 
-
-
-
-
-    
-    bram32 tap_RAM (
-        .CLK(),
-        .WE(write_tmp),
-        .EN(),
-        .Di(),
-        .A(),
-        .Do()
+    bram512x128 FFT_COEF_RAM (
+      .CLK  (clk),
+      .WE   (FFT_COEF_RAM_We),
+      .EN   (dst_tmp[3:0] == 4'b0100),
+      .Di   (ss_buffer),
+      .Do   (FFT_COEF_RAM_Do_wire),
+      .A    (FFT_COEF_RAM_Addr_wire[12:0] )
     );
-
+  
+    
+    bram1024x16 NTT_COEF_RAM (
+      .CLK  (clk),
+      .WE   (dst_tmp == 8'b00010101),
+      .EN   (ss_rdy),
+      .Di   (ss_buffer),
+      .Do   (),
+      .A    ()
+    );
+    
 
 endmodule
 
