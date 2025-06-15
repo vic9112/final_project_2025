@@ -914,9 +914,6 @@ module kernel
         4'b0111: begin
           data_to_sram_2nd = {BPE2_bout[127:0], BPE2_aout[127:0]};
         end
-        4'b1000: begin
-          data_to_sram_2nd = 0;
-        end
         default: begin
           data_to_sram_2nd = 0;
         end
@@ -927,44 +924,44 @@ module kernel
     always @(*) begin
       case (state_2nd)
         4'b0000: begin
-          sram_addr_one_cycle_2nd = {13'b0, 3'b0, counter_2nd[9:0]}; 
+          sram_addr_one_cycle_2nd = {13'b0, 5'b0, counter_2nd[7:0]}; 
         end
         4'b0001: begin
-          sram_addr_one_cycle_2nd = {13'b0, 3'b0, counter_2nd[9:0]};                                                                                   
+          sram_addr_one_cycle_2nd = {13'b0, 5'b0, counter_2nd[7:0]};                                                                                   
         end
         4'b0010: begin
-          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {3'b001, counter_2nd_delay[9:0], 3'b0, counter_2nd_delay[9:0]} : {13'b0, 3'b0, counter_2nd[9:0]};
+          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {5'b00001, counter_2nd_delay[7:0], 5'b0, counter_2nd_delay[7:0]} : {13'b0, 5'b0, counter_2nd[7:0]};
         end
         4'b0011: begin
-          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {3'b001, counter_2nd_delay[9:0], 3'b0, counter_2nd_delay[9:0]} :
-                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 4'b0, counter_2nd[8:0]} : {13'b0, 4'b0001, counter_2nd_adv[8:0]};
+          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {5'b00001, counter_2nd_delay[7:0], 5'b0, counter_2nd_delay[7:0]} :
+                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 6'b0, counter_2nd[6:0]} : {13'b0, 6'b000001, counter_2nd_adv[6:0]};
         end
         4'b0100: begin
-          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {4'b0001, counter_2nd_delay[9:0], 4'b0, counter_2nd_delay[9:0]} :
-                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 4'b0, counter_2nd[8:0]} : {13'b0, 4'b0001, counter_2nd_adv[8:0]};
+          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {6'b000001, counter_2nd_delay[6:0], 6'b0, counter_2nd_delay[6:0]} :
+                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 6'b0, counter_2nd[6:0]} : {13'b0, 6'b000001, counter_2nd_adv[6:0]};
         end
         4'b0101: begin
-          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {4'b0001, counter_2nd_delay[9:0], 4'b0, counter_2nd_delay[9:0]} :
-                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 4'b0010, counter_2nd[8:0]} : {13'b0, 4'b0011, counter_2nd_adv[8:0]};
+          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {6'b000001, counter_2nd_delay[6:0], 6'b0, counter_2nd_delay[6:0]} :
+                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 6'b000010, counter_2nd[6:0]} : {13'b0, 6'b000011, counter_2nd_adv[6:0]};
         end
         4'b0110: begin
-          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {4'b0011, counter_2nd_delay[9:0], 4'b0010, counter_2nd_delay[9:0]} :
-                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 4'b0010, counter_2nd[8:0]} : {13'b0, 4'b0011, counter_2nd_adv[8:0]};
+          sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b11) ? {6'b000011, counter_2nd_delay[6:0], 6'b000010, counter_2nd_delay[6:0]} :
+                                (counter_2nd[1:0] == 2'b00) ? {13'b0, 6'b000010, counter_2nd[6:0]} : {13'b0, 6'b000011, counter_2nd_adv[6:0]};
         end
         4'b0111: begin
-          sram_addr_one_cycle_2nd = {4'b0011, counter_2nd_delay[9:0], 4'b0010, counter_2nd_delay[9:0]};
+          sram_addr_one_cycle_2nd = {6'b000011, counter_2nd_delay[6:0], 6'b000010, counter_2nd_delay[6:0]};
         end
         4'b1001: begin
-          sram_addr_one_cycle_2nd = {13'b0, 4'b0, counter_2nd_output[8:0]};
+          sram_addr_one_cycle_2nd = {13'b0, 6'b0, counter_2nd_output[6:0]};
         end
         4'b1011: begin
-          sram_addr_one_cycle_2nd = {13'b0, 4'b0001, counter_2nd_output[8:0]};
+          sram_addr_one_cycle_2nd = {13'b0, 6'b000001, counter_2nd_output[6:0]};
         end
         4'b1101: begin
-          sram_addr_one_cycle_2nd = {13'b0, 4'b0010, counter_2nd_output[8:0]};
+          sram_addr_one_cycle_2nd = {13'b0, 6'b000010, counter_2nd_output[6:0]};
         end
         4'b1111: begin
-          sram_addr_one_cycle_2nd = {13'b0, 4'b0011, counter_2nd_output[8:0]};
+          sram_addr_one_cycle_2nd = {13'b0, 6'b000011, counter_2nd_output[6:0]};
         end
         default: begin
           sram_addr_one_cycle_2nd = 0;
@@ -1150,7 +1147,19 @@ module kernel
           COE2_2nd = W224;
         end  
       endcase
-    end  
+    end 
+
+    /*===============================================================================================
+    #                                       3rd BPE                                                 #
+    ================================================================================================*/
+
+
+
+
+
+
+
+
 
     butterfly BPE1 (
         .clk   (clk),
