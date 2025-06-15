@@ -98,8 +98,8 @@ module kernel
     reg  [25:0]  sram_addr_one_cycle;
     wire  [12:0] sram_addr;
     reg          phase;     // 在 clk_2x 切兩次送或切兩次讀
-    wire         wr_phase_next;
-    reg  [127:0] sram_dout;
+    wire         phase_next;
+    wire  [127:0] sram_dout;
 
 
     // ===================BPE 2=================== //
@@ -154,7 +154,7 @@ module kernel
     reg          sram_en_2nd;
     reg  [25:0]  sram_addr_one_cycle_2nd;
     wire  [12:0] sram_addr_2nd;
-    reg  [127:0] sram_dout_2nd; 
+    wire  [127:0] sram_dout_2nd; 
 
     //==========================BPE 3=======================//
     // Coefficient
@@ -214,7 +214,7 @@ module kernel
     reg          sram_en_3rd;
     reg  [25:0]  sram_addr_one_cycle_3rd;
     wire  [12:0] sram_addr_3rd;
-    reg  [127:0] sram_dout_3rd; 
+    wire  [127:0] sram_dout_3rd; 
 
     //==========================BPE 4=======================//
     wire BPE4_idle;
@@ -467,7 +467,7 @@ module kernel
     reg  [25:0]  sram_addr_one_cycle;
     wire  [12:0] sram_addr;
     reg          phase;     // 在 clk_2x 切兩次送或切兩次讀
-    wire         wr_phase_next;
+    wire         phase_next;
     reg  [127:0] sram_dout;*/
 
 
@@ -489,7 +489,7 @@ module kernel
     always @(*) begin
       case (state_1st)
         4'b0000: begin
-          sram_we = (~phase) & (counter_1st[1:0] == 2'b00); 
+          sram_we = {(~phase) & (counter_1st[1:0] == 2'b00)}; 
         end
         4'b0001: begin
           sram_we = 0;
@@ -1845,7 +1845,13 @@ module kernel
 
 
 
+    wire [3:0] WE1;
+    wire [3:0] WE2;
+    wire [3:0] WE3;
 
+    assign WE1 = {4{sram_we}};
+    assign WE2 = {4{sram_we_2nd}};
+    assign WE3 = {4{sram_we_3rd}};
 
     butterfly BPE1 (
         .clk   (clk),
@@ -1910,7 +1916,7 @@ module kernel
 
     bram512x128 SRAM1 (
         .CLK(clk_2x),
-        .WE(sram_we),
+        .WE(WE1),
         .EN(sram_en),
         .Di(sram_din),
         .Do(sram_dout),
@@ -1919,7 +1925,7 @@ module kernel
 
     bram128x128 SRAM2 (
         .CLK(clk_2x),
-        .WE(sram_we_2nd),
+        .WE(WE2),
         .EN(sram_en_2nd),
         .Di(sram_din_2nd),
         .Do(sram_dout_2nd),
@@ -1928,7 +1934,7 @@ module kernel
 
     bram32x128 SRAM3 (
         .CLK(clk_2x),
-        .WE(sram_we_3rd),
+        .WE(WE3),
         .EN(sram_en_3rd),
         .Di(sram_din_3rd),
         .Do(sram_dout_3rd),
