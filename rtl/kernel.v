@@ -293,7 +293,7 @@ module kernel
     reg          sram_en;
     reg  [25:0]  sram_addr_one_cycle;
     wire  [12:0] sram_addr;
-    reg          phase;     // 在 clk_2 切兩次送或切兩次讀
+    reg          phase;     // 在 clk_2x 切兩次送或切兩次讀
     wire         wr_phase_next;
     reg  [127:0] sram_dout;
 
@@ -1223,6 +1223,24 @@ module kernel
 
 
     bram512x128 SRAM1 (
+        .CLK(clk_2x),
+        .WE(sram_we),
+        .EN(sram_en),
+        .Di(sram_din),
+        .Do(sram_dout),
+        .A(sram_addr)
+    );
+
+    bram128x128 SRAM2 (
+        .CLK(clk_2x),
+        .WE(sram_we_2nd),
+        .EN(sram_en_2nd),
+        .Di(sram_din_2nd),
+        .Do(sram_dout_2nd),
+        .A(sram_addr_2nd)
+    );
+
+    bram32x128 SRAM3 (
         .CLK(),
         .WE(),
         .EN(),
