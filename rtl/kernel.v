@@ -27,17 +27,24 @@ module kernel
 );
 
     //========================== Declaration ==========================
-    reg [1:0] state_kernel;     
-    reg [1:0] state_kernel_next;
-    localparam kernel_IDLE = 2'b00;
-    localparam kernel_CAL = 2'b01;
-
 
     // =============== kernel mode =============== //
     reg [7:0] mode_state;
     reg [7:0] mode_state_next;
     wire [7:0] butterfly_mode;
 
+    // =============== FFT Coefficient ============ //
+    // real, im
+    localparam [127:0] W0   = 128'h3ff0000000000000_0000000000000000;
+    localparam [127:0] W32  = 128'h3feb504f333f9de6_bfe1c73b39ae68a6;
+    localparam [127:0] W64  = 128'h3fe6a09e667f3bcd_bfe6a09e667f3bcd;
+    localparam [127:0] W96  = 128'h3fe1c73b39ae68a6_bfeb504f333f9de6;
+    localparam [127:0] W128 = 128'h0000000000000000_bff0000000000000;
+    localparam [127:0] W160 = 128'hbfe1c73b39ae68a6_bfeb504f333f9de6;
+    localparam [127:0] W192 = 128'hbfe6a09e667f3bcd_bfe6a09e667f3bcd;
+    localparam [127:0] W224 = 128'hbfeb504f333f9de6_bfe1c73b39ae68a6;
+
+    // ================ BPE 1 ===================== //
     // Coefficient
     wire [127:0] COE0_1st;
     wire [127:0] COE1_1st;
@@ -61,6 +68,7 @@ module kernel
     reg [3:0] state_1st;
     reg [3:0] state_1st_next;
 
+
     reg [15:0] counter_1st;
     reg [15:0] counter_1st_delay;
     reg [15:0] counter_1st_adv;
@@ -73,19 +81,15 @@ module kernel
     wire counting_1st_next;
     wire trigger_once_next;
 
-    wire enable_output_1st = 
-    (state_1st == 4'b1001 || 
-     state_1st == 4'b1011 || 
-     state_1st == 4'b1101 || 
-     state_1st == 4'b1111);
 
+    wire enable_output_1st;
     wire [127:0] ld_dat_2nd;
     wire ld_vld_2nd;
     reg BPE1_out_done;
 
     reg [11:0] counter_1st_output;
     wire [11:0] counter_1st_output_next;
-    wire BPE1_out_done_next; 
+    wire BPE1_out_done_next;
 
     reg  [255:0] data_to_sram;      
     wire [127:0] sram_din;
@@ -94,10 +98,12 @@ module kernel
     reg  [25:0]  sram_addr_one_cycle;
     wire  [12:0] sram_addr;
     reg          phase;     // 在 clk_2x 切兩次送或切兩次讀
-    wire         wr_phase_next;
-    wire [127:0] sram_dout;
+    wire         phase_next;
+    wire  [127:0] sram_dout;
 
-    // Coefficient
+
+    // ===================BPE 2=================== //
+     // Coefficient
     reg [127:0] COE0_2nd;
     reg [127:0] COE1_2nd;
     reg [127:0] COE2_2nd;
@@ -120,6 +126,7 @@ module kernel
     reg [3:0] state_2nd;
     reg [3:0] state_2nd_next;
 
+
     reg [15:0] counter_2nd;
     reg [15:0] counter_2nd_delay;
     reg [15:0] counter_2nd_adv;
@@ -132,12 +139,7 @@ module kernel
     wire counting_2nd_next;
     wire trigger_once_2nd_next;
 
-    wire enable_output_2nd = 
-    (state_2nd == 4'b1001 || 
-     state_2nd == 4'b1011 || 
-     state_2nd == 4'b1101 || 
-     state_2nd == 4'b1111);
-
+    wire enable_output_2nd;
     wire [127:0] ld_dat_3rd;
     wire ld_vld_3rd;
     reg BPE2_out_done;
@@ -152,23 +154,71 @@ module kernel
     reg          sram_en_2nd;
     reg  [25:0]  sram_addr_one_cycle_2nd;
     wire  [12:0] sram_addr_2nd;
-    wire [127:0] sram_dout_2nd;
+    wire  [127:0] sram_dout_2nd; 
 
-    reg [1:0] coef_counter;
-    wire [1:0] coef_counter_next;
+    //==========================BPE 3=======================//
+    // Coefficient
+    reg [127:0] COE0_3rd;
+    reg [127:0] COE1_3rd;
+    reg [127:0] COE2_3rd;
 
+    wire [127:0] COE0_3rd_tmp;
+    wire [127:0] COE1_3rd_tmp;
+    wire [127:0] COE2_3rd_tmp;
+
+    // 3rd BPE IO
+    reg [127:0] BPE3_ain;
+    reg [127:0] BPE3_bin;
+    reg BPE3_i_vld;
+    wire BPE3_i_rdy;
+    wire [127:0] BPE3_aout;
+    wire [127:0] BPE3_bout;
+    wire BPE3_o_vld;
+    wire BPE3_o_rdy;
+    reg [127:0] BPE3_bin_buffer;
+    reg [127:0] BPE3_bin_buffer_next;
+    reg [127:0] BPE3_coef;
+
+    // FSM for 3rd BPE
+    reg BPE_3rd_idle;
     reg [3:0] state_3rd;
-    // =============== FFT Coefficient ============ //
-    // real, im
-    localparam [127:0] W0   = 128'h3ff0000000000000_0000000000000000;
-    localparam [127:0] W32  = 128'h3feb504f333f9de6_bfe1c73b39ae68a6;
-    localparam [127:0] W64  = 128'h3fe6a09e667f3bcd_bfe6a09e667f3bcd;
-    localparam [127:0] W96  = 128'h3fe1c73b39ae68a6_bfeb504f333f9de6;
-    localparam [127:0] W128 = 128'h0000000000000000_bff0000000000000;
-    localparam [127:0] W160 = 128'hbfe1c73b39ae68a6_bfeb504f333f9de6;
-    localparam [127:0] W192 = 128'hbfe6a09e667f3bcd_bfe6a09e667f3bcd;
-    localparam [127:0] W224 = 128'hbfeb504f333f9de6_bfe1c73b39ae68a6;
+    reg [3:0] state_3rd_next;
 
+
+    reg [15:0] counter_3rd;
+    reg [15:0] counter_3rd_delay;
+    reg [15:0] counter_3rd_adv;
+    reg counting_3rd;
+    reg trigger_once_3rd;
+
+    wire [15:0] counter_3rd_next;
+    wire [15:0] counter_3rd_delay_next;
+    wire [15:0] counter_3rd_adv_next;
+    wire counting_3rd_next;
+    wire trigger_once_3rd_next;
+
+
+    wire enable_output_3rd;
+    wire [127:0] ld_dat_4th;
+    wire ld_vld_4th;
+    reg BPE3_out_done;
+
+    reg [11:0] counter_3rd_output;
+    wire [11:0] counter_3rd_output_next;
+    wire BPE3_out_done_next;
+
+
+    reg  [255:0] data_to_sram_3rd;      
+    wire [127:0] sram_din_3rd;
+    reg          sram_we_3rd;
+    reg          sram_en_3rd;
+    reg  [25:0]  sram_addr_one_cycle_3rd;
+    wire  [12:0] sram_addr_3rd;
+    wire  [127:0] sram_dout_3rd; 
+
+    //==========================BPE 4=======================//
+    wire BPE4_idle;
+    assign BPE4_idle = 1; // For test
 
     //========================== Function ==========================
 
@@ -199,6 +249,11 @@ module kernel
     /*===============================================================================================
     #                                       Kernel FSM                                              #
     ================================================================================================*/
+    
+    reg [1:0] state_kernel;     
+    reg [1:0] state_kernel_next;
+    localparam kernel_IDLE = 2'b00;
+    localparam kernel_CAL = 2'b01;
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -233,6 +288,29 @@ module kernel
     /*===============================================================================================
     #                                       1st BPE                                                 #
     ================================================================================================*/
+
+    // Coefficient
+    /*wire [127:0] COE0_1st;
+    wire [127:0] COE1_1st;
+    wire [127:0] COE2_1st;
+
+    // 1st BPE IO
+    reg [127:0] BPE1_ain;
+    reg [127:0] BPE1_bin;
+    reg BPE1_i_vld;
+    wire BPE1_i_rdy;
+    wire [127:0] BPE1_aout;
+    wire [127:0] BPE1_bout;
+    wire BPE1_o_vld;
+    wire BPE1_o_rdy;
+    reg [127:0] BPE1_bin_buffer;
+    reg [127:0] BPE1_bin_buffer_next;
+    reg [127:0] BPE1_coef;
+
+    // FSM for 1st BPE
+    reg BPE_1st_idle;
+    reg [3:0] state_1st;
+    reg [3:0] state_1st_next;*/
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -298,10 +376,19 @@ module kernel
       endcase
     end
 
-    assign bpe_act[0] = decode;
-
- 
     // ====================================counter_1st===================================== //
+
+    /*reg [15:0] counter_1st;
+    reg [15:0] counter_1st_delay;
+    reg [15:0] counter_1st_adv;
+    reg counting_1st;
+    reg trigger_once;
+
+    wire [15:0] counter_1st_next;
+    wire [15:0] counter_1st_delay_next;
+    wire [15:0] counter_1st_adv_next;
+    wire counting_1st_next;
+    wire trigger_once_next;*/
 
     assign trigger_once_next  = trigger_once | ld_vld;
     assign counting_1st_next  = (ld_vld && !trigger_once) ? 1'b1 :
@@ -331,6 +418,19 @@ module kernel
 
 
     // ====================================Output Logic=========================================== //
+    assign enable_output_1st = 
+    (state_1st == 4'b1001 || 
+     state_1st == 4'b1011 || 
+     state_1st == 4'b1101 || 
+     state_1st == 4'b1111);
+
+    /*wire [127:0] ld_dat_2nd;
+    wire ld_vld_2nd;
+    reg BPE1_out_done;
+
+    reg [11:0] counter_1st_output;
+    wire [11:0] counter_1st_output_next;
+    wire BPE1_out_done_next; */
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -358,11 +458,18 @@ module kernel
     
 
     // ====================================Data Ram Logic========================================= //
+   
+    /*reg  [255:0] data_to_sram;      
+    wire [127:0] sram_din;
+    reg          sram_we;
+    reg          sram_en;
+    reg  [25:0]  sram_addr_one_cycle;
+    wire  [12:0] sram_addr;
+    reg          phase;     // 在 clk_2x 切兩次送或切兩次讀
+    wire         phase_next;
+    reg  [127:0] sram_dout;*/
 
-    assign phase_next = ~phase;
 
-    assign sram_din = (phase) ? data_to_sram[255:128] : data_to_sram[127:0];
-    assign sram_addr = (phase) ? sram_addr_one_cycle[25:13] : sram_addr_one_cycle[12:0];
 
     always @(posedge clk_2x or negedge rstn) begin
       if (~rstn) begin
@@ -372,11 +479,16 @@ module kernel
       end
     end
 
+    assign phase_next = ~phase;
+
+    assign sram_din = (phase) ? data_to_sram[255:128] : data_to_sram[127:0];
+    assign sram_addr = (phase) ? sram_addr_one_cycle[25:13] : sram_addr_one_cycle[12:0];
+
     // SRAM_WE
     always @(*) begin
       case (state_1st)
         4'b0000: begin
-          sram_we = (~phase) & (counter_1st[1:0] == 2'b00); 
+          sram_we = {(~phase) & (counter_1st[1:0] == 2'b00)}; 
         end
         4'b0001: begin
           sram_we = 0;
@@ -455,7 +567,7 @@ module kernel
     always @(*) begin
       case (state_1st)
         4'b0000: begin
-          data_to_sram = {64'b0, ld_dat[63:0]}; 
+          data_to_sram = {128'b0, ld_dat[127:0]}; 
         end
         4'b0001: begin
           data_to_sram = 0;
@@ -686,6 +798,29 @@ module kernel
     #                                       2nd BPE                                                 #
     ================================================================================================*/
 
+    // Coefficient
+    /*reg [127:0] COE0_2nd;
+    reg [127:0] COE1_2nd;
+    reg [127:0] COE2_2nd;
+
+    // 2nd BPE IO
+    reg [127:0] BPE2_ain;
+    reg [127:0] BPE2_bin;
+    reg BPE2_i_vld;
+    wire BPE2_i_rdy;
+    wire [127:0] BPE2_aout;
+    wire [127:0] BPE2_bout;
+    wire BPE2_o_vld;
+    wire BPE2_o_rdy;
+    reg [127:0] BPE2_bin_buffer;
+    reg [127:0] BPE2_bin_buffer_next;
+    reg [127:0] BPE2_coef;
+
+    // FSM for 2nd BPE
+    reg BPE_2nd_idle;
+    reg [3:0] state_2nd;
+    reg [3:0] state_2nd_next;*/
+
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
         state_2nd <= 0;
@@ -695,7 +830,7 @@ module kernel
     end
 
     always @(*) begin
-      case (state_1st)
+      case (state_2nd)
         4'b0000: begin
           state_2nd_next = (counter_2nd == 254) ? 4'b0001 : state_2nd;
         end
@@ -753,6 +888,18 @@ module kernel
  
     // ====================================counter_2nd===================================== //
 
+    /*reg [15:0] counter_2nd;
+    reg [15:0] counter_2nd_delay;
+    reg [15:0] counter_2nd_adv;
+    reg counting_2nd;
+    reg trigger_once_2nd;
+
+    wire [15:0] counter_2nd_next;
+    wire [15:0] counter_2nd_delay_next;
+    wire [15:0] counter_2nd_adv_next;
+    wire counting_2nd_next;
+    wire trigger_once_2nd_next;*/
+
     assign trigger_once_2nd_next  = trigger_once_2nd | ld_vld_2nd;
     assign counting_2nd_next  = (ld_vld_2nd && !trigger_once_2nd) ? 1'b1 :
                                 counting_2nd;
@@ -781,6 +928,21 @@ module kernel
 
 
     // ====================================Output Logic=========================================== //
+    
+    assign enable_output_2nd = 
+    (state_2nd == 4'b1001 || 
+     state_2nd == 4'b1011 || 
+     state_2nd == 4'b1101 || 
+     state_2nd == 4'b1111);
+
+    /*wire enable_output_2nd;
+    wire [127:0] ld_dat_3rd;
+    wire ld_vld_3rd;
+    reg BPE2_out_done;
+
+    reg [11:0] counter_2nd_output;
+    wire [11:0] counter_2nd_output_next;
+    wire BPE2_out_done_next; */
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -808,6 +970,14 @@ module kernel
     
 
     // ====================================Data Ram Logic========================================= //
+   
+    /*reg  [255:0] data_to_sram_2nd;      
+    wire [127:0] sram_din_2nd;
+    reg          sram_we_2nd;
+    reg          sram_en_2nd;
+    reg  [25:0]  sram_addr_one_cycle_2nd;
+    wire  [12:0] sram_addr_2nd;
+    reg  [127:0] sram_dout_2nd;*/
 
     assign sram_din_2nd = (phase) ? data_to_sram_2nd[255:128] : data_to_sram_2nd[127:0];
     assign sram_addr_2nd = (phase) ? sram_addr_one_cycle_2nd[25:13] : sram_addr_one_cycle_2nd[12:0];
@@ -816,7 +986,7 @@ module kernel
     always @(*) begin
       case (state_2nd)
         4'b0000: begin
-          sram_we_2nd = (~phase) & (counter_2nd[1:0] == 2'b00); 
+          sram_we_2nd = (phase) & (counter_2nd[1:0] == 2'b00); 
         end
         4'b0001: begin
           sram_we_2nd = 0;
@@ -895,7 +1065,7 @@ module kernel
     always @(*) begin
       case (state_2nd)
         4'b0000: begin
-          data_to_sram_2nd = {64'b0, ld_dat_2nd[63:0]}; 
+          data_to_sram_2nd = {128'b0, ld_dat_2nd[127:0]}; 
         end
         4'b0001: begin
           data_to_sram_2nd = 0;
@@ -928,7 +1098,7 @@ module kernel
     always @(*) begin
       case (state_2nd)
         4'b0000: begin
-          sram_addr_one_cycle_2nd = {13'b0, 5'b0, counter_2nd[7:0]}; 
+          sram_addr_one_cycle_2nd = {5'b0, counter_2nd[7:0], 13'b0}; 
         end
         4'b0001: begin
           sram_addr_one_cycle_2nd = {13'b0, 5'b0, counter_2nd[7:0]};                                                                                   
@@ -1114,6 +1284,9 @@ module kernel
       endcase
     end
 
+    reg [1:0] coef_counter;
+    wire [1:0] coef_counter_next;
+
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
         coef_counter <= 0;
@@ -1154,6 +1327,515 @@ module kernel
     #                                       3rd BPE                                                 #
     ================================================================================================*/
 
+     // Coefficient
+    /*reg [127:0] COE0_3rd;
+    reg [127:0] COE1_3rd;
+    reg [127:0] COE2_3rd;
+
+    wire [127:0] COE0_3rd_tmp;
+    wire [127:0] COE1_3rd_tmp;
+    wire [127:0] COE2_3rd_tmp;
+
+    // 3rd BPE IO
+    reg [127:0] BPE3_ain;
+    reg [127:0] BPE3_bin;
+    reg BPE3_i_vld;
+    wire BPE3_i_rdy;
+    wire [127:0] BPE3_aout;
+    wire [127:0] BPE3_bout;
+    wire BPE3_o_vld;
+    wire BPE3_o_rdy;
+    reg [127:0] BPE3_bin_buffer;
+    reg [127:0] BPE3_bin_buffer_next;
+    reg [127:0] BPE3_coef;
+
+    // FSM for 3rd BPE
+    reg BPE_3rd_idle;
+    reg [3:0] state_3rd;
+    reg [3:0] state_3rd_next;*/
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        state_3rd <= 0;
+      end else begin
+        state_3rd <= state_3rd_next;
+      end
+    end
+
+    always @(*) begin
+      case (state_3rd)
+        4'b0000: begin
+          state_3rd_next = (counter_3rd == 62) ? 4'b0001 : state_3rd;
+        end
+        4'b0001: begin
+          state_3rd_next = (counter_3rd == 86) ? 4'b0010 : state_3rd;
+        end
+        4'b0010: begin
+          state_3rd_next = (counter_3rd == 124) ? 4'b0011 : state_3rd;
+        end
+        4'b0011: begin
+          state_3rd_next = (counter_3rd == 152) ? 4'b0100 : state_3rd;
+        end
+        4'b0100: begin
+          state_3rd_next = (counter_3rd == 156) ? 4'b0101 : state_3rd;
+        end
+        4'b0101: begin
+          state_3rd_next = (counter_3rd == 184) ? 4'b0110 : state_3rd;
+        end
+        4'b0110: begin
+          state_3rd_next = (counter_3rd == 188) ? 4'b0111 : state_3rd;
+        end
+        4'b0111: begin
+          state_3rd_next = (counter_3rd == 216) ? 4'b1000 : state_3rd;
+        end
+        4'b1000: begin
+          state_3rd_next = (BPE4_idle) ? 4'b1001 : state_3rd;
+        end
+        4'b1001: begin
+          state_3rd_next = (BPE3_out_done) ? 4'b1010 : state_3rd;
+        end
+        4'b1010: begin
+          state_3rd_next = (BPE4_idle) ? 4'b1011 : state_3rd;
+        end
+        4'b1011: begin
+          state_3rd_next = (BPE3_out_done) ? 4'b1100 : state_3rd;
+        end
+        4'b1100: begin
+          state_3rd_next = (BPE4_idle) ? 4'b1101 : state_3rd;
+        end
+        4'b1101: begin
+          state_3rd_next = (BPE3_out_done) ? 4'b1110 : state_3rd;
+        end
+        4'b1110: begin
+          state_3rd_next = (BPE4_idle) ? 4'b1111 : state_3rd;
+        end
+        4'b1111: begin
+          state_3rd_next = (BPE3_out_done) ? 4'b0000 : state_3rd;
+        end
+        default: begin
+          state_3rd_next = 4'b0000;
+        end
+      endcase
+    end
+
+ 
+    // ====================================counter_3rd===================================== //
+
+    /*reg [15:0] counter_3rd;
+    reg [15:0] counter_3rd_delay;
+    reg [15:0] counter_3rd_adv;
+    reg counting_3rd;
+    reg trigger_once_3rd;
+
+    wire [15:0] counter_3rd_next;
+    wire [15:0] counter_3rd_delay_next;
+    wire [15:0] counter_3rd_adv_next;
+    wire counting_3rd_next;
+    wire trigger_once_3rd_next;*/
+
+    assign trigger_once_3rd_next  = trigger_once_3rd | ld_vld_3rd;
+    assign counting_3rd_next  = (ld_vld_3rd && !trigger_once_3rd) ? 1'b1 :
+                                counting_3rd;
+    assign counter_3rd_next   = (ld_vld_3rd && !trigger_once_3rd) ? 16'd1 :
+                                counting_3rd ? counter_3rd + 1 :
+                                counter_3rd;
+    assign counter_3rd_delay_next = counter_3rd_next - 27;
+    assign counter_3rd_adv_next = counter_3rd_next + 2;
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn | decode | BPE3_out_done) begin
+        counter_3rd    <= 16'd0;
+        counting_3rd   <= 1'b0;
+        trigger_once_3rd   <= 1'b0;
+        counter_3rd_delay <= 16'd0;
+        counter_3rd_adv <= 16'd0;
+      end else begin
+        counter_3rd    <= counter_3rd_next;
+        counting_3rd   <= counting_3rd_next;
+        trigger_once_3rd   <= trigger_once_3rd_next;
+        counter_3rd_delay <= counter_3rd_delay_next;
+        counter_3rd_adv <= counter_3rd_adv_next;
+      end
+    end
+
+
+
+    // ====================================Output Logic=========================================== //
+    assign enable_output_3rd = 
+    (state_3rd == 4'b1001 || 
+     state_3rd == 4'b1011 || 
+     state_3rd == 4'b1101 || 
+     state_3rd == 4'b1111);
+
+    /*wire enable_output_3rd;
+    wire [127:0] ld_dat_4th;
+    wire ld_vld_4th;
+    reg BPE3_out_done;
+
+    reg [11:0] counter_3rd_output;
+    wire [11:0] counter_3rd_output_next;
+    wire BPE3_out_done_next; */
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        counter_3rd_output <= 0;
+      end else begin
+        counter_3rd_output <= counter_3rd_output_next;
+      end
+    end
+
+    assign counter_3rd_output_next = (enable_output_3rd) ? counter_3rd_output + 1 : 0;
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        BPE3_out_done <= 0;
+      end else begin
+        BPE3_out_done <= BPE3_out_done_next;
+      end
+    end
+
+    assign BPE3_out_done_next = (counter_3rd_output == 7);
+
+    assign ld_vld_4th = enable_output_3rd;
+    assign ld_dat_4th = (enable_output_3rd) ? sram_dout_3rd : 0;
+    
+
+    // ====================================Data Ram Logic========================================= //
+   
+    /*reg  [255:0] data_to_sram_3rd;      
+    wire [127:0] sram_din_3rd;
+    reg          sram_we_3rd;
+    reg          sram_en_3rd;
+    reg  [25:0]  sram_addr_one_cycle_3rd;
+    wire  [12:0] sram_addr_3rd;
+    reg  [127:0] sram_dout_3rd;*/
+
+    assign sram_din_3rd = (phase) ? data_to_sram_3rd[255:128] : data_to_sram_3rd[127:0];
+    assign sram_addr_3rd = (phase) ? sram_addr_one_cycle_3rd[25:13] : sram_addr_one_cycle_3rd[12:0];
+
+    // SRAM_WE
+    always @(*) begin
+      case (state_3rd)
+        4'b0000: begin
+          sram_we_3rd = (~phase) & (counter_3rd[1:0] == 2'b00); 
+        end
+        4'b0001: begin
+          sram_we_3rd = 0;
+        end
+        4'b0010: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0011: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0100: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0101: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0110: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0111: begin
+          sram_we_3rd = (counter_3rd[1:0] == 2'b11);
+        end
+        default: begin
+          sram_we_3rd = 0;
+        end
+      endcase
+    end
+
+
+    // SRAM_EN
+    always @(*) begin
+      case (state_3rd)
+        4'b0000: begin
+          sram_en_3rd = (counter_3rd[1:0] == 2'b00); 
+        end
+        4'b0001: begin
+          sram_en_3rd = (counter_3rd[1:0] == 2'b00) | (counter_3rd[1:0] == 2'b11);
+        end
+        4'b0010: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b0011: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b0100: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b0101: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b0110: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b0111: begin
+          sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
+        end
+        4'b1001: begin
+          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+        end
+        4'b1011: begin
+          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+        end
+        4'b1101: begin
+          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+        end
+        4'b1111: begin
+          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+        end
+        default: begin
+          sram_en_3rd = 0;
+        end
+      endcase
+    end
+
+    // Data_to_SRAM
+    always @(*) begin
+      case (state_3rd)
+        4'b0000: begin
+          data_to_sram_3rd = {128'b0, ld_dat_3rd[127:0]}; 
+        end
+        4'b0001: begin
+          data_to_sram_3rd = 0;
+        end
+        4'b0010: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        4'b0011: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        4'b0100: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        4'b0101: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        4'b0110: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        4'b0111: begin
+          data_to_sram_3rd = {BPE3_bout[127:0], BPE3_aout[127:0]};
+        end
+        default: begin
+          data_to_sram_3rd = 0;
+        end
+      endcase
+    end
+
+    // Sram Address
+    always @(*) begin
+      case (state_3rd)
+        4'b0000: begin
+          sram_addr_one_cycle_3rd = {7'b0, counter_3rd[5:0], 13'b0}; 
+        end
+        4'b0001: begin
+          sram_addr_one_cycle_3rd = {13'b0, 7'b0, counter_3rd[5:0]};                                                                                   
+        end
+        4'b0010: begin
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {7'b0000001, counter_3rd_delay[5:0], 7'b0, counter_3rd_delay[5:0]} : {13'b0, 5'b0, counter_3rd[7:0]};
+        end
+        4'b0011: begin
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {7'b0000001, counter_3rd_delay[5:0], 7'b0, counter_3rd_delay[5:0]} :
+                                (counter_3rd[1:0] == 2'b00) ? {13'b0, 8'b0, counter_3rd[4:0]} : {13'b0, 8'b00000001, counter_3rd_adv[4:0]};
+        end
+        4'b0100: begin
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {8'b00000001, counter_3rd_delay[4:0], 8'b0, counter_3rd_delay[4:0]} :
+                                (counter_3rd[1:0] == 2'b00) ? {13'b0, 8'b0, counter_3rd[4:0]} : {13'b0, 8'b00000001, counter_3rd_adv[4:0]};
+        end
+        4'b0101: begin
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {8'b00000001, counter_3rd_delay[4:0], 8'b0, counter_3rd_delay[4:0]} :
+                                (counter_3rd[1:0] == 2'b00) ? {13'b0, 8'b00000010, counter_3rd[4:0]} : {13'b0, 8'b00000011, counter_3rd_adv[4:0]};
+        end
+        4'b0110: begin
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {8'b00000011, counter_3rd_delay[4:0], 8'b00000010, counter_3rd_delay[4:0]} :
+                                (counter_3rd[1:0] == 2'b00) ? {13'b0, 8'b00000010, counter_3rd[4:0]} : {13'b0, 8'b00000011, counter_3rd_adv[4:0]};
+        end
+        4'b0111: begin
+          sram_addr_one_cycle_3rd = {8'b00000011, counter_3rd_delay[4:0], 8'b00000010, counter_3rd_delay[4:0]};
+        end
+        4'b1001: begin
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+        end
+        4'b1011: begin
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+        end
+        4'b1101: begin
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+        end
+        4'b1111: begin
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+        end
+        default: begin
+          sram_addr_one_cycle_3rd = 0;
+        end
+      endcase
+    end
+
+
+ // ====================================BPE input========================================= //
+
+    // BPEinA
+    always @(*) begin
+      case (state_3rd)
+        4'b0001: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        4'b0010: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        4'b0011: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        4'b0100: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        4'b0101: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        4'b0110: begin
+          BPE3_ain = sram_dout_3rd;
+        end
+        default: begin
+          BPE3_ain = 0;
+        end
+      endcase
+    end
+
+    //BPEinPreBuffer
+    always @(posedge clk) begin
+       BPE3_bin_buffer <= BPE3_bin_buffer_next;
+    end
+
+
+    // BPEinBpreBufferNext
+    always @(*) begin
+      case (state_3rd)
+        4'b0011: begin
+          BPE3_bin_buffer_next = (counter_3rd[1:0] == 2'b10) ? sram_dout_3rd : BPE3_bin_buffer;
+        end
+        4'b0100: begin
+          BPE3_bin_buffer_next = (counter_3rd[1:0] == 2'b10) ? sram_dout_3rd : BPE3_bin_buffer;
+        end
+        4'b0101: begin
+          BPE3_bin_buffer_next = (counter_3rd[1:0] == 2'b10) ? sram_dout_3rd : BPE3_bin_buffer;
+        end
+        4'b0110: begin
+          BPE3_bin_buffer_next = (counter_3rd[1:0] == 2'b10) ? sram_dout_3rd : BPE3_bin_buffer;
+        end
+        default: begin
+          BPE2_bin_buffer_next = 0;
+        end
+      endcase
+    end
+
+    // BPEinB
+    always @(*) begin
+      case (state_3rd)
+        4'b0001: begin
+          BPE3_bin = ld_dat_3rd;
+        end
+        4'b0010: begin
+          BPE3_bin = ld_dat_3rd;
+        end
+        4'b0011: begin
+          BPE3_bin = BPE3_bin_buffer;
+        end
+        4'b0100: begin
+          BPE3_bin = BPE3_bin_buffer;
+        end
+        4'b0101: begin
+          BPE3_bin = BPE3_bin_buffer;
+        end
+        4'b0110: begin
+          BPE3_bin = BPE3_bin_buffer;
+        end
+        default: begin
+          BPE3_bin = 0;
+        end
+      endcase
+    end
+
+    // BPEinValid
+    always @(*) begin
+      case (state_3rd)
+        4'b0001: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        4'b0010: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        4'b0011: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        4'b0100: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        4'b0101: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        4'b0110: begin
+          BPE3_i_vld = (counter_3rd[1:0] == 2'b00);
+        end
+        default: begin
+          BPE3_i_vld = 0;
+        end
+      endcase
+    end
+
+    // BPEoutReady
+    assign BPE3_o_rdy = 1;
+
+    // BPE Coefficient
+    always @(*) begin
+      case (state_3rd)
+        4'b0001: begin
+          BPE3_coef = COE0_3rd;
+        end
+        4'b0010: begin
+          BPE3_coef = COE0_3rd;
+        end
+        4'b0011: begin
+          BPE3_coef = COE1_3rd;
+        end
+        4'b0100: begin
+          BPE3_coef = COE1_3rd;
+        end
+        4'b0101: begin
+          BPE3_coef = COE2_3rd;
+        end
+        4'b0110: begin
+          BPE3_coef = COE2_3rd;
+        end
+        default: begin
+          BPE3_coef = 0;
+        end
+      endcase
+    end
+
+    assign bpe_act[2] = (counter_3rd == 1);
+    assign COE0_3rd_tmp = (counter_3rd == 2) ? coef_dat : COE0_3rd;
+    assign COE1_3rd_tmp = (counter_3rd == 3) ? coef_dat : COE1_3rd; 
+    assign COE2_3rd_tmp = (counter_3rd == 4) ? coef_dat : COE2_3rd; 
+
+    always @(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        COE0_3rd <= 0;
+        COE1_3rd <= 0;
+        COE2_3rd <= 0;
+      end else begin
+        COE0_3rd <= COE0_3rd_tmp;
+        COE1_3rd <= COE1_3rd_tmp;
+        COE2_3rd <= COE2_3rd_tmp;
+      end
+    end
+
+
+    /*===============================================================================================
+    #                                       4th BPE                                                 #
+    ================================================================================================*/
 
 
 
@@ -1161,11 +1843,19 @@ module kernel
 
 
 
+
+    wire [3:0] WE1;
+    wire [3:0] WE2;
+    wire [3:0] WE3;
+
+    assign WE1 = {4{sram_we}};
+    assign WE2 = {4{sram_we_2nd}};
+    assign WE3 = {4{sram_we_3rd}};
 
     butterfly BPE1 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (mode_state[1:0]),
+        .mode  (mode_state),
         .i_vld (BPE1_i_vld),
         .i_rdy (BPE1_i_rdy),
         .o_vld (BPE1_o_vld),
@@ -1180,7 +1870,7 @@ module kernel
     butterfly BPE2 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (mode_state[1:0]),
+        .mode  (mode_state),
         .i_vld (BPE2_i_vld),
         .i_rdy (BPE2_i_rdy),
         .o_vld (BPE2_o_vld),
@@ -1195,22 +1885,22 @@ module kernel
     butterfly BPE3 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (mode_state[1:0]),
-        .i_vld (),
-        .i_rdy (),
-        .o_vld (),
-        .o_rdy (),
-        .ai    (),
-        .bi    (),
-        .gm    (),
-        .ao    (),
-        .bo    ()
+        .mode  (mode_state),
+        .i_vld (BPE3_i_vld),
+        .i_rdy (BPE3_i_rdy),
+        .o_vld (BPE3_o_vld),
+        .o_rdy (BPE3_o_rdy),
+        .ai    (BPE3_ain),
+        .bi    (BPE3_bin),
+        .gm    (BPE3_coef),
+        .ao    (BPE3_aout),
+        .bo    (BPE3_bout)
     );
 
     butterfly BPE4 (
         .clk   (clk),
         .rstn  (rstn),
-        .mode  (mode_state[1:0]),
+        .mode  (mode_state),
         .i_vld (),
         .i_rdy (),
         .o_vld (),
@@ -1222,15 +1912,10 @@ module kernel
         .bo    ()
     );
 
-    wire [3:0] sram_we_wire;
-    wire [3:0] sram_we_2nd_wire;
-
-    assign sram_we_wire     = (sram_we)     ? 4'hF : 4'h0;
-    assign sram_we_2nd_wire = (sram_we_2nd) ? 4'hF : 4'h0;
 
     bram512x128 SRAM1 (
         .CLK(clk_2x),
-        .WE(sram_we_wire),
+        .WE(WE1),
         .EN(sram_en),
         .Di(sram_din),
         .Do(sram_dout),
@@ -1239,7 +1924,7 @@ module kernel
 
     bram128x128 SRAM2 (
         .CLK(clk_2x),
-        .WE(sram_we_2nd_wire),
+        .WE(WE2),
         .EN(sram_en_2nd),
         .Di(sram_din_2nd),
         .Do(sram_dout_2nd),
@@ -1247,12 +1932,12 @@ module kernel
     );
 
     bram32x128 SRAM3 (
-        .CLK(),
-        .WE(),
-        .EN(),
-        .Di(),
-        .Do(),
-        .A()
+        .CLK(clk_2x),
+        .WE(WE3),
+        .EN(sram_en_3rd),
+        .Di(sram_din_3rd),
+        .Do(sram_dout_3rd),
+        .A(sram_addr_3rd)
     );
 
 endmodule
