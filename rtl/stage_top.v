@@ -288,7 +288,7 @@ module stage_top
           ss_buffer_next2 = ss_buffer_tmp2;
           ss_buffer_next3 = ss_buffer_tmp3;
           ss_buffer_next4 = ss_dat;
-;
+
         end
         default: begin
           ss_buffer_next1 = ss_buffer_tmp1;
