@@ -3,7 +3,7 @@
 module fiFFNTT_tb;
 
   // Parameters & Constants
-  localparam CLK_PERIOD    = 10;             // 100 MHz clock
+  localparam CLK_PERIOD    = 12;             // 100 MHz clock
   localparam ADDR_WIDTH    = 32;
   localparam DATA_WIDTH    = 32;
   localparam NUM_KER       = 4;
@@ -33,11 +33,15 @@ module fiFFNTT_tb;
   localparam [DATA_WIDTH-1:0] PAT_KER_BUSY = 32'h5A5A5A5A;
 
   // Clock & Reset
-  reg clk = 0;
-  reg rstn = 0;
+  reg clk;
+  reg clk_2x;
+  reg rstn;
   always #(CLK_PERIOD/2) clk = ~clk;
+  always #(CLK_PERIOD/4) clk_2x = ~clk_2x;
   initial begin 
     rstn = 0;
+    clk = 0;
+    clk_2x = 1;
     #(CLK_PERIOD*5); 
     rstn = 1; 
   end
@@ -62,7 +66,7 @@ module fiFFNTT_tb;
   reg                        sm_tready;
   wire                       sm_tvalid, sm_tlast;
   wire [DATA_WIDTH-1:0]      sm_tdata;
-  reg [63:0] coef_mem [0:64];
+  reg [63:0] coef_mem [0:2048];
   reg [DATA_WIDTH-1:0] stat;
   integer idx;
   integer i, j, k;
@@ -74,6 +78,7 @@ module fiFFNTT_tb;
     .pIOPS_WIDTH(128)
   ) DUT (
     .clk        (clk),
+    .clk_2x     (clk_2x),
     .rstn       (rstn),
     .awready    (awready),
     .awvalid    (awvalid),
@@ -230,7 +235,7 @@ module fiFFNTT_tb;
 
 
   // ss_stream_in: send N words over ss_t*
-  task ss_stream_in_coeff(
+  task ss_stream_in(
     input integer N
   );
     begin
@@ -289,14 +294,15 @@ module fiFFNTT_tb;
     #(CLK_PERIOD / 2);
     // coef in
 
-    $readmemh("fft_16pt_coef.hex", coef_mem);
-    stream_meta(COEF_BASE, 8'b0, 15);
-    ss_stream_in_coeff(32);
-
+    $readmemh("addr0_511_128b.hex", coef_mem);
+    stream_meta(COEF_BASE, 8'b0, 511);
+    ss_stream_in(1024);
     @(posedge clk);
-    stream_meta(KERNEL_BASE, 8'b0, 15);
-    ss_stream_in_coeff(32);
-
+    stream_meta(KERNEL_BASE, 8'b0, 511);
+    ss_stream_in(1024);
+    @(posedge clk);
+    stream_meta(COEF_BASE + 1, 8'b0, 511);
   end
 
 endmodule
+
