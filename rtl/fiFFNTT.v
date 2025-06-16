@@ -7,6 +7,7 @@ module fiFFNTT
 )
 (
     input   wire                     clk,
+    input   wire                     clk_2x,
     input   wire                     rstn,
 
     output  wire                     awready,
@@ -83,44 +84,44 @@ module fiFFNTT
     // Kernel 1
     wire k1_load_vld;
     wire k1_load_rdy;
-    wire [(pDATA_WIDTH-1):0] k1_load_dat;
+    wire [(pIOPS_WIDTH-1):0] k1_load_dat;
     wire k1_store_vld;
     wire k1_store_rdy;
-    wire [(pDATA_WIDTH-1):0] k1_store_dat;
+    wire [(pIOPS_WIDTH-1):0] k1_store_dat;
     
     // Kernel 2
     wire k2_load_vld;
     wire k2_load_rdy;
-    wire [(pDATA_WIDTH-1):0] k2_load_dat;
+    wire [(pIOPS_WIDTH-1):0] k2_load_dat;
     wire k2_store_vld;
     wire k2_store_rdy;
-    wire [(pDATA_WIDTH-1):0] k2_store_dat;
+    wire [(pIOPS_WIDTH-1):0] k2_store_dat;
     
     // Kernel 3
     wire k3_load_vld;
     wire k3_load_rdy;
-    wire [(pDATA_WIDTH-1):0] k3_load_dat;
+    wire [(pIOPS_WIDTH-1):0] k3_load_dat;
     wire k3_store_vld;
     wire k3_store_rdy;
-    wire [(pDATA_WIDTH-1):0] k3_store_dat;
+    wire [(pIOPS_WIDTH-1):0] k3_store_dat;
     
     // Kernel 4
     wire k4_load_vld;
     wire k4_load_rdy;
-    wire [(pDATA_WIDTH-1):0] k4_load_dat;
+    wire [(pIOPS_WIDTH-1):0] k4_load_dat;
     wire k4_store_vld;
     wire k4_store_rdy;
-    wire [(pDATA_WIDTH-1):0] k4_store_dat;
+    wire [(pIOPS_WIDTH-1):0] k4_store_dat;
 
     // Coefficient port signals
     wire k1_coef_vld, k2_coef_vld, k3_coef_vld, k4_coef_vld;
     wire k1_coef_rdy, k2_coef_rdy, k3_coef_rdy, k4_coef_rdy;
-    wire [pDATA_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
+    wire [pIOPS_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
 
     // BPE activation control
     wire [3:0]  k1_bpe_act, k2_bpe_act, k3_bpe_act, k4_bpe_act;
     // double-speed clock
-    wire clk2;
+    wire clk_2;
 
     //========================== Function ==========================
     // =============== axi-lite =============== //
@@ -129,14 +130,14 @@ module fiFFNTT
         awready_tmp <= PULL_DN;
         wready_tmp <= PULL_DN;
         arready_tmp <= PULL_DN;
-        rvalid <= PULL_DN;
+        rvalid_tmp <= PULL_DN;
         araddr_tmp <= PULL_DN;
         read_ap_stat_tmp <= PULL_DN;
       end else begin
         awready_tmp <= awready_next;
         wready_tmp <= wready_next;
         arready_tmp <= arready_next;
-        rvalid <= rvalid_next;
+        rvalid_tmp <= rvalid_next;
         araddr_tmp <= araddr_next;
         read_ap_stat_tmp <= read_ap_stat_next;
       end
@@ -411,4 +412,5 @@ module fiFFNTT
     );
 
 endmodule
+
 
