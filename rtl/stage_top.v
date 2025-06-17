@@ -605,7 +605,7 @@ module stage_top
     // BPE3 //
     //////////
     reg [3:0] fftcoef_step_cnt3;
-    assign k1_sw_lst = 0;
+    assign k1_sw_lst = 0;   // k1_sw_lst is "input" can't be assigned
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
