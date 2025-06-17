@@ -1,3 +1,4 @@
+
 // Using Deep-Feedback structure, we will have
 module stage_top
 #(  
@@ -152,7 +153,7 @@ module stage_top
     localparam KERNEL_2 = 8'b00000101;
     localparam KERNEL_3 = 8'b00000110;
     localparam KERNEL_4 = 8'b00000111;
-    localparam COEF = 8'b00010100;
+    localparam COEF     = 8'b00010100;
     
     // =============== kernel =============== //
     // kernel handshake
@@ -288,7 +289,6 @@ module stage_top
           ss_buffer_next2 = ss_buffer_tmp2;
           ss_buffer_next3 = ss_buffer_tmp3;
           ss_buffer_next4 = ss_dat;
-
         end
         default: begin
           ss_buffer_next1 = ss_buffer_tmp1;
@@ -305,15 +305,16 @@ module stage_top
       end else begin
         sm_vld_next = sm_vld_tmp;
       end
+      
       // sm_buffer
       if (k1_sw_vld && k1_sw_rdy) begin
         sm_buffer_next = k1_sw_dat;
       end else if (k2_sw_vld && k2_sw_rdy) begin
-        sm_buffer_next = k1_sw_dat;
+        sm_buffer_next = k2_sw_dat;
       end else if (k3_sw_vld && k3_sw_rdy) begin
-        sm_buffer_next = k1_sw_dat;
+        sm_buffer_next = k3_sw_dat;
       end else if (k4_sw_vld && k4_sw_rdy) begin
-        sm_buffer_next = k1_sw_dat;
+        sm_buffer_next = k4_sw_dat;
       end else begin
         sm_buffer_next = sm_buffer_tmp;
       end
@@ -338,7 +339,6 @@ module stage_top
         meta_buffer_tmp <= PULL_DN;
         meta_cnter_tmp <= 13'h1FFF;
       end else begin
-
         decode_meta_tmp <= decode_meta_next;
         meta_buffer_tmp <= meta_buffer_next;
         meta_cnter_tmp <= meta_cnter_next;
@@ -605,7 +605,7 @@ module stage_top
     // BPE3 //
     //////////
     reg [3:0] fftcoef_step_cnt3;
-    assign k1_sw_lst = 0;   // k1_sw_lst is "input" can't be assigned
+    assign k1_sw_lst = 0;
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
@@ -660,8 +660,59 @@ module stage_top
     //////////
     // BPE4 //
     //////////
-
     reg [3:0] fftcoef_step_cnt4;
+
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        fftcoef_step_cnt4 <= 4'hF;
+      end else begin
+        fftcoef_step_cnt4 <= (k1_coef_rdy && k1_coef_vld) ?
+                              (k1_sw_lst) ? 4'hF :
+                                (fftcoef_step_cnt4 == 4'hF && k1_bpe_act == 4'b0001) ? 0 :
+                                  (fftcoef_step_cnt4 != 4'hf && fftcoef_step_cnt4 != 4'h2) ? fftcoef_step_cnt4 + 1:
+                                    (fftcoef_step_cnt4 == 2) ? 4'hF : 4'hF
+                            : fftcoef_step_cnt4;
+      end
+    end
+
+    reg [7:0] cnt_stage7_A;
+
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        cnt_stage7_A <= 6'h3F;
+      end else begin
+        cnt_stage7_A <= (k1_coef_rdy && k1_coef_vld) ?
+                        (k1_sw_lst) ? 6'h3F :
+                        (k1_bpe_act == 4'b0001) ? (cnt_stage7_A == 6'h3F) ? 0 : cnt_stage7_A + 1 : cnt_stage7_A
+                        : cnt_stage7_A;
+      end
+    end
+
+    reg [7:0] cnt_stage8_A;
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        cnt_stage8_A <= 6'h3F;
+      end else begin
+        cnt_stage8_A <= (k1_coef_rdy && k1_coef_vld) ?
+                        (k1_sw_lst) ? 6'h3F :
+                        (fftcoef_step_cnt4 == 0 || fftcoef_step_cnt4 == 1) ? (cnt_stage8_A == 6'h3F) ? 0 : cnt_stage8_A + 1 : cnt_stage8_A
+                        : cnt_stage8_A;
+      end
+    end
+
+    wire RAM_A_sel4;
+    localparam S5 = 0;
+    localparam S6 = 1;
+    assign RAM_A_sel4 = (fftcoef_step_cnt4 == 0) ? S5 :
+                       (fftcoef_step_cnt4 == 1) ? S6 :
+                       (fftcoef_step_cnt4 == 2) ? S6 : 0;
+    
+    wire [7:0] RAM_A_Mux4;
+    assign RAM_A_Mux4 = (fftcoef_step_cnt4 == 0) ? cnt_stage7_A :
+                       (fftcoef_step_cnt4 == 1) ? cnt_stage8_A :
+                       (fftcoef_step_cnt4 == 2) ? cnt_stage8_A : 0;
+
+/*    reg [3:0] fftcoef_step_cnt4;
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
@@ -720,27 +771,66 @@ module stage_top
                        (fftcoef_step_cnt4 == 4) ? cnt_stage9_A :
                        (fftcoef_step_cnt4 == 5) ? cnt_stage9_A :
                        (fftcoef_step_cnt4 == 6) ? cnt_stage9_A : 0;
-    
-    reg [1:0] BPE3_BPE4_COEF_Mux;
-    parameter FOR_BPE3 = 1;
-    parameter FOR_BPE4 = 2;
+*/
+    //////////
+    // BPE5 //
+    //////////
+    reg [3:0] fftcoef_step_cnt5;
+
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
-        BPE3_BPE4_COEF_Mux <= 0;
+        fftcoef_step_cnt5 <= 4'hF;
       end else begin
-        BPE3_BPE4_COEF_Mux <= (k1_bpe_act == 4'b0010) ? FOR_BPE3 :
+        fftcoef_step_cnt5 <= (k1_coef_rdy && k1_coef_vld) ?
+                              (k1_sw_lst) ? 4'hF :
+                                (fftcoef_step_cnt5 == 4'hF && k1_bpe_act == 4'b0011) ? 0 :
+                                  (fftcoef_step_cnt5 != 4'hf && fftcoef_step_cnt5 != 4'h2) ? fftcoef_step_cnt5 + 1:
+                                    (fftcoef_step_cnt5 == 0) ? 4'hF : 4'hF
+                            : fftcoef_step_cnt4;
+      end
+    end
+
+    reg [7:0] cnt_stage9_A;
+
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        cnt_stage9_A <= 6'h3F;
+      end else begin
+        cnt_stage9_A <= (k1_coef_rdy && k1_coef_vld) ?
+                        (k1_sw_lst) ? 6'h3F :
+                        (k1_bpe_act == 4'b0011) ? (cnt_stage9_A == 6'h3F) ? 0 : cnt_stage9_A + 1 : cnt_stage9_A
+                        : cnt_stage9_A;
+      end
+    end
+    
+    wire [7:0] RAM_A_Mux5;
+    assign RAM_A_Mux5 = (fftcoef_step_cnt5 == 0) ? cnt_stage9_A : 0;
+
+
+    reg [2:0] BPE3_4_5_COEF_Mux;
+    parameter FOR_BPE3 = 1;
+    parameter FOR_BPE4 = 2;
+    parameter FOR_BPE5 = 3;
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        BPE3_4_5_COEF_Mux <= 0;
+      end else begin
+        BPE3_4_5_COEF_Mux <= (k1_bpe_act == 4'b0010) ? FOR_BPE3 :
                               (k1_bpe_act == 4'b0001) ? FOR_BPE4 :
-                              (k1_bpe_act == 4'b0000) ? BPE3_BPE4_COEF_Mux : 3;
+                              (k1_bpe_act == 4'b0011) ? FOR_BPE5 :
+                              (k1_bpe_act == 4'b1111) ? BPE3_4_5_COEF_Mux : 3'b111;
       end
     end
 
     wire [12:0] FFT_COEF_RAM_Addr_MUX;
-    assign FFT_COEF_RAM_Addr_MUX =  (fftcoef_step_cnt3 == 4'hF && fftcoef_step_cnt4 == 4'hF) ? FFT_COEF_RAM_Addr_wire[12:0] :
-                                    (BPE3_BPE4_COEF_Mux == FOR_BPE3) ?
+    assign FFT_COEF_RAM_Addr_MUX =  (fftcoef_step_cnt3 == 4'hF && fftcoef_step_cnt4 == 4'hF && fftcoef_step_cnt5 == 4'hF) ? FFT_COEF_RAM_Addr_wire[12:0] :
+                                    (BPE3_4_5_COEF_Mux == FOR_BPE3) ?
                                       {3'd0, RAM_A_Mux3[0], RAM_A_Mux3[1], RAM_A_Mux3[2], RAM_A_Mux3[3], RAM_A_Mux3[4], RAM_A_Mux3[5], RAM_A_Mux3[6], RAM_A_Mux3[7], 2'd0} :
-                                    (BPE3_BPE4_COEF_Mux == FOR_BPE4) ?
+                                    (BPE3_4_5_COEF_Mux == FOR_BPE4) ?
                                       {3'd0, RAM_A_Mux4[0], RAM_A_Mux4[1], RAM_A_Mux4[2], RAM_A_Mux4[3], RAM_A_Mux4[4], RAM_A_Mux4[5], RAM_A_Mux4[6], RAM_A_Mux4[7], 2'd0} :
-                                    FFT_COEF_RAM_Addr_wire[12:0] ;
+                                    (BPE3_4_5_COEF_Mux == FOR_BPE5) ?
+                                      {3'd0, RAM_A_Mux5[0], RAM_A_Mux5[1], RAM_A_Mux5[2], RAM_A_Mux5[3], RAM_A_Mux5[4], RAM_A_Mux5[5], RAM_A_Mux5[6], RAM_A_Mux5[7], 2'd0} :
+                                      FFT_COEF_RAM_Addr_wire[12:0] ;
 
     bram512x128 FFT_COEF_RAM (
       .CLK  (clk),
@@ -763,6 +853,4 @@ module stage_top
     */
 
 endmodule
-
-
 
