@@ -1639,7 +1639,7 @@ module kernel
           sram_addr_one_cycle_3rd = {13'b0, 7'b0, counter_3rd[5:0]};                                                                                   
         end
         4'b0010: begin
-          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {7'b0000001, counter_3rd_delay[5:0], 7'b0, counter_3rd_delay[5:0]} : {13'b0, 5'b0, counter_3rd[7:0]};
+          sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {7'b0000001, counter_3rd_delay[5:0], 7'b0, counter_3rd_delay[5:0]} : {13'b0, 7'b0, counter_3rd[5:0]};
         end
         4'b0011: begin
           sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b11) ? {7'b0000001, counter_3rd_delay[5:0], 7'b0, counter_3rd_delay[5:0]} :
