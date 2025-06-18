@@ -1500,7 +1500,7 @@ module kernel
 
     assign BPE3_out_done_next = (counter_3rd_output == 7);
 
-    assign ld_vld_4th = enable_output_3rd;
+    assign ld_vld_4th = enable_output_3rd & (~BPE3_out_done);
     assign ld_dat_4th = (enable_output_3rd) ? sram_dout_3rd : 0;
     
 
@@ -1579,16 +1579,16 @@ module kernel
           sram_en_3rd = ~(counter_3rd[1:0] == 2'b01);
         end
         4'b1001: begin
-          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+          sram_en_3rd = 1;
         end
         4'b1011: begin
-          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+          sram_en_3rd = 1;
         end
         4'b1101: begin
-          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+          sram_en_3rd = 1;
         end
         4'b1111: begin
-          sram_en_3rd = (counter_3rd_output[1:0] == 2'b00);
+          sram_en_3rd = 1;
         end
         default: begin
           sram_en_3rd = 0;
@@ -1661,16 +1661,16 @@ module kernel
           sram_addr_one_cycle_3rd = {8'b00000011, counter_3rd_delay[4:0], 8'b00000010, counter_3rd_delay[4:0]};
         end
         4'b1001: begin
-          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+          sram_addr_one_cycle_3rd = {13'b0, 8'b0, counter_3rd_output[2:0], 2'b0};
         end
         4'b1011: begin
-          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, 2'b01, counter_3rd_output[2:0], 2'b0};
         end
         4'b1101: begin
-          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, 2'b10, counter_3rd_output[2:0], 2'b0};
         end
         4'b1111: begin
-          sram_addr_one_cycle_3rd = {13'b0, 6'b0, counter_3rd_output[4:0], 2'b0};
+          sram_addr_one_cycle_3rd = {13'b0, 6'b0, 2'b11, counter_3rd_output[2:0], 2'b0};
         end
         default: begin
           sram_addr_one_cycle_3rd = 0;
