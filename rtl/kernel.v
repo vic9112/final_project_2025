@@ -19,7 +19,7 @@ module kernel
     output wire                     coef_rdy,
     input  wire [(pDATA_WIDTH-1):0] coef_dat, 
 
-    output wire               [3:0] bpe_act,//for bpe1 to bpe4 counter 
+    output wire               [4:0] bpe_act,//for bpe1 to bpe4 counter 
 
     input  wire               [7:0] mode,
     input  wire                     decode,
@@ -244,7 +244,10 @@ module kernel
     // =================ld_signal================ //
 
     assign ld_rdy = 1;
-
+    assign sw_lst = (state_1st == 4'b0) & (state_2nd == 4'b0) & (state_3rd == 4'b0); // Test Performance
+    assign bpe_act[1:0] = 2'b00;
+    assign bpe_act[4:3] = 2'b00; // For Test
+    
 
     /*===============================================================================================
     #                                       Kernel FSM                                              #
@@ -1941,4 +1944,3 @@ module kernel
     );
 
 endmodule
-
