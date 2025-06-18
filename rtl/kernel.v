@@ -1069,7 +1069,7 @@ module kernel
     always @(*) begin
       case (state_2nd)
         4'b0000: begin
-          data_to_sram_2nd = {128'b0, ld_dat_2nd[127:0]}; 
+          data_to_sram_2nd = {ld_dat_2nd[127:0], 128'b0}; 
         end
         4'b0001: begin
           data_to_sram_2nd = 0;
@@ -1600,7 +1600,7 @@ module kernel
     always @(*) begin
       case (state_3rd)
         4'b0000: begin
-          data_to_sram_3rd = {128'b0, ld_dat_3rd[127:0]}; 
+          data_to_sram_3rd = {ld_dat_3rd[127:0], 128'b0}; 
         end
         4'b0001: begin
           data_to_sram_3rd = 0;
