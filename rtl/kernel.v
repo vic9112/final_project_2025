@@ -247,6 +247,7 @@ module kernel
     assign sw_lst = (state_1st == 4'b0) & (state_2nd == 4'b0) & (state_3rd == 4'b0); // Test Performance
     assign bpe_act[1:0] = 2'b00;
     assign bpe_act[4:3] = 2'b00; // For Test
+    assign coef_rdy = 1;
     
 
     /*===============================================================================================
@@ -1819,9 +1820,9 @@ module kernel
     end
 
     assign bpe_act[2] = (counter_3rd == 1);
-    assign COE0_3rd_tmp = (counter_3rd == 2) ? coef_dat : COE0_3rd;
-    assign COE1_3rd_tmp = (counter_3rd == 3) ? coef_dat : COE1_3rd; 
-    assign COE2_3rd_tmp = (counter_3rd == 4) ? coef_dat : COE2_3rd; 
+    assign COE0_3rd_tmp = (counter_3rd == 3) ? coef_dat : COE0_3rd;
+    assign COE1_3rd_tmp = (counter_3rd == 4) ? coef_dat : COE1_3rd; 
+    assign COE2_3rd_tmp = (counter_3rd == 5) ? coef_dat : COE2_3rd; 
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
