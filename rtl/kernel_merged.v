@@ -1945,19 +1945,19 @@ module kernel
         3'b000: output_buffer_w[0] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
                                      ((kern_out_cnt_r[0+:3] == 3'd0) ? output_buffer[0]>>1 : output_buffer[0]);
         3'b001: output_buffer_w[1] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd1) ? output_buffer[1]>>1 : output_buffer[1]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd1) ? output_buffer[1]>>1 : output_buffer[1]);
         3'b010: output_buffer_w[2] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd2) ? output_buffer[2]>>1 : output_buffer[2]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd2) ? output_buffer[2]>>1 : output_buffer[2]);
         3'b011: output_buffer_w[3] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd3) ? output_buffer[3]>>1 : output_buffer[3]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd3) ? output_buffer[3]>>1 : output_buffer[3]);
         3'b100: output_buffer_w[4] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd4) ? output_buffer[4]>>1 : output_buffer[4]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd4) ? output_buffer[4]>>1 : output_buffer[4]);
         3'b101: output_buffer_w[5] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd5) ? output_buffer[5]>>1 : output_buffer[5]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd5) ? output_buffer[5]>>1 : output_buffer[5]);
         3'b110: output_buffer_w[6] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd6) ? output_buffer[6]>>1 : output_buffer[6]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd6) ? output_buffer[6]>>1 : output_buffer[6]);
         3'b111: output_buffer_w[7] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:3] == 3'd7) ? output_buffer[7]>>1 : output_buffer[7]);;
+                                     ((kern_out_cnt_r[0+:3] == 3'd7) ? output_buffer[7]>>1 : output_buffer[7]);
         default: begin
           output_buffer_w[0] = output_buffer[0];
           output_buffer_w[1] = output_buffer[1];
@@ -2119,8 +2119,8 @@ module BPE_4th_module #(
   // 要做的: 寫FSM, 每次啟動把counter清0, ......
   //=========================================================================================================
     // parameters
-    parameter MUL_DELAY = 27; // delay of butterfly
-    parameter INPUT_DELAY = 4; 
+    //parameter MUL_DELAY = 27; // delay of butterfly
+    //parameter INPUT_DELAY = 4; 
 
     localparam IDLE_4th = 0;
     localparam FILL_FIFO0_4th = 1;
@@ -2141,7 +2141,7 @@ module BPE_4th_module #(
 
     // coefficient signal
     wire coef_4th_rdy_next;
-    reg coef_4th_vld;
+    //reg coef_4th_vld;
 
     // 4th BPE IO
     reg [127:0] BPE4_ain;
@@ -2187,13 +2187,13 @@ module BPE_4th_module #(
     
     // engine state
     // AXI signal
-    wire ss_vld_4th;
-    reg  ss_rdy_4th;
+    //wire ss_vld_4th;
+    //reg  ss_rdy_4th;
     wire ss_rdy_4th_next;
 
-    reg  sm_vld_4th;
+    //reg  sm_vld_4th;
     wire sm_vld_4th_next;
-    wire sm_rdy_4th;
+    //wire sm_rdy_4th;
 
     // Data FIFO(2x clk)
     reg [3:0] data_reg_4th_ram0[0:pDATA_WIDTH-1];
