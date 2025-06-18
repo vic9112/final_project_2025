@@ -39,7 +39,7 @@ module stage_top
     output  wire                     k1_coef_vld,
     input   wire                     k1_coef_rdy,
     output  wire [(pDATA_WIDTH-1):0] k1_coef_dat,
-    input   wire               [3:0] k1_bpe_act,
+    input   wire               [4:0] k1_bpe_act,
 
     output  wire               [7:0] k1_mode,
     output  wire                     decode1,
@@ -60,7 +60,7 @@ module stage_top
     output  wire                     k2_coef_vld,
     input   wire                     k2_coef_rdy,
     output  wire [(pDATA_WIDTH-1):0] k2_coef_dat,
-    input   wire               [3:0] k2_bpe_act,
+    input   wire               [4:0] k2_bpe_act,
 
     // 3rd Kernel
     output   wire                    clk3,
@@ -77,7 +77,7 @@ module stage_top
     output  wire                     k3_coef_vld,
     input   wire                     k3_coef_rdy,
     output  wire [(pDATA_WIDTH-1):0] k3_coef_dat,
-    input   wire               [3:0] k3_bpe_act,
+    input   wire               [4:0] k3_bpe_act,
     
     // 4th Kernel
     output   wire                    clk4,
@@ -94,7 +94,7 @@ module stage_top
     output  wire                     k4_coef_vld,
     input   wire                     k4_coef_rdy,
     output  wire [(pDATA_WIDTH-1):0] k4_coef_dat,
-    input   wire               [3:0] k4_bpe_act
+    input   wire               [4:0] k4_bpe_act
 );
         
     //========================== Declaration ==========================
@@ -599,7 +599,7 @@ module stage_top
     // address for picking coef from kernal to coef_ram (FFT) //
     ////////////////////////////////////////////////////////////
 
-    assign k1_coef_vld = (dst_tmp == 8'd4 && k1_mode == 2'd0); /// for test only
+    assign k1_coef_vld = 1;
 
     //////////
     // BPE3 //
@@ -613,7 +613,7 @@ module stage_top
       end else begin
         fftcoef_step_cnt3 <= (k1_coef_rdy && k1_coef_vld) ?
                               (k1_sw_lst) ? 4'hF :
-                                (fftcoef_step_cnt3 == 4'hF && k1_bpe_act == 4'b0010) ? 0 :
+                                (fftcoef_step_cnt3 == 4'hF && k1_bpe_act == 5'b00100) ? 0 :
                                   (fftcoef_step_cnt3 != 4'hf && fftcoef_step_cnt3 != 4'h2) ? fftcoef_step_cnt3 + 1:
                                     (fftcoef_step_cnt3 == 2) ? 4'hF : 4'hF
                             : fftcoef_step_cnt3;
@@ -628,7 +628,7 @@ module stage_top
       end else begin
         cnt_stage5_A <= (k1_coef_rdy && k1_coef_vld) ?
                         (k1_sw_lst) ? 6'h3F :
-                        (k1_bpe_act == 4'b0010) ? (cnt_stage5_A == 6'h3F) ? 0 : cnt_stage5_A + 1 : cnt_stage5_A
+                        (k1_bpe_act == 5'b00100) ? (cnt_stage5_A == 6'h3F) ? 0 : cnt_stage5_A + 1 : cnt_stage5_A
                         : cnt_stage5_A;
       end
     end
@@ -668,7 +668,7 @@ module stage_top
       end else begin
         fftcoef_step_cnt4 <= (k1_coef_rdy && k1_coef_vld) ?
                               (k1_sw_lst) ? 4'hF :
-                                (fftcoef_step_cnt4 == 4'hF && k1_bpe_act == 4'b0001) ? 0 :
+                                (fftcoef_step_cnt4 == 4'hF && k1_bpe_act == 5'b01000) ? 0 :
                                   (fftcoef_step_cnt4 != 4'hf && fftcoef_step_cnt4 != 4'h2) ? fftcoef_step_cnt4 + 1:
                                     (fftcoef_step_cnt4 == 2) ? 4'hF : 4'hF
                             : fftcoef_step_cnt4;
@@ -683,7 +683,7 @@ module stage_top
       end else begin
         cnt_stage7_A <= (k1_coef_rdy && k1_coef_vld) ?
                         (k1_sw_lst) ? 6'h3F :
-                        (k1_bpe_act == 4'b0001) ? (cnt_stage7_A == 6'h3F) ? 0 : cnt_stage7_A + 1 : cnt_stage7_A
+                        (k1_bpe_act == 5'b01000) ? (cnt_stage7_A == 6'h3F) ? 0 : cnt_stage7_A + 1 : cnt_stage7_A
                         : cnt_stage7_A;
       end
     end
@@ -701,8 +701,6 @@ module stage_top
     end
 
     wire RAM_A_sel4;
-    localparam S5 = 0;
-    localparam S6 = 1;
     assign RAM_A_sel4 = (fftcoef_step_cnt4 == 0) ? S5 :
                        (fftcoef_step_cnt4 == 1) ? S6 :
                        (fftcoef_step_cnt4 == 2) ? S6 : 0;
@@ -783,7 +781,7 @@ module stage_top
       end else begin
         fftcoef_step_cnt5 <= (k1_coef_rdy && k1_coef_vld) ?
                               (k1_sw_lst) ? 4'hF :
-                                (fftcoef_step_cnt5 == 4'hF && k1_bpe_act == 4'b0011) ? 0 :
+                                (fftcoef_step_cnt5 == 4'hF && k1_bpe_act == 5'b10000) ? 0 :
                                   (fftcoef_step_cnt5 != 4'hf && fftcoef_step_cnt5 != 4'h2) ? fftcoef_step_cnt5 + 1:
                                     (fftcoef_step_cnt5 == 0) ? 4'hF : 4'hF
                             : fftcoef_step_cnt4;
@@ -798,7 +796,7 @@ module stage_top
       end else begin
         cnt_stage9_A <= (k1_coef_rdy && k1_coef_vld) ?
                         (k1_sw_lst) ? 6'h3F :
-                        (k1_bpe_act == 4'b0011) ? (cnt_stage9_A == 6'h3F) ? 0 : cnt_stage9_A + 1 : cnt_stage9_A
+                        (k1_bpe_act == 5'b10000) ? (cnt_stage9_A == 6'h3F) ? 0 : cnt_stage9_A + 1 : cnt_stage9_A
                         : cnt_stage9_A;
       end
     end
@@ -815,12 +813,13 @@ module stage_top
       if (!rstn) begin
         BPE3_4_5_COEF_Mux <= 0;
       end else begin
-        BPE3_4_5_COEF_Mux <= (k1_bpe_act == 4'b0010) ? FOR_BPE3 :
-                              (k1_bpe_act == 4'b0001) ? FOR_BPE4 :
-                              (k1_bpe_act == 4'b0011) ? FOR_BPE5 :
-                              (k1_bpe_act == 4'b1111) ? BPE3_4_5_COEF_Mux : 3'b111;
+        BPE3_4_5_COEF_Mux <= (k1_bpe_act == 5'b00100) ? FOR_BPE3 :
+                              (k1_bpe_act == 5'b01000) ? FOR_BPE4 :
+                              (k1_bpe_act == 5'b10000) ? FOR_BPE5 :
+                              (k1_bpe_act == 5'b00000) ? BPE3_4_5_COEF_Mux : 3'b111;
       end
     end
+
 
     wire [12:0] FFT_COEF_RAM_Addr_MUX;
     assign FFT_COEF_RAM_Addr_MUX =  (fftcoef_step_cnt3 == 4'hF && fftcoef_step_cnt4 == 4'hF && fftcoef_step_cnt5 == 4'hF) ? FFT_COEF_RAM_Addr_wire[12:0] :
@@ -832,10 +831,12 @@ module stage_top
                                       {3'd0, RAM_A_Mux5[0], RAM_A_Mux5[1], RAM_A_Mux5[2], RAM_A_Mux5[3], RAM_A_Mux5[4], RAM_A_Mux5[5], RAM_A_Mux5[6], RAM_A_Mux5[7], 2'd0} :
                                       FFT_COEF_RAM_Addr_wire[12:0] ;
 
+    assign k1_coef_dat = FFT_COEF_RAM_Do_wire;
+
     bram512x128 FFT_COEF_RAM (
       .CLK  (clk),
       .WE   (FFT_COEF_RAM_We),
-      .EN   (dst_tmp[3:0] == 4'b0100),
+      .EN   (1),
       .Di   (ss_buffer),
       .Do   (FFT_COEF_RAM_Do_wire),
       .A    (FFT_COEF_RAM_Addr_MUX)
@@ -853,4 +854,5 @@ module stage_top
     */
 
 endmodule
+
 
