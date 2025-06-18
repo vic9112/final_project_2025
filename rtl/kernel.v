@@ -1521,7 +1521,7 @@ module kernel
     always @(*) begin
       case (state_3rd)
         4'b0000: begin
-          sram_we_3rd = (~phase) & (counter_3rd[1:0] == 2'b00); 
+          sram_we_3rd = (phase) & (counter_3rd[1:0] == 2'b00); 
         end
         4'b0001: begin
           sram_we_3rd = 0;
