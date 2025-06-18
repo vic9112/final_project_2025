@@ -1372,7 +1372,7 @@ module kernel
           state_3rd_next = (counter_3rd == 62) ? 4'b0001 : state_3rd;
         end
         4'b0001: begin
-          state_3rd_next = (counter_3rd == 86) ? 4'b0010 : state_3rd;
+          state_3rd_next = (counter_3rd == 87) ? 4'b0010 : state_3rd;
         end
         4'b0010: begin
           state_3rd_next = (counter_3rd == 124) ? 4'b0011 : state_3rd;
