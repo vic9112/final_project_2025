@@ -235,7 +235,12 @@ module kernel
     reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_r; 
     reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
     wire [pDATA_WIDTH-1:0] BPE5_dout;
-
+  
+    // counters
+    reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_r; // output counter for kernel
+    reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_w;
+    reg [1:0] out_byte_cnt_r; // output byte counter for kernel
+    wire [1:0] out_byte_cnt_w;
     //========================== Function ==========================
 
     // =============== kernel mode =============== //
@@ -1971,11 +1976,6 @@ module kernel
       endcase
     end
 
-    // counters
-    reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_r; // output counter for kernel
-    reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_w;
-    reg [1:0] out_byte_cnt_r; // output byte counter for kernel
-    wire [1:0] out_byte_cnt_w;
     
     // assign out_byte_cnt_w = (sw_vld & sw_rdy) ? out_byte_cnt_r + 1 : out_byte_cnt_r;
     assign kern_out_cnt_w = (sw_vld & sw_rdy) & (&out_byte_cnt_r) ? kern_out_cnt_r + 1 : kern_out_cnt_r; 
@@ -2181,6 +2181,8 @@ module BPE_4th_module #(
     reg [1:0] coef_cnt_4th; 
     wire [1:0] coef_cnt_4th_next;
 
+    // BPE4 input counter
+    reg [2:0] bpe_in_cnt_4th;
     // BPE4 output counter
     reg [2:0] bpe_out_cnt_4th;
     wire [2:0] bpe_out_cnt_4th_next;
@@ -2202,6 +2204,9 @@ module BPE_4th_module #(
     reg [1:0] data_reg_4th_ram1_next[0:pDATA_WIDTH-1];
     reg [1:0] data_reg_4th_ram2[0:pDATA_WIDTH-1];
     reg [1:0] data_reg_4th_ram2_next[0:pDATA_WIDTH-1];
+    //control signal
+    wire BPE4_o_rdy_next;
+    reg BPE4_i_vld_next;
 
     butterfly BPE4 (
         .clk   (clk),
@@ -2253,8 +2258,7 @@ module BPE_4th_module #(
       end
     end
     // =========================== control signal ========================== //
-    wire BPE4_o_rdy_next;
-    reg BPE4_i_vld_next;
+
 
     assign BPE4_o_rdy_next = 1;
     assign ss_rdy_4th_next = ((state_4th_next == FILL_FIFO0_4th) | 
@@ -2549,16 +2553,24 @@ module BPE_5th_module #(
     localparam WAIT_FIFO1_5th = 3;
     localparam FILL_FIFO1_5th = 4;
     localparam FINISH_5th = 5;
+  
     // ================================== Declaration ================================== //
     // AXI signal
     reg  ss_rdy_5th_r;
     wire ss_rdy_5th_next;
     reg  sm_vld_5th_r;
-    
+    wire sm_vld_5th_next;
+
     // input counter
     reg [2:0] in_cnt_5th;
     wire[2:0] in_cnt_5th_next;
 
+    // output counter
+    reg [2:0] out_cnt_5th;
+    
+    //Coefficient counter
+    reg [1:0] coef_cnt_5th;
+    
     // FSM signal
     reg [2:0] state_5th, state_5th_next;
     reg [pDATA_WIDTH-1:0] data_reg_5th_ram0, data_reg_5th_ram0_next;
@@ -2582,6 +2594,8 @@ module BPE_5th_module #(
     wire BPE5_o_rdy;
     reg [127:0] BPE5_coef;
 
+    // counter_MUL_DELAY
+    reg [4:0] counter_MUL_DELAY_5th;
 
         
     butterfly BPE5 (
@@ -2688,7 +2702,7 @@ module BPE_5th_module #(
     // =========================== counters for input and output ========================== //
     assign in_cnt_5th_next = (ss_vld_5th & ss_rdy_5th) ? in_cnt_5th + 1 : in_cnt_5th;
     assign out_cnt_5th_next = (sm_vld_5th & sm_rdy_5th) ? out_cnt_5th + 1 : out_cnt_5th;
-    assign counter_MUL_DELAY_5th_next = ((state_5th == WAIT_FIFO1_5th)|(state_5th == WAIT_FIFO2_5th)) ?
+    assign counter_MUL_DELAY_5th_next = ((state_5th == WAIT_FIFO1_5th)|(state_5th == WAIT_FIFO2_5th)) ?   //WAIT_FIFO2_5th need modify
                                         (counter_MUL_DELAY_5th + 1) : 0;
     assign coef_cnt_5th_next = (coef_5th_vld & coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th;
 
@@ -2769,7 +2783,7 @@ module BPE_5th_module #(
     always@(*)begin
       case(state_5th)
         CAL0_5th: begin
-          if(ss_rdy_5th & ss_vld_5th) data_reg_5th_ram0_next = (in_cnt_5th[0]) ? ld_data_5th[127:0] : 0; // only even input will fill the reg
+          if(ss_rdy_5th & ss_vld_5th) data_reg_5th_ram0_next = (in_cnt_5th[0]) ? ld_dat_5th[127:0] : 0; // only even input will fill the reg
           else data_reg_5th_ram0_next = data_reg_5th_ram0;
         end
         FILL_FIFO1_5th: begin
