@@ -115,7 +115,6 @@ module stage_top
     wire [10:0] data_length;
     reg sm_vld_tmp;
     reg sm_vld_next;
-    reg [(pDATA_WIDTH-1):0] sm_buffer_tmp;
     reg [(pDATA_WIDTH-1):0] sm_buffer_next;
 
     // cnter for packing 128 bit
@@ -226,7 +225,6 @@ module stage_top
         ss_buffer_tmp4 <= PULL_DN;
         pack_cnter_tmp <= 4'hF;
         sm_vld_tmp <= PULL_DN;
-        sm_buffer_tmp <= PULL_DN;
       end else begin
         ss_rdy_tmp <= ss_rdy_next;
         ss_buffer_tmp1 <= ss_buffer_next1;
@@ -235,7 +233,6 @@ module stage_top
         ss_buffer_tmp4 <= ss_buffer_next4;
         pack_cnter_tmp <= pack_cnter_next;
         sm_vld_tmp <= sm_vld_next;
-        sm_buffer_tmp <= sm_buffer_next;
       end
     end
 
@@ -297,27 +294,6 @@ module stage_top
           ss_buffer_next4 = ss_buffer_tmp4;
         end
       endcase
-      // sm_vld
-      if ((k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k2_sw_vld && k2_sw_rdy)) begin
-        sm_vld_next = PULL_UP;
-      end else if (sm_rdy) begin
-        sm_vld_next = PULL_DN;
-      end else begin
-        sm_vld_next = sm_vld_tmp;
-      end
-      
-      // sm_buffer
-      if (k1_sw_vld && k1_sw_rdy) begin
-        sm_buffer_next = k1_sw_dat;
-      end else if (k2_sw_vld && k2_sw_rdy) begin
-        sm_buffer_next = k2_sw_dat;
-      end else if (k3_sw_vld && k3_sw_rdy) begin
-        sm_buffer_next = k3_sw_dat;
-      end else if (k4_sw_vld && k4_sw_rdy) begin
-        sm_buffer_next = k4_sw_dat;
-      end else begin
-        sm_buffer_next = sm_buffer_tmp;
-      end
     end
 
     always @(posedge clk or negedge rstn) begin
@@ -327,10 +303,84 @@ module stage_top
         ss_buffer <= ((pack_cnter_tmp == 0 || pack_cnter_tmp == 4'hF) && meta_cnter_tmp != 0) ? {ss_buffer_tmp2, ss_buffer_tmp1, ss_buffer_tmp4, ss_buffer_tmp3} : ss_buffer;
       end
     end
+
+reg [(pSS_WIDTH-1):0] sm_buffer;
+reg [(pSS_WIDTH-1):0] sm_buffer_next;
+reg sm_buffer_state     // 0 for idle; 1 for occupied
+reg sm_buffer_state_next    
+reg [1:0] sm_cnt;
+reg [1:0] sm_cnt_next;
+wire en_sm;
+reg [(pSS_WIDTH-1):0] sm_dat_tmp;
+
+assign en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
+
+  always @(posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      sm_buffer <= PULL_DN;
+      sm_buffer_state <= PULL_DN;
+      sm_cnt <= PULL_DN;
+    end else begin
+      sm_buffer <= sm_buffer_next;
+      sm_buffer_state <= sm_buffer_state_next;
+      sm_cnt <= sm_cnt_next;
+    end
+  end
+  
+  always@* begin
+      if (sm_buffer_state == 0 && k1_sw_vld && k1_sw_rdy) begin
+        sm_buffer_next = k1_sw_dat;
+      end else if (sm_buffer_state == 0 && k2_sw_vld && k2_sw_rdy) begin
+        sm_buffer_next = k2_sw_dat;
+      end else if (sm_buffer_state == 0 && k3_sw_vld && k3_sw_rdy) begin
+        sm_buffer_next = k3_sw_dat;
+      end else if (sm_buffer_state == 0 && k4_sw_vld && k4_sw_rdy) begin
+        sm_buffer_next = k4_sw_dat;
+      end else begin
+        sm_buffer_next = sm_buffer;
+      end
+  end
+
+  always@* begin
+    if (sm_buffer_state == 0 && en_sm) begin
+      sm_buffer_state_next = 1;
+    end else if (sm_buffer_state == 1 && sm_cnt == 3) begin
+      sm_buffer_state_next = 0;
+    end else begin
+      sm_buffer_state_next = sm_buffer_state;
+    end
+  end
+
+  always@* begin
+    if (sm_buffer_state == 1 && sm_cnt < 3 && sm_rdy) begin
+      sm_cnt_next = sm_cnt + 1;
+    end else if (sm_buffer_state == 0)begin
+      sm_cnt_next = 0;
+    end else begin
+      sm_cnt_next = sm_cnt;
+    end
+  end
+
+  always@* begin
+    case (sm_cnt)
+        2'b00: sm_dat_tmp = sm_buffer[31:0];
+        2'b01: sm_dat_tmp = sm_buffer[63:32];
+        2'b10: sm_dat_tmp = sm_buffer[95:64];
+        2'b11: sm_dat_tmp = sm_buffer[127:96];
+        default: sm_dat_tmp = 32'hFFFFFFFF;
+    endcase
+
+    if (sm_buffer_state == 1) begin
+      sm_vld_next = PULL_UP;
+    end else begin
+      sm_vld_next = PULL_DN;
+    end
+  end
+
     // assign to port wire
     assign ss_rdy = rstn;
     assign sm_vld = sm_vld_tmp;
-    assign sm_dat = sm_buffer_tmp;
+    assign sm_dat = sm_dat_tmp;
 
     // =============== metadata =============== //
     always @(posedge clk or negedge rstn) begin
