@@ -304,16 +304,16 @@ module stage_top
       end
     end
 
-reg [(pSS_WIDTH-1):0] sm_buffer;
-reg [(pSS_WIDTH-1):0] sm_buffer_next;
-reg sm_buffer_state     // 0 for idle; 1 for occupied
-reg sm_buffer_state_next    
-reg [1:0] sm_cnt;
-reg [1:0] sm_cnt_next;
-wire en_sm;
-reg [(pSS_WIDTH-1):0] sm_dat_tmp;
+  reg [(pSS_WIDTH-1):0] sm_buffer;
+  //reg [(pSS_WIDTH-1):0] sm_buffer_next;
+  reg sm_buffer_state;     // 0 for idle; 1 for occupied
+  reg sm_buffer_state_next;    
+  reg [1:0] sm_cnt;
+  reg [1:0] sm_cnt_next;
+  wire en_sm;
+  reg [(pSS_WIDTH-1):0] sm_dat_tmp;
 
-assign en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
+  assign en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
