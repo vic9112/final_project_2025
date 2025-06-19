@@ -1913,7 +1913,7 @@ module kernel
 
     assign ss_vld_5th = sm_vld_4th;
     assign sm_rdy_4th = ss_rdy_5th;
-    
+
 
     // =========================== Output Buffer ========================== // 
     // reg [pDATA_WIDTH:0] output_buffer_w[0:7];
@@ -2626,8 +2626,11 @@ module BPE_5th_module #(
         .ao    (BPE5_aout),
         .bo    (BPE5_bout)
     );
+    // ============================ Output Connection ========================== //
     assign nxt_dat_5th = (out_cnt_5th[0]) ? data_reg_5th_ram0 : BPE5_aout; // 0, 2, 4, 6 cycle get data from BPE5_aout
     assign bpe_act = (state_5th == IDLE_5th) & ss_vld_5th; // 5th BPE activated when input successfully get
+    assign ss_rdy_5th = ss_rdy_5th_r; 
+    assign sm_vld_5th = sm_vld_5th_r; 
     // ============================ control signal ========================== //
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
