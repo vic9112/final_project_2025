@@ -1893,7 +1893,8 @@ module kernel
         .coef_4th_rdy (coef_rdy),
         .coef_dat     (coef_dat),
         .mode_state   (mode_state),
-        .bpe_act      (bpe_act[3])
+        .bpe_act      (bpe_act[3]),
+        .BPE_4th_idle (BPE4_idle)
     );
     BPE_5th_module STAGE9(
         .clk          (clk),
@@ -2004,6 +2005,7 @@ module kernel
     // assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]][(kern_out_cnt_r << 5) +: (pDATA_WIDTH >> 2)];                      
     assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]];
     assign sw_vld = output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH];
+    assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH]; // ready to receive data when empty
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2122,7 +2124,8 @@ module BPE_4th_module #(
     input  wire [(pDATA_WIDTH-1):0] coef_dat, 
 
     input  wire [7:0]               mode_state, 
-    output wire                     bpe_act
+    output wire                     bpe_act,
+    output wire                     BPE_4th_idle
 );
 /* ========================================================================================================
                                                 4th BPE
@@ -2179,7 +2182,6 @@ module BPE_4th_module #(
     reg [127:0] BPE4_coef;
 
     // FSM for 4th BPE
-    reg BPE_4th_idle;
     reg [3:0] state_4th;
     reg [3:0] state_4th_next;
 
@@ -2244,7 +2246,10 @@ module BPE_4th_module #(
         .ao    (BPE4_aout),
         .bo    (BPE4_bout)
     );
+    // =========================== Output Connection ========================== //
     assign bpe_act = (state_4th == IDLE_4th) & ss_vld_4th; // 4th BPE activated when input successfully get
+    assign BPE_4th_idle = (state_4th == IDLE_4th);
+    assign coef_4th_rdy = (state_4th == IDLE_4th) | (state_4th == FILL_FIFO1_4th);
 
     // =========================== counters for input and output ========================== //
     assign counter_4th_next = (ss_vld_4th & ss_rdy_4th) ? counter_4th + 1 : counter_4th;
@@ -2260,6 +2265,15 @@ module BPE_4th_module #(
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
+        counter_4th <= 0;
+        in_cnt_4th <= 0;
+        out_cnt_4th <= 0;
+        cycle_q_num_4th <= 0;
+        bpe_in_cnt_4th <= 0;
+        bpe_out_cnt_4th <= 0;
+        counter_MUL_DELAY_4th <= 0;
+        coef_cnt_4th <= 0;
+      end else if(state_4th == FINISH_4th)begin
         counter_4th <= 0;
         in_cnt_4th <= 0;
         out_cnt_4th <= 0;
@@ -2378,6 +2392,9 @@ module BPE_4th_module #(
         FILL_FIFO2_4th: begin
           if(&out_cnt_4th) state_4th_next = FINISH_4th;
           else state_4th_next = FILL_FIFO2_4th;
+        end
+        FINISH_4th: begin
+          state_4th_next = IDLE_4th;
         end
         default: begin
           state_4th_next = IDLE_4th;
@@ -2508,6 +2525,8 @@ module BPE_4th_module #(
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
         bpe_out_cnt_4th <= 0;
+      end else if(state_4th == FINISH_4th)begin
+        bpe_out_cnt_4th <= 0;
       end else begin
         bpe_out_cnt_4th <= bpe_out_cnt_4th_next;
       end
@@ -2631,6 +2650,7 @@ module BPE_5th_module #(
     assign bpe_act = (state_5th == IDLE_5th) & ss_vld_5th; // 5th BPE activated when input successfully get
     assign ss_rdy_5th = ss_rdy_5th_r; 
     assign sm_vld_5th = sm_vld_5th_r; 
+    assign coef_5th_rdy = (state_5th == IDLE_5th) | (state_5th == FILL_FIFO1_5th); 
     // ============================ control signal ========================== //
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2725,6 +2745,11 @@ module BPE_5th_module #(
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
+        in_cnt_5th <= 0;
+        out_cnt_5th <= 0;
+        counter_MUL_DELAY_5th <= 0;
+        coef_cnt_5th <= 0;
+      end else if(state_5th == FINISH_5th)begin
         in_cnt_5th <= 0;
         out_cnt_5th <= 0;
         counter_MUL_DELAY_5th <= 0;
