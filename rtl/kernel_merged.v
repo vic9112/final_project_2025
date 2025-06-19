@@ -425,7 +425,13 @@ module kernel
     assign counter_1st_adv_next = counter_1st_next + 2;
 
     always @(posedge clk or negedge rstn) begin
-      if (~rstn | decode | BPE1_out_done) begin
+      if (~rstn) begin
+        counter_1st    <= 16'd0;
+        counting_1st   <= 1'b0;
+        trigger_once   <= 1'b0;
+        counter_1st_delay <= 16'd0;
+        counter_1st_adv <= 16'd0;
+      end else if(decode | BPE1_out_done) begin
         counter_1st    <= 16'd0;
         counting_1st   <= 1'b0;
         trigger_once   <= 1'b0;
@@ -935,7 +941,13 @@ module kernel
     assign counter_2nd_adv_next = counter_2nd_next + 2;
 
     always @(posedge clk or negedge rstn) begin
-      if (~rstn | decode | BPE2_out_done) begin
+      if (~rstn) begin
+        counter_2nd    <= 16'd0;
+        counting_2nd   <= 1'b0;
+        trigger_once_2nd   <= 1'b0;
+        counter_2nd_delay <= 16'd0;
+        counter_2nd_adv <= 16'd0;
+      end else if (decode | BPE2_out_done) begin
         counter_2nd    <= 16'd0;
         counting_2nd   <= 1'b0;
         trigger_once_2nd   <= 1'b0;
@@ -1468,7 +1480,13 @@ module kernel
     assign counter_3rd_adv_next = counter_3rd_next + 2;
 
     always @(posedge clk or negedge rstn) begin
-      if (~rstn | decode | BPE3_out_done) begin
+      if (~rstn) begin
+        counter_3rd    <= 16'd0;
+        counting_3rd   <= 1'b0;
+        trigger_once_3rd   <= 1'b0;
+        counter_3rd_delay <= 16'd0;
+        counter_3rd_adv <= 16'd0;
+      end else if(decode | BPE3_out_done) begin
         counter_3rd    <= 16'd0;
         counting_3rd   <= 1'b0;
         trigger_once_3rd   <= 1'b0;
@@ -1892,6 +1910,10 @@ module kernel
         .mode_state   (mode_state),
         .bpe_act      (bpe_act[4])
     );
+
+    assign ss_vld_5th = sm_vld_4th;
+    assign sm_rdy_4th = ss_rdy_5th;
+    
 
     // =========================== Output Buffer ========================== // 
     // reg [pDATA_WIDTH:0] output_buffer_w[0:7];
