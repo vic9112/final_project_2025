@@ -238,7 +238,7 @@ module kernel
   
     // counters
     reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_r; // output counter for kernel
-    reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_w;
+    wire [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_w;
     reg [1:0] out_byte_cnt_r; // output byte counter for kernel
     wire [1:0] out_byte_cnt_w;
     //========================== Function ==========================
@@ -2089,8 +2089,8 @@ module BPE_4th_module #(
     input  wire                     rstn,
 
     input  wire                     ss_vld_4th,
-    output wire                     ss_rdy_4th, // ready to receive data from 4th BPE
-    output wire                     sm_vld_4th, 
+    output reg                      ss_rdy_4th, // ready to receive data from 4th BPE
+    output reg                      sm_vld_4th, 
     input  wire                     sm_rdy_4th,
     input  wire [(pDATA_WIDTH-1):0] ld_dat_4th, // input data
     output wire [(pDATA_WIDTH-1):0] nxt_dat_4th,
@@ -2151,7 +2151,7 @@ module BPE_4th_module #(
     wire [127:0] BPE4_aout;
     wire [127:0] BPE4_bout;
     wire BPE4_o_vld;
-    wire BPE4_o_rdy;
+    reg  BPE4_o_rdy;
     reg [127:0] BPE4_bin_buffer;
     reg [127:0] BPE4_bin_buffer_next;
     reg [127:0] BPE4_coef;
@@ -2175,7 +2175,7 @@ module BPE_4th_module #(
 
     // multiply delay counter
     reg [4:0] counter_MUL_DELAY_4th; 
-    reg [4:0] counter_MUL_DELAY_4th_next;
+    wire [4:0] counter_MUL_DELAY_4th_next;
 
     // coef counter
     reg [1:0] coef_cnt_4th; 
@@ -2426,12 +2426,8 @@ module BPE_4th_module #(
           end
         end
         CAL0_4th: begin
-          if(!filled)begin
             data_reg_4th_ram0_next[0] = 0;
-            for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];            
-          end else begin
-            for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i];
-          end
+            for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];
         end
         FILL_FIFO1_4th: begin
           if(BPE4_o_vld & BPE4_o_rdy) begin
@@ -2442,12 +2438,8 @@ module BPE_4th_module #(
           end
         end
         CAL1_4th: begin
-          if(!filled)begin
             data_reg_4th_ram0_next[0] = 0;
-            for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];            
-          end else begin
-            for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i];
-          end
+            for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1]; 
         end
         FINISH_4th: begin
           for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = 0;
@@ -2557,9 +2549,9 @@ module BPE_5th_module #(
     // ================================== Declaration ================================== //
     // AXI signal
     reg  ss_rdy_5th_r;
-    wire ss_rdy_5th_next;
+    reg  ss_rdy_5th_next;
     reg  sm_vld_5th_r;
-    wire sm_vld_5th_next;
+    reg  sm_vld_5th_next;
 
     // input counter
     reg [2:0] in_cnt_5th;
@@ -2589,9 +2581,9 @@ module BPE_5th_module #(
     wire BPE5_i_rdy;
     wire [127:0] BPE5_aout;
     wire [127:0] BPE5_bout;
-    reg  BPE5_o_vld;
-    reg  BPE5_o_vld_next;
-    wire BPE5_o_rdy;
+    wire BPE5_o_vld;
+    reg  BPE5_o_rdy;
+    reg  BPE5_o_rdy_next;
     reg [127:0] BPE5_coef;
 
     // counter_MUL_DELAY
@@ -2620,12 +2612,12 @@ module BPE_5th_module #(
         ss_rdy_5th_r <= 0;
         sm_vld_5th_r <= 0;
         BPE5_i_vld <= 0;
-        BPE5_o_vld <= 0;
+        BPE5_o_rdy <= 0;
       end else begin
         ss_rdy_5th_r <= ss_rdy_5th_next;
         sm_vld_5th_r <= sm_vld_5th_next;
         BPE5_i_vld <= BPE5_i_vld_next;
-        BPE5_o_vld <= BPE5_o_vld_next;
+        BPE5_o_rdy <= BPE5_o_rdy_next;
       end
     end
     always@(*)begin
@@ -2650,9 +2642,9 @@ module BPE_5th_module #(
     end
     always@(*)begin
       case(state_5th)
-        WAIT_FIFO1_5th: BPE5_o_vld_next = (state_5th_next == FILL_FIFO1_5th);
-        FILL_FIFO1_5th: BPE5_o_vld_next = (state_5th_next != FINISH_5th);
-        default: BPE5_o_vld_next = 0;
+        WAIT_FIFO1_5th: BPE5_o_rdy_next = (state_5th_next == FILL_FIFO1_5th);
+        FILL_FIFO1_5th: BPE5_o_rdy_next = (state_5th_next != FINISH_5th);
+        default: BPE5_o_rdy_next = 0;
       endcase
     end
 
@@ -2702,8 +2694,7 @@ module BPE_5th_module #(
     // =========================== counters for input and output ========================== //
     assign in_cnt_5th_next = (ss_vld_5th & ss_rdy_5th) ? in_cnt_5th + 1 : in_cnt_5th;
     assign out_cnt_5th_next = (sm_vld_5th & sm_rdy_5th) ? out_cnt_5th + 1 : out_cnt_5th;
-    assign counter_MUL_DELAY_5th_next = ((state_5th == WAIT_FIFO1_5th)|(state_5th == WAIT_FIFO2_5th)) ?   //WAIT_FIFO2_5th need modify
-                                        (counter_MUL_DELAY_5th + 1) : 0;
+    assign counter_MUL_DELAY_5th_next = (state_5th == WAIT_FIFO1_5th) ?  (counter_MUL_DELAY_5th + 1) : 0;
     assign coef_cnt_5th_next = (coef_5th_vld & coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th;
 
 
