@@ -7,6 +7,7 @@ module fiFFNTT
 )
 (
     input   wire                     clk,
+    input   wire                     clk_2x,
     input   wire                     rstn,
 
     output  wire                     awready,
@@ -61,6 +62,66 @@ module fiFFNTT
     localparam PULL_UP = 1; 
     localparam AP_STAT = 32'h00; // 0x00
     localparam COEF_STAT = 32'h10; // 0x10
+    // =============== IOP =============== //
+    wire clk_k1, clk_k2, clk_k3, clk_k4;
+    wire [7:0] k1_mode;    
+    wire decode1;          
+    wire k1_sw_lst;         
+  
+    wire [7:0] k2_mode;
+    wire decode2;
+    wire k2_sw_lst;
+    
+    wire [7:0] k3_mode;
+    wire decode3;
+    wire k3_sw_lst;
+    
+    wire [7:0] k4_mode;
+    wire decode4;
+    wire k4_sw_lst;
+    
+    // =============== Kernel interface =============== //
+    // Kernel 1
+    wire k1_load_vld;
+    wire k1_load_rdy;
+    wire [(pIOPS_WIDTH-1):0] k1_load_dat;
+    wire k1_store_vld;
+    wire k1_store_rdy;
+    wire [(pIOPS_WIDTH-1):0] k1_store_dat;
+    
+    // Kernel 2
+    wire k2_load_vld;
+    wire k2_load_rdy;
+    wire [(pIOPS_WIDTH-1):0] k2_load_dat;
+    wire k2_store_vld;
+    wire k2_store_rdy;
+    wire [(pIOPS_WIDTH-1):0] k2_store_dat;
+    
+    // Kernel 3
+    wire k3_load_vld;
+    wire k3_load_rdy;
+    wire [(pIOPS_WIDTH-1):0] k3_load_dat;
+    wire k3_store_vld;
+    wire k3_store_rdy;
+    wire [(pIOPS_WIDTH-1):0] k3_store_dat;
+    
+    // Kernel 4
+    wire k4_load_vld;
+    wire k4_load_rdy;
+    wire [(pIOPS_WIDTH-1):0] k4_load_dat;
+    wire k4_store_vld;
+    wire k4_store_rdy;
+    wire [(pIOPS_WIDTH-1):0] k4_store_dat;
+
+    // Coefficient port signals
+    wire k1_coef_vld, k2_coef_vld, k3_coef_vld, k4_coef_vld;
+    wire k1_coef_rdy, k2_coef_rdy, k3_coef_rdy, k4_coef_rdy;
+    wire [pIOPS_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
+
+    // BPE activation control
+    wire [3:0]  k1_bpe_act, k2_bpe_act, k3_bpe_act, k4_bpe_act;
+    // double-speed clock
+    wire clk_2;
 
     //========================== Function ==========================
     // =============== axi-lite =============== //
@@ -69,14 +130,14 @@ module fiFFNTT
         awready_tmp <= PULL_DN;
         wready_tmp <= PULL_DN;
         arready_tmp <= PULL_DN;
-        rvalid <= PULL_DN;
+        rvalid_tmp <= PULL_DN;
         araddr_tmp <= PULL_DN;
         read_ap_stat_tmp <= PULL_DN;
       end else begin
         awready_tmp <= awready_next;
         wready_tmp <= wready_next;
         arready_tmp <= arready_next;
-        rvalid <= rvalid_next;
+        rvalid_tmp <= rvalid_next;
         araddr_tmp <= araddr_next;
         read_ap_stat_tmp <= read_ap_stat_next;
       end
@@ -140,93 +201,216 @@ module fiFFNTT
     /*================================================================================================
     #                                            IOP                                                 #
     ================================================================================================*/
-    stage_top IOP (
-      .clk          (clk),
-      .rstn         (rstn),
+    stage_top #(
+      .pDATA_WIDTH (pIOPS_WIDTH), 
+      .pSS_WIDTH (pDATA_WIDTH)
+    ) IOP (
+      .clk         (clk),
+      .rstn        (rstn),
       
-      .in1_sw       (     ),
-      .ap_crtl      (ap_crtl),
-      .coef_crtl    (coef_crtl),
-      .ap_read      (ap_read),
+      //.in1_sw      (     ),
+      .ap_ctrl     (ap_ctrl),
+      .coef_ctrl   (coef_ctrl),
+      .ap_read     (ap_read),
 
-      .ss_vld       (ss_tvalid),
-      .ss_dat       (ss_tdata),
-      .ss_lst       (ss_tlast),
-      .ss_rdy       (ss_tready),
+      .ss_vld      (ss_tvalid),
+      .ss_dat      (ss_tdata),
+      .ss_lst      (ss_tlast),
+      .ss_rdy      (ss_tready),
       
-      .sm_rdy       (sm_tready),
-      .sm_vld       (sm_tvalid),
-      .sm_dat       (sm_tdata),
-      .sm_lst       (sm_tlast),
+      .sm_rdy      (sm_tready),
+      .sm_vld      (sm_tvalid),
+      .sm_dat      (sm_tdata),
+      .sm_lst      (sm_tlast),
+      //---------- kernel 1  ----------//
+      .clk1        (clk_k1),
+      .rstn1       (rstn),
 
-      .k1_ld_vld    (k1_load_vld),
-      .k1_ld_rdy    (k1_load_rdy),
-      .k1_ld_dat    (k1_load_dat),
-      .k1_sw_vld    (k1_store_vld),
-      .k1_sw_rdy    (k1_store_rdy),
-      .k1_sw_dat    (k1_store_dat),
+      .k1_ld_vld   (k1_load_vld),
+      .k1_ld_rdy   (k1_load_rdy),
+      .k1_ld_dat   (k1_load_dat),
+      .k1_sw_vld   (k1_store_vld),
+      .k1_sw_rdy   (k1_store_rdy),
+      .k1_sw_dat   (k1_store_dat),
+      
+      .k1_coef_vld (k1_coef_vld),
+      .k1_coef_rdy (k1_coef_rdy),
+      .k1_coef_dat (k1_coef_dat),
+      .k1_bpe_act  (k1_bpe_act),
+    
+      .k1_mode     (k1_mode),
+      .decode1     (decode1),
+      .k1_sw_lst   (k1_sw_lst),
 
-      .k2_ld_vld    (k2_load_vld),
-      .k2_ld_rdy    (k2_load_rdy),
-      .k2_ld_dat    (k2_load_dat),
-      .k2_sw_vld    (k2_store_vld),
-      .k2_sw_rdy    (k2_store_rdy),
-      .k2_sw_dat    (k2_store_dat),
+      //---------- kernel 2  ----------//
+      .clk2        (clk_k2),
+      .rstn2       (rstn),
+
+      .k2_ld_vld   (k2_load_vld),
+      .k2_ld_rdy   (k2_load_rdy),
+      .k2_ld_dat   (k2_load_dat),
+      .k2_sw_vld   (k2_store_vld),
+      .k2_sw_rdy   (k2_store_rdy),
+      .k2_sw_dat   (k2_store_dat),
+
+      .k2_coef_vld (k2_coef_vld),
+      .k2_coef_rdy (k2_coef_rdy),
+      .k2_coef_dat (k2_coef_dat),
+      .k2_bpe_act  (k2_bpe_act),
       
-      .k3_ld_vld    (k3_load_vld),
-      .k3_ld_rdy    (k3_load_rdy),
-      .k3_ld_dat    (k3_load_dat),
-      .k3_sw_vld    (k3_store_vld),
-      .k3_sw_rdy    (k3_store_rdy),
-      .k3_sw_dat    (k3_store_dat),
+      .k2_mode     (k2_mode),
+      .decode2     (decode2),
+      .k2_sw_lst   (k2_sw_lst),
+
+      //---------- kernel 3  ----------//
+      .clk3        (clk_k3),
+      .rstn3       (rstn),
+
+      .k3_ld_vld   (k3_load_vld),
+      .k3_ld_rdy   (k3_load_rdy),
+      .k3_ld_dat   (k3_load_dat),
+      .k3_sw_vld   (k3_store_vld),
+      .k3_sw_rdy   (k3_store_rdy),
+      .k3_sw_dat   (k3_store_dat),
+
+      .k3_coef_vld (k3_coef_vld),
+      .k3_coef_rdy (k3_coef_rdy),
+      .k3_coef_dat (k3_coef_dat),
+      .k3_bpe_act  (k3_bpe_act),
       
-      .k4_ld_vld    (k4_load_vld),
-      .k4_ld_rdy    (k4_load_rdy),
-      .k4_ld_dat    (k4_load_dat),
-      .k4_sw_vld    (k4_store_vld),
-      .k4_sw_rdy    (k4_store_rdy),
-      .k4_sw_dat    (k4_store_dat)
+      .k3_mode     (k3_mode),
+      .decode3     (decode3),
+      .k3_sw_lst   (k3_sw_lst),
+
+      //---------- kernel 4  ----------//
+      .clk4        (clk_k4),
+      .rstn4       (rstn),
+
+      .k4_ld_vld   (k4_load_vld),
+      .k4_ld_rdy   (k4_load_rdy),
+      .k4_ld_dat   (k4_load_dat),
+      .k4_sw_vld   (k4_store_vld),
+      .k4_sw_rdy   (k4_store_rdy),
+      .k4_sw_dat   (k4_store_dat),
+      
+      .k4_coef_vld (k4_coef_vld),
+      .k4_coef_rdy (k4_coef_rdy),
+      .k4_coef_dat (k4_coef_dat),
+      .k4_bpe_act  (k4_bpe_act),
+
+      .k4_mode     (k4_mode),
+      .decode4     (decode4),
+      .k4_sw_lst   (k4_sw_lst) 
     );
 
 
     /*================================================================================================
     #                                          Kernels                                               #
-    ================================================================================================*/
-    kernel K1 (
-      .ld_vld  (k1_ld_vld),
-      .ld_rdy  (k1_ld_rdy),
-      .ld_dat  (k1_ld_dat),
-      .sw_vld  (k1_sw_vld),
-      .sw_rdy  (k1_sw_rdy),
-      .sw_dat  (k1_sw_dat)
+    ================================================================================================*/    
+    kernel #(
+      .pDATA_WIDTH(pIOPS_WIDTH)
+    ) kernel1 (
+      .clk        (clk_k1),
+      .clk_2x     (clk_2x),
+      .rstn       (rstn),
+
+      .ld_vld     (k1_load_vld),
+      .ld_rdy     (k1_load_rdy),
+      .ld_dat     (k1_load_dat),
+
+      .sw_vld     (k1_store_vld),
+      .sw_rdy     (k1_store_rdy),
+      .sw_dat     (k1_store_dat),
+
+      .coef_vld   (k1_coef_vld),
+      .coef_rdy   (k1_coef_rdy),
+      .coef_dat   (k1_coef_dat),
+
+      .bpe_act    (k1_bpe_act),
+
+      .mode       (k1_mode),
+      .decode     (decode1),
+      .sw_lst     (k1_sw_lst)
     );
 
-    kernel K2 (
-      .ld_vld  (k2_ld_vld),
-      .ld_rdy  (k2_ld_rdy),
-      .ld_dat  (k2_ld_dat),
-      .sw_vld  (k2_sw_vld),
-      .sw_rdy  (k2_sw_rdy),
-      .sw_dat  (k2_sw_dat)
+    kernel #(
+        .pDATA_WIDTH(pIOPS_WIDTH)
+    ) kernel2 (
+        .clk        (clk_k2),
+        .clk_2x     (clk_2x),
+        .rstn       (rstn),
+
+        .ld_vld     (k2_load_vld),
+        .ld_rdy     (k2_load_rdy),
+        .ld_dat     (k2_load_dat),
+
+        .sw_vld     (k2_store_vld),
+        .sw_rdy     (k2_store_rdy),
+        .sw_dat     (k2_store_dat),
+
+        .coef_vld   (k2_coef_vld),
+        .coef_rdy   (k2_coef_rdy),
+        .coef_dat   (k2_coef_dat),
+
+        .bpe_act    (k2_bpe_act),
+
+        .mode       (k2_mode),
+        .decode     (decode2),
+        .sw_lst     (k2_sw_lst)
     );
 
-    kernel K3 (
-      .ld_vld  (k3_ld_vld),
-      .ld_rdy  (k3_ld_rdy),
-      .ld_dat  (k3_ld_dat),
-      .sw_vld  (k3_sw_vld),
-      .sw_rdy  (k3_sw_rdy),
-      .sw_dat  (k3_sw_dat)
+    kernel #(
+        .pDATA_WIDTH(pIOPS_WIDTH)
+    ) kernel3 (
+        .clk        (clk_k3),
+        .clk_2x     (clk_2x),
+        .rstn       (rstn),
+
+        .ld_vld     (k3_load_vld),
+        .ld_rdy     (k3_load_rdy),
+        .ld_dat     (k3_load_dat),
+
+        .sw_vld     (k3_store_vld),
+        .sw_rdy     (k3_store_rdy),
+        .sw_dat     (k3_store_dat),
+
+        .coef_vld   (k3_coef_vld),
+        .coef_rdy   (k3_coef_rdy),
+        .coef_dat   (k3_coef_dat),
+
+        .bpe_act    (k3_bpe_act),
+
+        .mode       (k3_mode),
+        .decode     (decode3),
+        .sw_lst     (k3_sw_lst)
     );
 
-    kernel K4 (
-      .ld_vld  (k4_ld_vld),
-      .ld_rdy  (k4_ld_rdy),
-      .ld_dat  (k4_ld_dat),
-      .sw_vld  (k4_sw_vld),
-      .sw_rdy  (k4_sw_rdy),
-      .sw_dat  (k4_sw_dat)
+    kernel #(
+        .pDATA_WIDTH(pIOPS_WIDTH)
+    ) kernel4 (
+        .clk        (clk_k4),
+        .clk_2x     (clk_2x),
+        .rstn       (rstn),
+
+        .ld_vld     (k4_load_vld),
+        .ld_rdy     (k4_load_rdy),
+        .ld_dat     (k4_load_dat),
+
+        .sw_vld     (k4_store_vld),
+        .sw_rdy     (k4_store_rdy),
+        .sw_dat     (k4_store_dat),
+
+        .coef_vld   (k4_coef_vld),
+        .coef_rdy   (k4_coef_rdy),
+        .coef_dat   (k4_coef_dat),
+
+        .bpe_act    (k4_bpe_act),
+
+        .mode       (k4_mode),
+        .decode     (decode4),
+        .sw_lst     (k4_sw_lst)
     );
 
 endmodule
+
 

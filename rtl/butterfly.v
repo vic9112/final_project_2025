@@ -21,11 +21,13 @@ module butterfly
     output  wire [(pDATA_WIDTH-1):0] bo
 
 );
+
 //==================================================================================//
 localparam mode_FFT  = 2'b11;
 localparam mode_iFFT = 2'b10;
 localparam mode_NTT  = 2'b01;
 localparam mode_iNTT = 2'b00;
+
 
 localparam NTT_MUL_LATENCY = 17;
 localparam FFT_MUL_LATENCY = 22;
