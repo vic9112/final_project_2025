@@ -309,7 +309,7 @@ always @(*) begin
         ao = cmul_result[0];
         bo = cmul_result[1];
     end
-    mode_iFFT: begin //execute in exponent module?
+    mode_iFFT: begin 
         ao = cmul_result_ifft[0];
         bo = cmul_result_ifft[1];
     end
