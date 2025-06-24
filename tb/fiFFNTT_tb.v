@@ -9,36 +9,8 @@ module fiFFNTT_tb;
   localparam NUM_KER       = 4;
 
   // Stream lengths
-  /*
   localparam int LEN [NUM_KER] = {2048, 2048, 1024, 1024};
   localparam int COEF_LEN [NUM_KER] = {512, 512, 1024, 1024};
-  */
-
-  function [15:0] get_LEN;
-  input integer idx;
-  begin
-    case(idx)
-      0: get_LEN = 2048;
-      1: get_LEN = 2048;
-      2: get_LEN = 1024;
-      3: get_LEN = 1024;
-      default: get_LEN = 0;
-    endcase
-  end
-  endfunction
-
-  function [15:0] get_COEF_LEN;
-    input integer idx;
-    begin
-      case(idx)
-        0: get_COEF_LEN = 512;
-        1: get_COEF_LEN = 512;
-        2: get_COEF_LEN = 1024;
-        3: get_COEF_LEN = 1024;
-        default: get_COEF_LEN = 0;
-      endcase
-    end
-  endfunction
 
   // Register map
   localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h3000_0000;
@@ -100,7 +72,7 @@ module fiFFNTT_tb;
   reg [DATA_WIDTH-1:0] golden_mem1 [0:2047];
   reg [DATA_WIDTH-1:0] golden_mem2 [0:2047];
   reg [DATA_WIDTH-1:0] golden_mem3 [0:2047];
-  
+
   reg [DATA_WIDTH-1:0] coef_mem   [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] in_mem     [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] out_mem    [0:NUM_KER-1][0:2047];
@@ -113,7 +85,9 @@ module fiFFNTT_tb;
   reg [DATA_WIDTH-1:0] check_k2;
   reg [DATA_WIDTH-1:0] check_k3;
   reg [DATA_WIDTH-1:0] check_k4;
-  time rand_time;
+  integer rand_time;
+  integer length;
+  integer mode;
 
   // DUT Instantiation
   fiFFNTT #(
@@ -145,7 +119,7 @@ module fiFFNTT_tb;
     .sm_tlast   (sm_tlast)
   );
 
-  my_mailbox #(
+  mailbox #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
     .MB_COUNT(NUM_KER)
@@ -163,7 +137,7 @@ module fiFFNTT_tb;
     .araddr     (araddr_mb),
     .rvalid     (rvalid_mb),
     .rdata      (rdata_mb),
-    .rready     (rready_mb)
+    .rready     (rready_mb),
   );
 
   // AXI-Lite write task
@@ -267,6 +241,7 @@ module fiFFNTT_tb;
       axilite_read(STATUS_ADDR, stat);
       @(posedge clk);
       while (!stat[idx]) begin
+        #(CLK_PERIOD * 10);
         axilite_read(STATUS_ADDR, stat);
         @(posedge clk);
       end
@@ -281,6 +256,7 @@ module fiFFNTT_tb;
       axilite_read(STATUS_ADDR, stat);
       @(posedge clk);
       while (!stat[idx]) begin
+        #(CLK_PERIOD * 10);
         axilite_read(STATUS_ADDR, stat);
         @(posedge clk);
       end
@@ -324,6 +300,22 @@ module fiFFNTT_tb;
     end
   endtask
 
+  task sm_stream_meta(
+    output integer length_out,
+    output integer mode_out
+  );
+    begin
+      @(posedge clk);
+      sm_tready <= 1;
+
+      wait(sm_tvalid);
+      @(posedge clk);
+      length_out <= sm_tdata[15:0];
+      mode_out <= sm_tdata[23:16] - 8'd4;
+      sm_tready <= 0;
+    end
+  endtask
+
   // sm_stream_out
   task sm_stream_out(
     input integer N,
@@ -350,8 +342,8 @@ module fiFFNTT_tb;
   );
     begin
       axilite_write_mb(MB_BASE_ADDR + N * MB_STRIDE, PAT_KER_BUSY);
-      stream_meta(KERNEL_BASE + N, MODE_BASE + M, get_LEN(M));
-      ss_stream_in(get_LEN(M), M);
+      stream_meta(KERNEL_BASE + N, MODE_BASE + M, get_LEN[M]);
+      ss_stream_in(get_LEN[M], M);
     end
   endtask
 
@@ -377,7 +369,7 @@ module fiFFNTT_tb;
       kernel_start(0, 0);
 
       rand_time = $urandom_range(0, 999);
-      #rand_time;
+      #(rand_time * CLK_PERIOD);
 
       polling;
       axilite_read_mb(MB_BASE_ADDR + 4, check);
@@ -388,7 +380,7 @@ module fiFFNTT_tb;
       kernel_start(1, 0);
 
       rand_time = $urandom_range(0, 999);
-      #rand_time;
+      #(rand_time * CLK_PERIOD);
 
       polling;
       axilite_read_mb(MB_BASE_ADDR + 8, check);
@@ -399,7 +391,7 @@ module fiFFNTT_tb;
       kernel_start(2, 0);
 
       rand_time = $urandom_range(0, 999);
-      #rand_time;
+      #(rand_time * CLK_PERIOD);
 
       polling;
       axilite_read_mb(MB_BASE_ADDR + 12, check);
@@ -455,7 +447,6 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    
     $readmemh("FFT_coef.hex", coef_mem0);
     $readmemh("iFFT_coef.hex", coef_mem1);
     $readmemh("NTT_coef.hex", coef_mem2);
@@ -468,7 +459,7 @@ module fiFFNTT_tb;
     $readmemh("iFFT_out.hex", golden_mem1);
     $readmemh("NTT_out.hex", golden_mem2);
     $readmemh("iNTT_out.hex", golden_mem3);
-    
+
     for (k = 0; k < 2048; k = k + 1) begin
       coef_mem[0][k] = coef_mem0[k];
       coef_mem[1][k] = coef_mem1[k];
@@ -498,35 +489,35 @@ module fiFFNTT_tb;
 
     // coef in
     for (k = 0; k < NUM_KER; k = k + 1) begin
-      stream_meta(COEF_BASE + k, 8'b0, get_COEF_LEN(k));
-      ss_stream_in(get_COEF_LEN(k), 0);
+      stream_meta(COEF_BASE + k, 8'b0, COEF_LEN[k][15:0]);
+      ss_stream_in(COEF_LEN[k], 0);
     end
 
     // Write coef_done = 1
     axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
     $display("Coefficients input over");
 
-    // Run each kernel
-    for (k = 0; k < NUM_KER; k = k + 1)  begin
+    // test1
+    for (k = 0; k < 4; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
         $finish;
       end else begin
-        $display("Test1: Kernel 1 starts testing data %d", k + 1);
+        $display("Test1: Kernel 1 starts testing mode %d", k + 1);
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
 
-      stream_meta(KERNEL_BASE, MODE_BASE + k, get_LEN(k));
+      stream_meta(KERNEL_BASE, MODE_BASE + k, LEN[k][15:0]);
       fork
         // DMA in
         ss_stream_in(get_LEN(k), k);
-        // DMA out
-        sm_stream_out(get_LEN(k), k);
         // FW thread
         begin
           start_time = $time;
-          wait_ap_done(k);
+          sm_stream_meta(length, mode);
+          sm_stream_out(length, mode);
+          wait_ap_done(0);
           end_time = $time;
           latency = end_time - start_time;
           $display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
@@ -549,7 +540,8 @@ module fiFFNTT_tb;
     fork
       test2_data_in;
       for (k = 0; k < 4; k = k + 1) begin
-        sm_stream_out(get_LEN(0), 0);
+        sm_stream_meta(length, mode);
+        sm_stream_out(length, mode);
       end
     join
     $display("Test2 pass!!");
@@ -558,12 +550,13 @@ module fiFFNTT_tb;
     fork
       test3_data_in;
       for (k = 0; k < 100; k = k + 1) begin
-        sm_stream_out(get_LEN(0), 0);
+        sm_stream_meta(length, mode);
+        sm_stream_out(length, mode);
       end
     join
     $display("Test3 pass!!");
   end
 
-  //$finish;
+  $finish;
   
 endmodule
