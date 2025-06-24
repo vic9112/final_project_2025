@@ -1,0 +1,101 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Tue Jun 24 08:08:28 2025
+[*]
+[dumpfile] "/home/u110/u110022124/SOC/bpe_v5/1.RTL_simulation/butterfly.vcd"
+[dumpfile_mtime] "Tue Jun 24 08:04:57 2025"
+[dumpfile_size] 208859465
+[savefile] "/home/u110/u110022124/SOC/bpe_v5/1.RTL_simulation/bpe_wave.gtkw"
+[timestart] 0
+[size] 1280 729
+[pos] -1 -1
+*-20.293137 4254000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] butterfly_tb.
+[treeopen] butterfly_tb.BUTTERFLY_DUT.
+[sst_width] 229
+[signals_width] 261
+[sst_expanded] 1
+[sst_vpaned_height] 188
+@28
+butterfly_tb.BUTTERFLY_DUT.clk
+butterfly_tb.BUTTERFLY_DUT.mode_state[1:0]
+@24
+butterfly_tb.BUTTERFLY_DUT.count[4:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.i_vld
+butterfly_tb.BUTTERFLY_DUT.i_rdy
+@23
+butterfly_tb.switch_count[3:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.mode[1:0]
+butterfly_tb.BUTTERFLY_DUT.state_next[2:0]
+butterfly_tb.BUTTERFLY_DUT.state[2:0]
+butterfly_tb.BUTTERFLY_DUT.trans_en
+butterfly_tb.BUTTERFLY_DUT.mode_state[1:0]
+butterfly_tb.BUTTERFLY_DUT.buf_en
+butterfly_tb.BUTTERFLY_DUT.buf_i_vld
+butterfly_tb.BUTTERFLY_DUT.i_vld_en
+@22
+butterfly_tb.BUTTERFLY_DUT.ai[127:0]
+butterfly_tb.BUTTERFLY_DUT.bi[127:0]
+butterfly_tb.BUTTERFLY_DUT.gm[127:0]
+butterfly_tb.BUTTERFLY_DUT.ao[127:0]
+butterfly_tb.BUTTERFLY_DUT.bo[127:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.o_vld
+butterfly_tb.BUTTERFLY_DUT.o_rdy
+butterfly_tb.BUTTERFLY_DUT.rst_n
+@200
+-mul1
+@28
+butterfly_tb.BUTTERFLY_DUT.mul1.in_valid
+@22
+butterfly_tb.BUTTERFLY_DUT.mul1.in_A[127:0]
+butterfly_tb.BUTTERFLY_DUT.mul1.in_B[127:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.mul1.out_valid
+@22
+butterfly_tb.BUTTERFLY_DUT.mul1.result_int[127:0]
+butterfly_tb.BUTTERFLY_DUT.mul1.result_c[127:0]
+@200
+-mul1_complex_output
+@28
+butterfly_tb.BUTTERFLY_DUT.mul1.cmul_im_ready
+butterfly_tb.BUTTERFLY_DUT.mul1.cmul_re_ready
+@200
+-mul1_montgomery_output
+@22
+butterfly_tb.BUTTERFLY_DUT.mul1.mont_n_valid[7:0]
+@200
+-mul2
+-mul2_complex_output
+@28
+butterfly_tb.BUTTERFLY_DUT.mul1.cmul_im_ready
+butterfly_tb.BUTTERFLY_DUT.mul1.cmul_re_ready
+@200
+-mul12_montgomery_output
+@22
+butterfly_tb.BUTTERFLY_DUT.mul1.mont_n_valid[7:0]
+@200
+-fp_add01
+@28
+butterfly_tb.BUTTERFLY_DUT.fp_add_01.in_valid
+@22
+butterfly_tb.BUTTERFLY_DUT.fp_add_01.in_A[63:0]
+butterfly_tb.BUTTERFLY_DUT.fp_add_01.in_B[63:0]
+butterfly_tb.BUTTERFLY_DUT.fp_add_01.result[63:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.fp_add_01.out_valid
+@200
+-fp_add02
+@28
+butterfly_tb.BUTTERFLY_DUT.fp_add_02.in_valid
+@22
+butterfly_tb.BUTTERFLY_DUT.fp_add_02.in_A[63:0]
+butterfly_tb.BUTTERFLY_DUT.fp_add_02.in_B[63:0]
+butterfly_tb.BUTTERFLY_DUT.fp_add_02.result[63:0]
+@28
+butterfly_tb.BUTTERFLY_DUT.fp_add_02.out_valid
+butterfly_tb.BUTTERFLY_DUT.clk
+[pattern_trace] 1
+[pattern_trace] 0
