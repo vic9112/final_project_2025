@@ -119,7 +119,7 @@ module fiFFNTT
     wire [pIOPS_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
 
     // BPE activation control
-    wire [3:0]  k1_bpe_act, k2_bpe_act, k3_bpe_act, k4_bpe_act;
+    wire [4:0]  k1_bpe_act, k2_bpe_act, k3_bpe_act, k4_bpe_act;
     // double-speed clock
     wire clk_2;
 
@@ -199,6 +199,228 @@ module fiFFNTT
     assign ap_read = read_ap_stat_tmp;
 
     /*================================================================================================
+    #                                            Data Ram                                            #
+    ================================================================================================*/
+    // declaration
+    wire        data_ram_en;
+    wire [ 3:0] data_ram_we;
+    wire [31:0] data_ram_do;
+    reg  [12:0] data_ram_aout;
+    reg  [12:0] data_ram_ain;
+    wire [12:0] data_ram_a;
+    reg  [15:0] data_length;
+    reg  [ 7:0] kernal_mode;
+    reg  [11:0] meta_counter;
+    reg         data_ram_state;
+    reg  [31:0] meta_data;
+    wire [12:0] bit_reverse_a512;
+    wire [12:0] bit_reverse_a1024;
+    wire [12:0] normal_order_a;
+    wire [10:0] address_counter;
+    reg         ss_tvalid2_reg;
+    wire        ss_tvalid2;
+    wire        ss_tready2;
+    wire [31:0] ss_tdata2;
+    parameter STREAM_IN  = 0;
+    parameter STREAM_OUT = 1;
+    // implementation
+
+    //////////////////////
+    // decode meta data //
+    //////////////////////
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        data_length <= 16'hFFFF;
+        kernal_mode <= 0;
+      end else begin
+          data_length <= (ss_tready && ss_tvalid && meta_counter == 12'h0) ? ss_tdata[15:0]  : data_length;
+          kernal_mode <= (ss_tready && ss_tvalid && meta_counter == 12'h0) ? ss_tdata[23:16] : kernal_mode;
+          meta_data   <= (ss_tready && ss_tvalid && meta_counter == 12'h0) ? ss_tdata        : meta_data;
+      end
+    end
+
+    //////////////////
+    // meta counter //
+    //////////////////
+    wire counter_en;
+    assign counter_en = ss_tready && ss_tvalid && data_ram_state == STREAM_IN || ss_tready2 && ss_tvalid2 && data_ram_state == STREAM_OUT;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        meta_counter <= 12'h0;
+      end else begin
+          if (counter_en) begin
+              if (meta_counter < data_length) begin
+                meta_counter <= meta_counter + 1;
+              end else begin
+                meta_counter <= 12'h0;
+              end
+          end else begin
+            meta_counter <= meta_counter;
+          end
+        end
+    end
+
+
+    ///////////////////
+    // state control //
+    ///////////////////
+    wire state_trans;
+    assign state_trans = ss_tready && ss_tvalid && meta_counter == data_length || ss_tready2 && ss_tvalid2 && meta_counter == data_length;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        data_ram_state <= STREAM_IN;
+      end else begin
+        data_ram_state <= (state_trans) ? ~data_ram_state : data_ram_state;
+      end
+    end
+
+    ///////////////////////////////////
+    // counter and address generator //
+    ///////////////////////////////////
+    //normal order address
+    assign address_counter = meta_counter - 1;
+    // bit reverse order address
+    assign normal_order_a = {address_counter, 2'b00};
+    
+    //data_ram_ain
+
+    reg [8:0] FFT_OFFSET;
+    wire FFT_OFFSET_ADD;
+    reg [3:0] pack_counter_fft;
+    wire pack_counter_en_fft;
+
+    assign FFT_OFFSET_ADD = ss_tready && ss_tvalid && data_ram_state == STREAM_IN && pack_counter_fft == 3;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        FFT_OFFSET <= 0;
+      end else begin 
+        FFT_OFFSET <= (meta_counter == 0) ? 0 : (FFT_OFFSET_ADD) ? (FFT_OFFSET == 511) ? 0 : FFT_OFFSET + 1 : FFT_OFFSET;
+      end
+    end
+
+    assign pack_counter_en_fft = ss_tready && ss_tvalid && data_ram_state == STREAM_IN && kernal_mode[2:1] == 2'b10;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        pack_counter_fft <= 4'h0;
+      end else begin 
+        pack_counter_fft <= (pack_counter_en_fft) ? (meta_counter == 0) ? 0 : (pack_counter_fft == 3) ? 0 : pack_counter_fft + 1 : pack_counter_fft;
+      end
+    end
+
+    assign bit_reverse_a512 = {pack_counter_fft, 2'b00}+ 
+                            {FFT_OFFSET[0], FFT_OFFSET[1], FFT_OFFSET[2], FFT_OFFSET[3], FFT_OFFSET[4], 
+                                    FFT_OFFSET[5], FFT_OFFSET[6], FFT_OFFSET[7], FFT_OFFSET[8], 4'b0000};
+    assign bit_reverse_a1024 = {1'b0, address_counter[0], address_counter[1], address_counter[2], address_counter[3],
+                                address_counter[4], address_counter[5], address_counter[6], address_counter[7], address_counter[8], address_counter[9], 2'b00};
+
+    reg [9:0] NTT_OFFSET1;
+    wire      NTT_OFFSET1_ADD;
+    reg       NTT_OFFSET2;
+    wire      NTT_OFFSET2_ADD;
+    reg       NTT_OFFSET3;
+    wire      NTT_OFFSET3_ADD;
+    reg [3:0] pack_counter_ntt;
+    wire      pack_counter_en_ntt;
+
+    assign pack_counter_en_ntt = ss_tready2 && ss_tvalid2 && data_ram_state == STREAM_OUT && kernal_mode[2:1] == 2'b11;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        pack_counter_ntt <= 4'h0;
+      end else begin 
+        pack_counter_ntt <= (meta_counter == 0) ? 0 : (pack_counter_en_ntt) ? (pack_counter_ntt == 7) ? 0 : pack_counter_ntt + 1 : pack_counter_ntt;
+      end
+    end
+
+    assign NTT_OFFSET1_ADD = ss_tready2 && ss_tvalid2 && data_ram_state == STREAM_OUT && pack_counter_ntt == 7;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        NTT_OFFSET1 <= 0;
+      end else begin 
+        NTT_OFFSET1 <= (meta_counter == 0) ? 0 : (NTT_OFFSET1_ADD) ? (NTT_OFFSET1 == 511) ? 0 : NTT_OFFSET1 + 4 : NTT_OFFSET1;
+      end
+    end
+
+    assign NTT_OFFSET2_ADD = ss_tready2 && ss_tvalid2 && data_ram_state == STREAM_OUT && pack_counter_ntt == 7;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        NTT_OFFSET2 <= 0;
+      end else begin 
+        NTT_OFFSET2 <= (meta_counter == 0) ? 0 : (NTT_OFFSET2_ADD) ? ~ NTT_OFFSET2 : NTT_OFFSET2;
+      end
+    end
+
+    wire [9:0] NTT_OFFSET_MUX;
+    wire [12:0] NTT_COEF_AOUT;
+    assign NTT_OFFSET_MUX = (NTT_OFFSET2) ? 512 + NTT_OFFSET1 - 4 + pack_counter_ntt : NTT_OFFSET1 + pack_counter_ntt;
+    assign NTT_COEF_AOUT  = pack_counter_ntt * 4 + {NTT_OFFSET1[0], NTT_OFFSET1[1], NTT_OFFSET1[2], NTT_OFFSET1[3], NTT_OFFSET1[4], NTT_OFFSET1[5], NTT_OFFSET1[6], NTT_OFFSET1[7],NTT_OFFSET1[8], 4'b0000 };
+
+    wire coef_mode;
+    assign coef_mode = kernal_mode[7:4] == 4'h1;
+
+    always @* begin
+      if (coef_mode) begin
+        if (data_length == 1024) begin
+          data_ram_ain = normal_order_a;
+          data_ram_aout = normal_order_a;
+        end else begin
+          data_ram_ain =  normal_order_a;
+          data_ram_aout =  NTT_COEF_AOUT;
+        end
+      end else if (kernal_mode[0]) begin
+        if (data_length == 2048) begin
+          data_ram_ain = bit_reverse_a512;
+          data_ram_aout = normal_order_a;
+        end else begin
+          data_ram_ain =  bit_reverse_a1024;
+          data_ram_aout =  {1'b0, NTT_OFFSET_MUX, 2'b0};
+        end
+      end else begin
+        if (data_length == 2048) begin
+          data_ram_ain = normal_order_a;
+          data_ram_aout =  normal_order_a;
+        end else begin
+          data_ram_ain = normal_order_a;
+          data_ram_aout = {1'b0, NTT_OFFSET_MUX, 2'b0};
+        end
+      end
+    end 
+
+
+
+    //data_ram_aout
+    assign data_ram_a = (data_ram_state) ? data_ram_aout : data_ram_ain;
+    assign data_ram_we = {4{(ss_tvalid && ss_tready)&& !ss_tvalid2}};
+    assign data_ram_en = ss_tready || ss_tready2;
+
+    bram2048x32 Data_Ram (
+      .CLK  (clk),
+      .WE   (data_ram_we),
+      .EN   (data_ram_en),
+      .Di   (ss_tdata),
+      .Do   (data_ram_do),
+      .A    (data_ram_a)
+    );
+
+    assign ss_tready = !data_ram_state;
+    /////////////////////////////////
+    // axi_stream from here to IOP //
+    /////////////////////////////////
+    assign ss_tdata2 = meta_counter == 1 ? meta_data : data_ram_do;
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        ss_tvalid2_reg <= 0;
+      end else begin
+        ss_tvalid2_reg <= data_ram_state;
+      end
+    end
+    assign ss_tvalid2 = ss_tvalid2_reg;
+
+    wire ss_vld;
+    assign ss_vld = ss_tvalid2 && !(meta_counter == 0 && data_ram_state == 1);
+
+    /*================================================================================================
     #                                            IOP                                                 #
     ================================================================================================*/
     stage_top #(
@@ -213,10 +435,10 @@ module fiFFNTT
       .coef_ctrl   (coef_ctrl),
       .ap_read     (ap_read),
 
-      .ss_vld      (ss_tvalid),
-      .ss_dat      (ss_tdata),
+      .ss_vld      (ss_vld),
+      .ss_dat      (ss_tdata2),
       .ss_lst      (ss_tlast),
-      .ss_rdy      (ss_tready),
+      .ss_rdy      (ss_tready2),
       
       .sm_rdy      (sm_tready),
       .sm_vld      (sm_tvalid),
@@ -410,7 +632,5 @@ module fiFFNTT
         .decode     (decode4),
         .sw_lst     (k4_sw_lst)
     );
-
+    
 endmodule
-
-
