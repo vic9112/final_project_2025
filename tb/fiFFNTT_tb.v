@@ -146,7 +146,7 @@ module fiFFNTT_tb;
     .sm_tlast   (sm_tlast)
   );
 
-  my_mailbox #(
+  mailbox #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
     .MB_COUNT(NUM_KER)

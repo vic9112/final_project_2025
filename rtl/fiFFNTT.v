@@ -114,7 +114,7 @@ module fiFFNTT
     wire [(pIOPS_WIDTH-1):0] k4_store_dat;
 
     // Coefficient port signals
-    wire k1_coef_vld, k2_coef_vld, k3_coef_vld, k4_coef_vld;
+    wire [4:0] k1_coef_vld, k2_coef_vld, k3_coef_vld, k4_coef_vld;
     wire k1_coef_rdy, k2_coef_rdy, k3_coef_rdy, k4_coef_rdy;
     wire [pIOPS_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
 
@@ -535,7 +535,7 @@ module fiFFNTT
     /*================================================================================================
     #                                          Kernels                                               #
     ================================================================================================*/    
-    kernel #(
+    kernel_top #(
       .pDATA_WIDTH(pIOPS_WIDTH)
     ) kernel1 (
       .clk        (clk_k1),
@@ -561,7 +561,7 @@ module fiFFNTT
       .sw_lst     (k1_sw_lst)
     );
 
-    kernel #(
+    kernel_top #(
         .pDATA_WIDTH(pIOPS_WIDTH)
     ) kernel2 (
         .clk        (clk_k2),
@@ -587,7 +587,7 @@ module fiFFNTT
         .sw_lst     (k2_sw_lst)
     );
 
-    kernel #(
+    kernel_top #(
         .pDATA_WIDTH(pIOPS_WIDTH)
     ) kernel3 (
         .clk        (clk_k3),
@@ -613,7 +613,7 @@ module fiFFNTT
         .sw_lst     (k3_sw_lst)
     );
 
-    kernel #(
+    kernel_top #(
         .pDATA_WIDTH(pIOPS_WIDTH)
     ) kernel4 (
         .clk        (clk_k4),

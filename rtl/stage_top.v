@@ -7,7 +7,6 @@ module stage_top
 )
 (
   input   wire                     clk,
-  input   wire                     clk_2x,
   input   wire                     rstn,
 
   //input   wire               [1:0] in1_sw,  // not used for now
