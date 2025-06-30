@@ -144,7 +144,7 @@ module fiFFNTT
     end
 
     always @(*) begin
-      // axi write (not used for now)
+      // axi write (used for coef_done)
       if (awvalid && wvalid && !wready) begin
         awready_next = PULL_UP;
         wready_next = PULL_UP;
@@ -188,6 +188,12 @@ module fiFFNTT
       end else begin
         read_ap_stat_next = PULL_DN;
       end
+
+      // if (araddr_tmp == COEF_STAT && wready && wvalid && !coef_ctrl_tmp) begin
+      //   coef_ctrl_next = PULL_UP; //wdata
+      // end else begin
+      //   coef_ctrl_next = coef_ctrl_tmp;
+      // end
     end
 
     // assign to port wire
