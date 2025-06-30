@@ -352,6 +352,7 @@ localparam FINISH_4th = 33;  // 100001
 wire ld_rdy_4th;
 
 // registers for output signals
+reg coef_4th_rdy;
 reg ss_rdy_4th_r, sm_vld_4th_r;
 reg [pDATA_WIDTH-1:0] BPE4_coef_r, BPE4_ain_r, BPE4_bin_r;
 reg BPE4_i_vld_r, BPE4_o_rdy_r;
@@ -382,6 +383,7 @@ reg [1:0] data_reg_4th_ram1_next[0:pDATA_WIDTH-1];
 reg [1:0] data_reg_4th_ram2[0:pDATA_WIDTH-1];
 reg [1:0] data_reg_4th_ram2_next[0:pDATA_WIDTH-1];
 
+reg [(pDATA_WIDTH-1):0] data_789;
 // ==============================BPE 5=========================== //
 
 // parameters for BPE5
@@ -396,7 +398,8 @@ localparam BPE_O1_5th = 6;
 localparam BPE_O2_5th = 7;
 localparam BPE_O3_5th = 8;
 localparam FINISH_5th = 9;
-
+//
+wire [(pDATA_WIDTH-1):0] ld_dat_5th;
 // BPE5 output interface
 reg BPE5_i_vld_r, BPE5_o_rdy_r; 
 
@@ -2255,7 +2258,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg [$clog2(DATA_LENGTH)-1:0] in_cnt_4th, out_cnt_4th, bpe_in_cnt_4th, bpe_out_cnt_4th, coef_cnt_4th;
     // wire[$clog2(DATA_LENGTH)-1:0] in_cnt_4th_next, out_cnt_4th_next, bpe_in_cnt_4th_next, bpe_out_cnt_4th_next, coef_cnt_4th_next;
 
-    assign in_cnt_4th_next = (ss_vld_4th && ss_rdy_4th) ? in_cnt_4th + 1 : in_cnt_4th;
+    assign in_cnt_4th_next = (ld_vld_4th && ss_rdy_4th) ? in_cnt_4th + 1 : in_cnt_4th;
     assign out_cnt_4th_next = (sm_vld_4th && sm_rdy_4th) ? out_cnt_4th + 1 : out_cnt_4th;
     assign bpe_in_cnt_4th_next = (BPE4_i_vld && BPE4_i_rdy) ? bpe_in_cnt_4th + 1 : bpe_in_cnt_4th;
     assign bpe_out_cnt_4th_next = (BPE4_o_vld && BPE4_o_rdy) ? bpe_out_cnt_4th + 1 : bpe_out_cnt_4th;
@@ -2357,7 +2360,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 0    
     always @(*)begin
-      if(ss_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th) begin
         for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];
         case(state_4th)
           FILL0_0_4th: data_reg_4th_ram0_next[0] = ld_dat_4th;
@@ -2384,7 +2387,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 1
     always @(*)begin
-      if(ss_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th) begin
         data_reg_4th_ram1_next[1] = data_reg_4th_ram1[0];
         case(state_4th)
           FILL0_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
@@ -2412,7 +2415,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 2
     always @(*)begin
-      if(ss_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th) begin
         data_reg_4th_ram2_next[1] = data_reg_4th_ram2[0];
         case(state_4th)
           FILL0_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
@@ -2519,7 +2522,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE5_dout <= 0;
       end else begin
         sm_vld_5th <= 0;
-        if(state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPEO2 || state_5th == BPE_O3_5th) begin
+        if(state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) begin
           sm_vld_5th <= 1; 
           BPE5_dout <= ~out_cnt_5th[0] ? delay_aout_5th[3] : data_reg_5th_ram0;
         end
