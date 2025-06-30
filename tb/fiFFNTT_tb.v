@@ -451,7 +451,10 @@ module fiFFNTT_tb;
       end
       kernel_start(2, 0);
 
-      rand_time = $urandom_range(0, 999);
+      rand_time = $random % 1000;
+      if (rand_time < 0) begin
+        rand_time = -rand_time;
+      end
       #(rand_time * CLK_PERIOD);
 
       polling;
