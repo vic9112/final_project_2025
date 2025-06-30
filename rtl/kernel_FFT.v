@@ -230,6 +230,7 @@ wire [8:0] bpe2_input_counter_next;
 wire [13:0] bpe2_output_addr;
 reg [8:0] bpe2_output_counter;
 wire [8:0] bpe2_output_counter_next;
+wire ld_sram_512_vld;
 
 
 
