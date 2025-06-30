@@ -368,7 +368,7 @@ wire[$clog2(DATA_LENGTH)-1:0] in_cnt_4th_next, out_cnt_4th_next, bpe_in_cnt_4th_
 reg [pDATA_WIDTH-1:0] COE0_0_4th, COE0_1_4th, COE0_2_4th;
 reg [pDATA_WIDTH-1:0] COE1_0_4th, COE1_1_4th, COE1_2_4th;
 reg [pDATA_WIDTH-1:0] COE2_0_4th, COE2_1_4th, COE2_2_4th;
-reg [pDATA_WIDTH-1:0] COE3_0_4th, COE3_1_4th, COE3_2_4th
+reg [pDATA_WIDTH-1:0] COE3_0_4th, COE3_1_4th, COE3_2_4th;
 wire [pDATA_WIDTH-1:0] COE0_0_4th_tmp, COE0_1_4th_tmp, COE0_2_4th_tmp;
 wire [pDATA_WIDTH-1:0] COE1_0_4th_tmp, COE1_1_4th_tmp, COE1_2_4th_tmp;
 wire [pDATA_WIDTH-1:0] COE2_0_4th_tmp, COE2_1_4th_tmp, COE2_2_4th_tmp;
@@ -408,7 +408,7 @@ reg ss_rdy_5th, sm_vld_5th;
 reg coef_5th_rdy;
 
 // BPE5 data output
-reg [pDATA_WIDTH-1:0] BPE5_dout;
+reg [pDATA_WIDTH-1:0] BPE5_dout;//438 
 
 // Counters for BPE5
 reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
@@ -421,7 +421,7 @@ wire[3:0] bpe_out_cnt_5th_next;
 // Data register for 5th BPE
 reg [pDATA_WIDTH-1:0] data_reg_5th_ram0, data_reg_5th_ram0_next;
 reg [pDATA_WIDTH-1:0] delay_aout_5th [3:0];
-reg [pDATA_WIDTH-1:0] delay_aout_5th_next [3:0]
+reg [pDATA_WIDTH-1:0] delay_aout_5th_next [3:0];
 reg [pDATA_WIDTH-1:0] delay_bout_5th_next [3:0];
 reg [pDATA_WIDTH-1:0] delay_bout_5th [3:0];
 
@@ -435,7 +435,7 @@ reg [pDATA_WIDTH:0] output_buffer_w[0:31];
 reg [pDATA_WIDTH:0] output_buffer[0:31]; //
 reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_r; 
 reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
-reg [pDATA_WIDTH-1:0] BPE5_dout;
+//reg [pDATA_WIDTH-1:0] BPE5_dout;
 
 // counters
 reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_r; // output counter for kernel
