@@ -280,32 +280,32 @@ mont_sub mont_sub_16(.in_A(a_result[(pNTT_WTDTH*6-1):(pNTT_WTDTH*5)]), .in_B(mul
 mont_sub mont_sub_17(.in_A(a_result[(pNTT_WTDTH*7-1):(pNTT_WTDTH*6)]), .in_B(mul_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)]), .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6)]), .out_valid(mont_add_valid_o1[6]));
 mont_sub mont_sub_18(.in_A(a_result[(pNTT_WTDTH*8-1):(pNTT_WTDTH*7)]), .in_B(mul_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)]), .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7)]), .out_valid(mont_add_valid_o1[7]));
 
-always @(*) begin
-    mont_add_intt[0] = {1'b0, mont_add_result[(pNTT_WTDTH-1)    :1]};
-    mont_add_intt[1] = {1'b0, mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH+1)]};
-    mont_add_intt[2] = {1'b0, mont_add_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2+1)]};
-    mont_add_intt[3] = {1'b0, mont_add_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3+1)]};
-    mont_add_intt[4] = {1'b0, mont_add_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4+1)]};
-    mont_add_intt[5] = {1'b0, mont_add_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5+1)]};
-    mont_add_intt[6] = {1'b0, mont_add_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6+1)]};
-    mont_add_intt[7] = {1'b0, mont_add_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7+1)]};
-end
-always @(*) begin
-    mont_sub_intt[0] = {1'b0, mont_sub_result[(pNTT_WTDTH-1)    :1]};
-    mont_sub_intt[1] = {1'b0, mont_sub_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH+1)]};
-    mont_sub_intt[2] = {1'b0, mont_sub_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2+1)]};
-    mont_sub_intt[3] = {1'b0, mont_sub_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3+1)]};
-    mont_sub_intt[4] = {1'b0, mont_sub_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4+1)]};
-    mont_sub_intt[5] = {1'b0, mont_sub_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5+1)]};
-    mont_sub_intt[6] = {1'b0, mont_sub_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6+1)]};
-    mont_sub_intt[7] = {1'b0, mont_sub_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7+1)]};
-end
-assign mont_add_intt_result = {mont_add_intt[7], mont_add_intt[6], mont_add_intt[5], mont_add_intt[4], mont_add_intt[3], mont_add_intt[2], mont_add_intt[1], mont_add_intt[0]};
-assign mont_sub_intt_result = {mont_sub_intt[7], mont_sub_intt[6], mont_sub_intt[5], mont_sub_intt[4], mont_sub_intt[3], mont_sub_intt[2], mont_sub_intt[1], mont_sub_intt[0]};
+// always @(*) begin
+//     mont_add_intt[0] = {1'b0, mont_add_result[(pNTT_WTDTH-1)    :1]};
+//     mont_add_intt[1] = {1'b0, mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH+1)]};
+//     mont_add_intt[2] = {1'b0, mont_add_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2+1)]};
+//     mont_add_intt[3] = {1'b0, mont_add_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3+1)]};
+//     mont_add_intt[4] = {1'b0, mont_add_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4+1)]};
+//     mont_add_intt[5] = {1'b0, mont_add_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5+1)]};
+//     mont_add_intt[6] = {1'b0, mont_add_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6+1)]};
+//     mont_add_intt[7] = {1'b0, mont_add_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7+1)]};
+// end
+// always @(*) begin
+//     mont_sub_intt[0] = {1'b0, mont_sub_result[(pNTT_WTDTH-1)    :1]};
+//     mont_sub_intt[1] = {1'b0, mont_sub_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH+1)]};
+//     mont_sub_intt[2] = {1'b0, mont_sub_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2+1)]};
+//     mont_sub_intt[3] = {1'b0, mont_sub_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3+1)]};
+//     mont_sub_intt[4] = {1'b0, mont_sub_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4+1)]};
+//     mont_sub_intt[5] = {1'b0, mont_sub_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5+1)]};
+//     mont_sub_intt[6] = {1'b0, mont_sub_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6+1)]};
+//     mont_sub_intt[7] = {1'b0, mont_sub_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7+1)]};
+// end
+// assign mont_add_intt_result = {mont_add_intt[7], mont_add_intt[6], mont_add_intt[5], mont_add_intt[4], mont_add_intt[3], mont_add_intt[2], mont_add_intt[1], mont_add_intt[0]};
+// assign mont_sub_intt_result = {mont_sub_intt[7], mont_sub_intt[6], mont_sub_intt[5], mont_sub_intt[4], mont_sub_intt[3], mont_sub_intt[2], mont_sub_intt[1], mont_sub_intt[0]};
 
 always @(*) begin
     case (mode_state) 
-    mode_FFT: begin
+    mode_FFT: begin //div 2 in each stage
         ao = cmul_result[0];
         bo = cmul_result[1];
     end
@@ -317,9 +317,9 @@ always @(*) begin
         ao = mont_add_result;
         bo = mont_sub_result;
     end
-    mode_iNTT: begin
-        ao = mont_add_intt_result;
-        bo = mont_sub_intt_result;
+    mode_iNTT: begin //div N in the last stage
+        ao = mont_add_result;
+        bo = mont_sub_result;
     end
     endcase
 end
