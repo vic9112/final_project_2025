@@ -1,0 +1,74 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Sun Jun 29 08:50:58 2025
+[*]
+[dumpfile] "/home/u110/u110022124/SOC/divN/divN.vcd"
+[dumpfile_mtime] "Sun Jun 29 08:36:11 2025"
+[dumpfile_size] 33012252
+[savefile] "/home/u110/u110022124/SOC/divN/divN.gtkw"
+[timestart] 191400
+[size] 1280 729
+[pos] -1 -1
+*-14.576676 249800 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] mul_tb.
+[treeopen] mul_tb.mul_DUT.
+[sst_width] 229
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 188
+@28
+mul_tb.clk
+mul_tb.rst_n
+mul_tb.in_valid
+@22
+mul_tb.A[127:0]
+mul_tb.mul_DUT.in_B[127:0]
+mul_tb.mul_DUT.result_int[127:0]
+@28
+mul_tb.mul_DUT.out_valid
+@200
+-arrayB
+@22
+mul_tb.mul_DUT.mul16_array_b.in_A[63:0]
+mul_tb.mul_DUT.mul16_array_b.in_B[63:0]
+@28
+mul_tb.mul_DUT.mul16_array_b.in_valid
+mul_tb.mul_DUT.mul16_array_b.out_valid
+@200
+-arrayC
+@22
+mul_tb.mul_DUT.mul16_array_c.in_A[63:0]
+mul_tb.mul_DUT.mul16_array_c.in_B[63:0]
+@28
+mul_tb.mul_DUT.mul16_array_c.in_valid
+mul_tb.mul_DUT.mul16_array_c.out_valid
+@200
+-arrayA
+@22
+mul_tb.mul_DUT.mul16_array_a.in_B0[63:0]
+mul_tb.mul_DUT.mul16_array_a.in_B1[63:0]
+@23
+mul_tb.mul_DUT.mul16_array_a.result_00[31:0]
+@28
+mul_tb.mul_DUT.mul16_array_a.in_valid
+mul_tb.mul_DUT.mul16_array_a.out_valid
+@200
+-CLA33_1
+@22
+mul_tb.mul_DUT.CLA33_1.A[32:0]
+mul_tb.mul_DUT.CLA33_1.B[32:0]
+mul_tb.mul_DUT.CLA33_1.result[33:0]
+@28
+mul_tb.mul_DUT.CLA33_1.in_valid
+mul_tb.mul_DUT.CLA33_1.out_valid
+@200
+-CLA17_1
+@22
+mul_tb.mul_DUT.CLA17_1.A[16:0]
+mul_tb.mul_DUT.CLA17_1.B[16:0]
+mul_tb.mul_DUT.CLA17_1.result[17:0]
+@28
+mul_tb.mul_DUT.CLA17_1.in_valid
+mul_tb.mul_DUT.CLA17_1.out_valid
+[pattern_trace] 1
+[pattern_trace] 0
