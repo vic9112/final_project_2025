@@ -2193,10 +2193,10 @@ module stage_top
   //////////////
   // coef vld //
   //////////////
-  assign k1_coef_vld = (k1_mode == 2'b10) ? (coef_vld_mux == 1) : (k1_mode == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-  assign k2_coef_vld = (k2_mode == 2'b10) ? (coef_vld_mux == 2) : (k2_mode == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-  assign k3_coef_vld = (k3_mode == 2'b10) ? (coef_vld_mux == 3) : (k3_mode == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-  assign k4_coef_vld = (k4_mode == 2'b10) ? (coef_vld_mux == 4) : (k4_mode == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld = (k1_mode_r == 2'b10) ? (coef_vld_mux == 1) : (k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld = (k2_mode_r == 2'b10) ? (coef_vld_mux == 2) : (k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld = (k3_mode_r == 2'b10) ? (coef_vld_mux == 3) : (k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld = (k4_mode_r == 2'b10) ? (coef_vld_mux == 4) : (k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
 
   /*----------------------------------------------------------------
                       sm pack and stream out

@@ -21,17 +21,17 @@ module kernel_top
 
     output wire               [4:0] bpe_act,     // for bpe1 to bpe5 activate
 
-    input  wire               [7:0] mode,        // iNTT(11)/NTT(10)/iFFT(01)/FFT(00)
+    input  wire               [7:0] mode,        // FFT:3 IFFT:2 NTT:1 INTT:0 //from butterfly.v
     input  wire                     decode,
     output wire                     sw_lst       // set when handshake
 );
 
 
 // =============== mode constants =============== //
-    localparam MODE_FFT  = 2'b00;
-    localparam MODE_IFFT = 2'b01;
-    localparam MODE_NTT  = 2'h10;
-    localparam MODE_INTT = 2'h11;
+    localparam MODE_FFT  = 2'b11;
+    localparam MODE_IFFT = 2'b10;
+    localparam MODE_NTT  = 2'b01;
+    localparam MODE_INTT = 2'b00;
 
 // =============== mode selection =============== //
     reg [7:0] mode_state;
