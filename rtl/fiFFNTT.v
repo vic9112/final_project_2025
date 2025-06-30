@@ -115,7 +115,7 @@ module fiFFNTT
 
     // Coefficient port signals
     wire [4:0] k1_coef_vld, k2_coef_vld, k3_coef_vld, k4_coef_vld;
-    wire k1_coef_rdy, k2_coef_rdy, k3_coef_rdy, k4_coef_rdy;
+    wire [4:0] k1_coef_rdy, k2_coef_rdy, k3_coef_rdy, k4_coef_rdy;
     wire [pIOPS_WIDTH-1:0] k1_coef_dat, k2_coef_dat, k3_coef_dat, k4_coef_dat;
 
     // BPE activation control

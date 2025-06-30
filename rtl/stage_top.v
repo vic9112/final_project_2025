@@ -37,7 +37,7 @@ module stage_top
   input   wire [(pDATA_WIDTH-1):0] k1_sw_dat,
 
   output  wire               [4:0] k1_coef_vld,
-  input   wire                     k1_coef_rdy,
+  input   wire               [4:0] k1_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k1_coef_dat,
   input   wire               [4:0] k1_bpe_act,
 
@@ -58,7 +58,7 @@ module stage_top
   output  wire                     decode2, 
   input   wire                     k2_sw_lst,
   output  wire               [4:0] k2_coef_vld,
-  input   wire                     k2_coef_rdy,
+  input   wire               [4:0] k2_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k2_coef_dat,
   input   wire               [4:0] k2_bpe_act,
 
@@ -75,7 +75,7 @@ module stage_top
   output  wire                     decode3, 
   input   wire                     k3_sw_lst,
   output  wire               [4:0] k3_coef_vld,
-  input   wire                     k3_coef_rdy,
+  input   wire               [4:0] k3_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k3_coef_dat,
   input   wire               [4:0] k3_bpe_act,
   
@@ -92,7 +92,7 @@ module stage_top
   output  wire                     decode4,
   input   wire                     k4_sw_lst,
   output  wire               [4:0] k4_coef_vld,
-  input   wire                     k4_coef_rdy,
+  input   wire               [4:0] k4_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k4_coef_dat,
   input   wire               [4:0] k4_bpe_act
 );

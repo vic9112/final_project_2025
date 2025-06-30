@@ -22,8 +22,8 @@ module kernel_top
     input  wire                     sw_rdy,
     output  [(pDATA_WIDTH-1):0]     sw_dat,
 
-    input  wire                     coef_vld,
-    output                          coef_rdy,
+    input  wire               [4:0] coef_vld,
+    output                    [4:0] coef_rdy,
     input  wire [(pDATA_WIDTH-1):0] coef_dat, 
 
     output                [4:0]     bpe_act,     // for bpe1 to bpe5 activate
