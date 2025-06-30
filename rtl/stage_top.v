@@ -37,7 +37,7 @@ module stage_top
   output  wire                     k1_sw_rdy,
   input   wire [(pDATA_WIDTH-1):0] k1_sw_dat,
 
-  output  wire                     k1_coef_vld,
+  output  wire               [4:0] k1_coef_vld,
   input   wire                     k1_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k1_coef_dat,
   input   wire               [4:0] k1_bpe_act,
@@ -58,7 +58,7 @@ module stage_top
   output  wire               [7:0] k2_mode,
   output  wire                     decode2, 
   input   wire                     k2_sw_lst,
-  output  wire                     k2_coef_vld,
+  output  wire               [4:0] k2_coef_vld,
   input   wire                     k2_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k2_coef_dat,
   input   wire               [4:0] k2_bpe_act,
@@ -75,7 +75,7 @@ module stage_top
   output  wire               [7:0] k3_mode,
   output  wire                     decode3, 
   input   wire                     k3_sw_lst,
-  output  wire                     k3_coef_vld,
+  output  wire               [4:0] k3_coef_vld,
   input   wire                     k3_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k3_coef_dat,
   input   wire               [4:0] k3_bpe_act,
@@ -92,7 +92,7 @@ module stage_top
   output  wire               [7:0] k4_mode,
   output  wire                     decode4,
   input   wire                     k4_sw_lst,
-  output  wire                     k4_coef_vld,
+  output  wire               [4:0] k4_coef_vld,
   input   wire                     k4_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k4_coef_dat,
   input   wire               [4:0] k4_bpe_act
@@ -163,20 +163,36 @@ module stage_top
   wire                      k2_pop;
   wire                      k3_pop;
   wire                      k4_pop;
+  wire                      k5_pop;
+  wire                      k6_pop;
+  wire                      k7_pop;
+  wire                      k8_pop;
+  wire                      k9_pop;
+  wire                      k10_pop;
+  wire                      k11_pop;
+  wire                      k12_pop;
+  wire                      k13_pop;
+  wire                      k14_pop;
+  wire                      k15_pop;
+  wire                      k16_pop;
+  wire                      k17_pop;
+  wire                      k18_pop;
+  wire                      k19_pop;
+  wire                      k20_pop;
   wire                      k1_push;
   wire                      k2_push;
   wire                      k3_push;
   wire                      k4_push;
   wire                      push;
   wire                      pop;
-  reg   [2:0]               fetching_kernal;
-  reg   [2:0]               fetching_kernal_next;
-  reg   [3:0]               acted_table;
+  reg   [ 4:0]              fetching_kernal;
+  reg   [ 4:0]              fetching_kernal_next;
+  reg   [19:0]              acted_table;
   wire                      k1_coef_en;
   wire                      k2_coef_en;
   wire                      k3_coef_en;
   wire                      k4_coef_en;
-  wire  [2:0]               coef_vld_mux;
+  wire  [ 4:0]              coef_vld_mux;
 
 
   // send coef to kernal
@@ -297,6 +313,10 @@ module stage_top
   wire  [ 7:0]               k4_mux;
   // coef address generator
   wire  [12:0]               coef_fetch_a;
+  reg   [ 4:0]               k1_coef_vld_r;
+  reg   [ 4:0]               k2_coef_vld_r;
+  reg   [ 4:0]               k3_coef_vld_r;
+  reg   [ 4:0]               k4_coef_vld_r;
 
   // ntt send coef to kernal
   wire  [12:0]               ntt_kernal_a;
@@ -622,20 +642,58 @@ module stage_top
   assign k4_push = |k4_bpe_act;
 
   assign push = k1_push || k2_push || k3_push || k4_push;
-  assign pop  = k1_pop  || k2_pop  || k3_pop  || k4_pop;
-  assign isempty = !(acted_table == 4'b0000) ? 0 : 1;
+
+  assign pop  = k1_pop   || k2_pop   || k3_pop   || k4_pop  ||
+                k5_pop   || k6_pop   || k7_pop   || k8_pop  ||
+                k9_pop   || k10_pop  || k11_pop  || k12_pop ||
+                k13_pop  || k14_pop  || k15_pop  || k16_pop ||
+                k17_pop  || k18_pop  || k19_pop  || k20_pop;
+
+  assign isempty = !(acted_table == 20'h00000) ? 0 : 1;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
-      acted_table[0] <= 0;
-      acted_table[1] <= 0;
-      acted_table[2] <= 0;
-      acted_table[3] <= 0;
+      acted_table[ 0] <= 0;
+      acted_table[ 1] <= 0;
+      acted_table[ 2] <= 0;
+      acted_table[ 3] <= 0;
+      acted_table[ 4] <= 0;
+      acted_table[ 5] <= 0;
+      acted_table[ 6] <= 0;
+      acted_table[ 7] <= 0;
+      acted_table[ 8] <= 0;
+      acted_table[ 9] <= 0;
+      acted_table[10] <= 0;
+      acted_table[11] <= 0;
+      acted_table[12] <= 0;
+      acted_table[13] <= 0;
+      acted_table[14] <= 0;
+      acted_table[15] <= 0;
+      acted_table[16] <= 0;
+      acted_table[17] <= 0;
+      acted_table[18] <= 0;
+      acted_table[19] <= 0;
     end else begin
-      acted_table[0] <= (k1_push) ? 1 : (k1_pop) ? 0 : acted_table[0];
-      acted_table[1] <= (k2_push) ? 1 : (k2_pop) ? 0 : acted_table[1];
-      acted_table[2] <= (k3_push) ? 1 : (k3_pop) ? 0 : acted_table[2];
-      acted_table[3] <= (k4_push) ? 1 : (k4_pop) ? 0 : acted_table[3];
+      acted_table[ 0] <= (k1_bpe_act[0]) ? 1 : (k1_pop ) ? 0 : acted_table[ 0];
+      acted_table[ 1] <= (k1_bpe_act[1]) ? 1 : (k2_pop ) ? 0 : acted_table[ 1];
+      acted_table[ 2] <= (k1_bpe_act[2]) ? 1 : (k3_pop ) ? 0 : acted_table[ 2];
+      acted_table[ 3] <= (k1_bpe_act[3]) ? 1 : (k4_pop ) ? 0 : acted_table[ 3];
+      acted_table[ 4] <= (k1_bpe_act[4]) ? 1 : (k5_pop ) ? 0 : acted_table[ 4];
+      acted_table[ 5] <= (k2_bpe_act[0]) ? 1 : (k6_pop ) ? 0 : acted_table[ 5];
+      acted_table[ 6] <= (k2_bpe_act[1]) ? 1 : (k7_pop ) ? 0 : acted_table[ 6];
+      acted_table[ 7] <= (k2_bpe_act[2]) ? 1 : (k8_pop ) ? 0 : acted_table[ 7];
+      acted_table[ 8] <= (k2_bpe_act[3]) ? 1 : (k9_pop ) ? 0 : acted_table[ 8];
+      acted_table[ 9] <= (k2_bpe_act[4]) ? 1 : (k10_pop) ? 0 : acted_table[ 9];
+      acted_table[10] <= (k3_bpe_act[0]) ? 1 : (k11_pop) ? 0 : acted_table[10];
+      acted_table[11] <= (k3_bpe_act[1]) ? 1 : (k12_pop) ? 0 : acted_table[11];
+      acted_table[12] <= (k3_bpe_act[2]) ? 1 : (k13_pop) ? 0 : acted_table[12];
+      acted_table[13] <= (k3_bpe_act[3]) ? 1 : (k14_pop) ? 0 : acted_table[13];
+      acted_table[14] <= (k3_bpe_act[4]) ? 1 : (k15_pop) ? 0 : acted_table[14];
+      acted_table[15] <= (k4_bpe_act[0]) ? 1 : (k16_pop) ? 0 : acted_table[15];
+      acted_table[16] <= (k4_bpe_act[1]) ? 1 : (k17_pop) ? 0 : acted_table[16];
+      acted_table[17] <= (k4_bpe_act[2]) ? 1 : (k18_pop) ? 0 : acted_table[17];
+      acted_table[18] <= (k4_bpe_act[3]) ? 1 : (k19_pop) ? 0 : acted_table[18];
+      acted_table[19] <= (k4_bpe_act[4]) ? 1 : (k20_pop) ? 0 : acted_table[19];
     end
   end
 
@@ -647,41 +705,79 @@ module stage_top
     end
   end
 
-  always @* begin
-    if (isempty) begin
-      if (k1_push) begin
-        fetching_kernal_next = 3'd1;
-      end else if (k2_push) begin
-        fetching_kernal_next = 3'd2;
-      end else if (k3_push) begin
-        fetching_kernal_next = 3'd3;
-      end else if (k4_push) begin
-        fetching_kernal_next = 3'd4;
-      end else begin
-        fetching_kernal_next = 3'd0;
-      end
-    end else begin  
-      if (acted_table[0] && fetching_kernal != 1) begin
-        fetching_kernal_next = 3'd1;
-      end else if (acted_table[1] && fetching_kernal != 2) begin
-        fetching_kernal_next = 3'd2;
-      end else if (acted_table[2] && fetching_kernal != 3) begin
-        fetching_kernal_next = 3'd3;
-      end else if (acted_table[3] && fetching_kernal != 4) begin
-        fetching_kernal_next = 3'd4;
-      end else begin
-        fetching_kernal_next = 3'd0;
-      end
-    end
+always @* begin
+  if (isempty) begin
+    if      (k1_bpe_act[0])  fetching_kernal_next = 5'd1;
+    else if (k1_bpe_act[1])  fetching_kernal_next = 5'd2;
+    else if (k1_bpe_act[2])  fetching_kernal_next = 5'd3;
+    else if (k1_bpe_act[3])  fetching_kernal_next = 5'd4;
+    else if (k1_bpe_act[4])  fetching_kernal_next = 5'd5;
+    else if (k2_bpe_act[0])  fetching_kernal_next = 5'd6;
+    else if (k2_bpe_act[1])  fetching_kernal_next = 5'd7;
+    else if (k2_bpe_act[2])  fetching_kernal_next = 5'd8;
+    else if (k2_bpe_act[3])  fetching_kernal_next = 5'd9;
+    else if (k2_bpe_act[4])  fetching_kernal_next = 5'd10;
+    else if (k3_bpe_act[0])  fetching_kernal_next = 5'd11;
+    else if (k3_bpe_act[1])  fetching_kernal_next = 5'd12;
+    else if (k3_bpe_act[2])  fetching_kernal_next = 5'd13;
+    else if (k3_bpe_act[3])  fetching_kernal_next = 5'd14;
+    else if (k3_bpe_act[4])  fetching_kernal_next = 5'd15;
+    else if (k4_bpe_act[0])  fetching_kernal_next = 5'd16;
+    else if (k4_bpe_act[1])  fetching_kernal_next = 5'd17;
+    else if (k4_bpe_act[2])  fetching_kernal_next = 5'd18;
+    else if (k4_bpe_act[3])  fetching_kernal_next = 5'd19;
+    else if (k4_bpe_act[4])  fetching_kernal_next = 5'd20;
+    else                     fetching_kernal_next = 5'd0;
+  end else begin
+    if      (acted_table[0]  && fetching_kernal != 5'd1)  fetching_kernal_next = 5'd1;
+    else if (acted_table[1]  && fetching_kernal != 5'd2)  fetching_kernal_next = 5'd2;
+    else if (acted_table[2]  && fetching_kernal != 5'd3)  fetching_kernal_next = 5'd3;
+    else if (acted_table[3]  && fetching_kernal != 5'd4)  fetching_kernal_next = 5'd4;
+    else if (acted_table[4]  && fetching_kernal != 5'd5)  fetching_kernal_next = 5'd5;
+    else if (acted_table[5]  && fetching_kernal != 5'd6)  fetching_kernal_next = 5'd6;
+    else if (acted_table[6]  && fetching_kernal != 5'd7)  fetching_kernal_next = 5'd7;
+    else if (acted_table[7]  && fetching_kernal != 5'd8)  fetching_kernal_next = 5'd8;
+    else if (acted_table[8]  && fetching_kernal != 5'd9)  fetching_kernal_next = 5'd9;
+    else if (acted_table[9]  && fetching_kernal != 5'd10) fetching_kernal_next = 5'd10;
+    else if (acted_table[10] && fetching_kernal != 5'd11) fetching_kernal_next = 5'd11;
+    else if (acted_table[11] && fetching_kernal != 5'd12) fetching_kernal_next = 5'd12;
+    else if (acted_table[12] && fetching_kernal != 5'd13) fetching_kernal_next = 5'd13;
+    else if (acted_table[13] && fetching_kernal != 5'd14) fetching_kernal_next = 5'd14;
+    else if (acted_table[14] && fetching_kernal != 5'd15) fetching_kernal_next = 5'd15;
+    else if (acted_table[15] && fetching_kernal != 5'd16) fetching_kernal_next = 5'd16;
+    else if (acted_table[16] && fetching_kernal != 5'd17) fetching_kernal_next = 5'd17;
+    else if (acted_table[17] && fetching_kernal != 5'd18) fetching_kernal_next = 5'd18;
+    else if (acted_table[18] && fetching_kernal != 5'd19) fetching_kernal_next = 5'd19;
+    else if (acted_table[19] && fetching_kernal != 5'd20) fetching_kernal_next = 5'd20;
+    else                                                  fetching_kernal_next = 5'd0;
   end
+end
 
-  assign coef_vld_mux = (!isempty) ? fetching_kernal : 0;
-  
-  assign k1_coef_en = (isempty && push || pop) && fetching_kernal_next == 1 || (coef_vld_mux == 3'd1);
-  assign k2_coef_en = (isempty && push || pop) && fetching_kernal_next == 2 || (coef_vld_mux == 3'd2);
-  assign k3_coef_en = (isempty && push || pop) && fetching_kernal_next == 3 || (coef_vld_mux == 3'd3);
-  assign k4_coef_en = (isempty && push || pop) && fetching_kernal_next == 4 || (coef_vld_mux == 3'd4);
-  
+
+assign coef_vld_mux = (!isempty) ? fetching_kernal : 0;
+
+assign k1_coef_en1 = (isempty && push || pop) && fetching_kernal_next == 5'd1  || (coef_vld_mux == 5'd1);
+assign k1_coef_en2 = (isempty && push || pop) && fetching_kernal_next == 5'd2  || (coef_vld_mux == 5'd2);
+assign k1_coef_en3 = (isempty && push || pop) && fetching_kernal_next == 5'd3  || (coef_vld_mux == 5'd3);
+assign k1_coef_en4 = (isempty && push || pop) && fetching_kernal_next == 5'd4  || (coef_vld_mux == 5'd4);
+assign k1_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd5  || (coef_vld_mux == 5'd5);
+assign k2_coef_en1 = (isempty && push || pop) && fetching_kernal_next == 5'd6  || (coef_vld_mux == 5'd6);
+assign k2_coef_en2 = (isempty && push || pop) && fetching_kernal_next == 5'd7  || (coef_vld_mux == 5'd7);
+assign k2_coef_en3 = (isempty && push || pop) && fetching_kernal_next == 5'd8  || (coef_vld_mux == 5'd8);
+assign k2_coef_en4 = (isempty && push || pop) && fetching_kernal_next == 5'd9  || (coef_vld_mux == 5'd9);
+assign k2_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd10 || (coef_vld_mux == 5'd10);
+assign k3_coef_en1 = (isempty && push || pop) && fetching_kernal_next == 5'd11 || (coef_vld_mux == 5'd11);
+assign k3_coef_en2 = (isempty && push || pop) && fetching_kernal_next == 5'd12 || (coef_vld_mux == 5'd12);
+assign k3_coef_en3 = (isempty && push || pop) && fetching_kernal_next == 5'd13 || (coef_vld_mux == 5'd13);
+assign k3_coef_en4 = (isempty && push || pop) && fetching_kernal_next == 5'd14 || (coef_vld_mux == 5'd14);
+assign k3_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd15 || (coef_vld_mux == 5'd15);
+assign k4_coef_en1 = (isempty && push || pop) && fetching_kernal_next == 5'd16 || (coef_vld_mux == 5'd16);
+assign k4_coef_en2 = (isempty && push || pop) && fetching_kernal_next == 5'd17 || (coef_vld_mux == 5'd17);
+assign k4_coef_en3 = (isempty && push || pop) && fetching_kernal_next == 5'd18 || (coef_vld_mux == 5'd18);
+assign k4_coef_en4 = (isempty && push || pop) && fetching_kernal_next == 5'd19 || (coef_vld_mux == 5'd19);
+assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 || (coef_vld_mux == 5'd20);
+
+
   /*----------------------------------------------------------------
                          kernal decode
   -----------------------------------------------------------------*/  
@@ -704,12 +800,12 @@ module stage_top
   ///////////
 
   wire k1_bpe1_en;
-  assign k1_bpe1_en = (isempty) ? k1_bpe_act == 5'b00001 : pop && bpe_mux_k1 == 1;
+  assign k1_bpe1_en = (isempty) ? k1_bpe_act[0]: pop && fetching_kernal_next == 1;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k1 <= 4'hF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en1) begin
       if (k1_sw_lst) begin
         step_cnt1_k1 <= 4'hF;
       end else if (step_cnt1_k1 == 4'hF && k1_bpe1_en) begin
@@ -729,7 +825,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en && step_cnt1_k1 != 4'h2) begin
+    end else if (k1_coef_rdy && k1_coef_en1 && step_cnt1_k1 != 4'h2) begin
       if (k1_sw_lst) begin
         stage1_cnt_k1 <= 12'hFFF;
       end else if (k1_bpe1_en) begin
@@ -749,7 +845,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en1) begin
       if (k1_sw_lst) begin
         stage2_cnt_k1 <= 12'hFFF;
       end else if (step_cnt1_k1 == 0 || step_cnt1_k1 == 1) begin
@@ -770,17 +866,18 @@ module stage_top
                       (step_cnt1_k1 == 1) ? stage2_cnt_k1 :
                       (step_cnt1_k1 == 2) ? stage2_cnt_k1 : 0;
   
+  assign k1_pop = (step_cnt1_k1 == 2);
 
   ///////////
   // BPE 2 //
   ///////////
   wire k1_bpe2_en;
-  assign k1_bpe2_en = (isempty) ? k1_bpe_act == 5'b00010 : pop && bpe_mux_k1 == 2;
+  assign k1_bpe2_en = (isempty) ? k1_bpe_act[1] : pop && fetching_kernal_next == 2;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k1 <= 4'hF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en2) begin
       if (k1_sw_lst) begin
         step_cnt2_k1 <= 4'hF;
       end else if (step_cnt2_k1 == 4'hF && k1_bpe2_en) begin
@@ -800,7 +897,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en && step_cnt2_k1 != 4'h2) begin
+    end else if (k1_coef_rdy && k1_coef_en2 && step_cnt2_k1 != 4'h2) begin
       if (k1_sw_lst) begin
         stage3_cnt_k1 <= 12'hFFF;
       end else if (k1_bpe2_en) begin
@@ -820,7 +917,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en2) begin
       if (k1_sw_lst) begin
         stage4_cnt_k1 <= 12'hFFF;
       end else if (step_cnt2_k1 == 0 || step_cnt2_k1 == 1) begin
@@ -841,16 +938,17 @@ module stage_top
                       (step_cnt2_k1 == 1) ? stage4_cnt_k1 :
                       (step_cnt2_k1 == 2) ? stage4_cnt_k1 : 0;
 
+  assign k2_pop = (step_cnt2_k1 == 2);
   ///////////
   // BPE 3 //
   ///////////
   wire k1_bpe3_en;
-  assign k1_bpe3_en = (isempty) ? k1_bpe_act == 5'b00100 : pop && bpe_mux_k1 == 3;
+  assign k1_bpe3_en = (isempty) ? k1_bpe_act[2] : pop && fetching_kernal_next == 3;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k1 <= 4'hF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en3) begin
       if (k1_sw_lst) begin
         step_cnt3_k1 <= 4'hF;
       end else if (step_cnt3_k1 == 4'hF && k1_bpe3_en) begin
@@ -870,7 +968,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en && step_cnt3_k1 != 4'h2) begin
+    end else if (k1_coef_rdy && k1_coef_en3 && step_cnt3_k1 != 4'h2) begin
       if (k1_sw_lst) begin
         stage5_cnt_k1 <= 12'hFFF;
       end else if (k1_bpe3_en) begin
@@ -890,7 +988,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en3) begin
       if (k1_sw_lst) begin
         stage6_cnt_k1 <= 12'hFFF;
       end else if (step_cnt3_k1 == 0 || step_cnt3_k1 == 1) begin
@@ -911,16 +1009,18 @@ module stage_top
                       (step_cnt3_k1 == 1) ? stage6_cnt_k1 :
                       (step_cnt3_k1 == 2) ? stage6_cnt_k1 : 0;
 
+  assign k3_pop = (step_cnt3_k1 == 2);
+
   ///////////
   // BPE 4 //
   ///////////
   wire k1_bpe4_en;
-  assign k1_bpe4_en = (isempty) ? k1_bpe_act == 5'b01000 : pop && bpe_mux_k1 == 4;
+  assign k1_bpe4_en = (isempty) ? k1_bpe_act[3] : pop && fetching_kernal_next == 4;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k1 <= 4'hF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en4) begin
       if (k1_sw_lst) begin
         step_cnt4_k1 <= 4'hF;
       end else if (step_cnt4_k1 == 4'hF && k1_bpe4_en) begin
@@ -940,7 +1040,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en && step_cnt4_k1 != 4'd11) begin
+    end else if (k1_coef_rdy && k1_coef_en4 && step_cnt4_k1 != 4'd11) begin
       if (k1_sw_lst) begin
         stage7_cnt_k1 <= 12'hFFF;
       end else if (k1_bpe4_en || step_cnt4_k1 == 2 || step_cnt4_k1 == 5 || step_cnt4_k1 == 8) begin
@@ -960,7 +1060,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k1 <= 12'hFFF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en4) begin
       if (k1_sw_lst) begin
         stage8_cnt_k1 <= 12'hFFF;
       end else if (step_cnt4_k1 == 0 || step_cnt4_k1 == 1 || step_cnt4_k1 == 3 || step_cnt4_k1 == 4 
@@ -981,17 +1081,19 @@ module stage_top
   assign a_mux4_k1 = (step_cnt4_k1 == 0 || step_cnt4_k1 == 3 || step_cnt4_k1 == 6 || step_cnt4_k1 == 9) ? stage7_cnt_k1 :
                       (step_cnt4_k1 == 1 || step_cnt4_k1 == 4 || step_cnt4_k1 == 7 || step_cnt4_k1 == 10) ? stage8_cnt_k1 :
                       (step_cnt4_k1 == 2 || step_cnt4_k1 == 5 || step_cnt4_k1 == 8 || step_cnt4_k1 == 11) ? stage8_cnt_k1 : 0;
+  
+  assign k4_pop = (step_cnt4_k1 == 11);
 
   ///////////
   // BPE 5 //
   ///////////
   wire k1_bpe5_en;
-  assign k1_bpe5_en = (isempty) ? k1_bpe_act == 5'b10000 : pop && bpe_mux_k1 == 5;
+  assign k1_bpe5_en = (isempty) ? k1_bpe_act[4] : pop && fetching_kernal_next == 5;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k1 <= 4'hF;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en5) begin
       if (k1_sw_lst) begin
         step_cnt5_k1 <= 4'hF;
       end else if (step_cnt5_k1 == 4'hF && k1_bpe5_en) begin
@@ -1011,7 +1113,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k1 <= 12'h0;
-    end else if (k1_coef_rdy && k1_coef_en) begin
+    end else if (k1_coef_rdy && k1_coef_en5) begin
       if (k1_sw_lst) begin
         stage9_cnt_k1 <= 12'h0;
       end else if (step_cnt5_k1 != 4'hF) begin
@@ -1025,35 +1127,7 @@ module stage_top
   end
 
   assign a_mux5_k1 = ( step_cnt5_k1 != 4'hF) ? stage9_cnt_k1 : 0;
-
-  /////////////////////////////
-  // address mux for bpe 1-5 //
-  /////////////////////////////
-
-  always @(posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      bpe_mux_k1 <= 0;
-    end else begin
-      bpe_mux_k1 <= (k1_bpe_act == 5'b00001) ? FOR_BPE1 :
-                    (k1_bpe_act == 5'b00010) ? FOR_BPE2 :
-                    (k1_bpe_act == 5'b00100) ? FOR_BPE3 :
-                    (k1_bpe_act == 5'b01000) ? FOR_BPE4 :
-                    (k1_bpe_act == 5'b10000) ? FOR_BPE5 :
-                    (k1_bpe_act == 5'b00000) ? bpe_mux_k1 : 3'b111;
-    end
-  end
-
-  ////////////
-  // k1_pop //
-  ////////////
-
-  assign k1_pop = (bpe_mux_k1 == FOR_BPE1) ? step_cnt1_k1 == 2 : 
-                  (bpe_mux_k1 == FOR_BPE2) ? step_cnt2_k1 == 2 : 
-                  (bpe_mux_k1 == FOR_BPE3) ? step_cnt3_k1 == 2 : 
-                  (bpe_mux_k1 == FOR_BPE4) ? step_cnt4_k1 == 11 : 
-                  (bpe_mux_k1 == FOR_BPE5) ? step_cnt5_k1 == 3 : 0;
-
-
+  assign k5_pop = (step_cnt5_k1 == 4'd3);
 
   ///////////////////////////////////////////////
   //                  KERNAL 2                 //
@@ -1063,12 +1137,12 @@ module stage_top
   // BPE 1 //
   ///////////
   wire k2_bpe1_en;
-  assign k2_bpe1_en = (isempty) ? k2_bpe_act == 5'b00001 : pop && bpe_mux_k2 == 1;
+  assign k2_bpe1_en = (isempty) ? k2_bpe_act[0] : pop && fetching_kernal_next == 6;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k2 <= 4'hF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en1) begin
       if (k2_sw_lst) begin
         step_cnt1_k2 <= 4'hF;
       end else if (step_cnt1_k2 == 4'hF && k2_bpe1_en) begin
@@ -1088,7 +1162,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en && step_cnt1_k2 != 4'h2) begin
+    end else if (k2_coef_rdy && k2_coef_en1 && step_cnt1_k2 != 4'h2) begin
       if (k2_sw_lst) begin
         stage1_cnt_k2 <= 12'hFFF;
       end else if (k2_bpe1_en) begin
@@ -1108,7 +1182,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en1) begin
       if (k2_sw_lst) begin
         stage2_cnt_k2 <= 12'hFFF;
       end else if (step_cnt1_k2 == 0 || step_cnt1_k2 == 1) begin
@@ -1129,17 +1203,18 @@ module stage_top
                       (step_cnt1_k2 == 1) ? stage2_cnt_k2 :
                       (step_cnt1_k2 == 2) ? stage2_cnt_k2 : 0;
   
+  assign k6_pop = (step_cnt1_k2 == 2);
 
   ///////////
   // BPE 2 //
   ///////////
   wire k2_bpe2_en;
-  assign k2_bpe2_en = (isempty) ? k2_bpe_act == 5'b00010 : pop && bpe_mux_k2 == 2;
+  assign k2_bpe2_en = (isempty) ? k2_bpe_act[1] : pop && fetching_kernal_next == 7;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k2 <= 4'hF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en2) begin
       if (k2_sw_lst) begin
         step_cnt2_k2 <= 4'hF;
       end else if (step_cnt2_k2 == 4'hF && k2_bpe2_en) begin
@@ -1159,7 +1234,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en && step_cnt2_k2 != 4'h2) begin
+    end else if (k2_coef_rdy && k2_coef_en2 && step_cnt2_k2 != 4'h2) begin
       if (k2_sw_lst) begin
         stage3_cnt_k2 <= 12'hFFF;
       end else if (k2_bpe2_en) begin
@@ -1179,7 +1254,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en2) begin
       if (k2_sw_lst) begin
         stage4_cnt_k2 <= 12'hFFF;
       end else if (step_cnt2_k2 == 0 || step_cnt2_k2 == 1) begin
@@ -1200,16 +1275,18 @@ module stage_top
                       (step_cnt2_k2 == 1) ? stage4_cnt_k2 :
                       (step_cnt2_k2 == 2) ? stage4_cnt_k2 : 0;
 
+  assign k7_pop = (step_cnt2_k2 == 2);
+
   ///////////
   // BPE 3 //
   ///////////
   wire k2_bpe3_en;
-  assign k2_bpe3_en = (isempty) ? k2_bpe_act == 5'b00100 : pop && bpe_mux_k2 == 3;
+  assign k2_bpe3_en = (isempty) ? k2_bpe_act[2] : pop && fetching_kernal_next == 8;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k2 <= 4'hF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en3) begin
       if (k2_sw_lst) begin
         step_cnt3_k2 <= 4'hF;
       end else if (step_cnt3_k2 == 4'hF && k2_bpe3_en) begin
@@ -1229,7 +1306,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en && step_cnt3_k2 != 4'h2) begin
+    end else if (k2_coef_rdy && k2_coef_en3 && step_cnt3_k2 != 4'h2) begin
       if (k2_sw_lst) begin
         stage5_cnt_k2 <= 12'hFFF;
       end else if (k2_bpe3_en) begin
@@ -1249,7 +1326,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en3) begin
       if (k2_sw_lst) begin
         stage6_cnt_k2 <= 12'hFFF;
       end else if (step_cnt3_k2 == 0 || step_cnt3_k2 == 1) begin
@@ -1270,16 +1347,18 @@ module stage_top
                       (step_cnt3_k2 == 1) ? stage6_cnt_k2 :
                       (step_cnt3_k2 == 2) ? stage6_cnt_k2 : 0;
 
+  assign k8_pop = (step_cnt3_k2 == 2);
+
   ///////////
   // BPE 4 //
   ///////////
   wire k2_bpe4_en;
-  assign k2_bpe4_en = (isempty) ? k2_bpe_act == 5'b01000 : pop && bpe_mux_k2 == 4;
+  assign k2_bpe4_en = (isempty) ? k2_bpe_act[3] : pop && fetching_kernal_next == 9;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k2 <= 4'hF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en4) begin
       if (k2_sw_lst) begin
         step_cnt4_k2 <= 4'hF;
       end else if (step_cnt4_k2 == 4'hF && k2_bpe4_en) begin
@@ -1299,7 +1378,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en && step_cnt4_k2 != 4'd11) begin
+    end else if (k2_coef_rdy && k2_coef_en4 && step_cnt4_k2 != 4'd11) begin
       if (k2_sw_lst) begin
         stage7_cnt_k2 <= 12'hFFF;
       end else if (k2_bpe4_en || step_cnt4_k2 == 2 || step_cnt4_k2 == 5 || step_cnt4_k2 == 8) begin
@@ -1319,7 +1398,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k2 <= 12'hFFF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en4) begin
       if (k2_sw_lst) begin
         stage8_cnt_k2 <= 12'hFFF;
       end else if (step_cnt4_k2 == 0 || step_cnt4_k2 == 1 || step_cnt4_k2 == 3 || step_cnt4_k2 == 4 
@@ -1341,16 +1420,17 @@ module stage_top
                       (step_cnt4_k2 == 1 || step_cnt4_k2 == 4 || step_cnt4_k2 == 7 || step_cnt4_k2 == 10) ? stage8_cnt_k2 :
                       (step_cnt4_k2 == 2 || step_cnt4_k2 == 5 || step_cnt4_k2 == 8 || step_cnt4_k2 == 11) ? stage8_cnt_k2 : 0;
 
+  assign k9_pop = (step_cnt4_k2 == 11);
   ///////////
   // BPE 5 //
   ///////////
   wire k2_bpe5_en;
-  assign k2_bpe5_en = (isempty) ? k2_bpe_act == 5'b10000 : pop && bpe_mux_k2 == 5;
+  assign k2_bpe5_en = (isempty) ? k2_bpe_act[4] : pop && fetching_kernal_next == 10;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k2 <= 4'hF;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en5) begin
       if (k2_sw_lst) begin
         step_cnt5_k2 <= 4'hF;
       end else if (step_cnt5_k2 == 4'hF && k2_bpe5_en) begin
@@ -1370,7 +1450,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k2 <= 12'h0;
-    end else if (k2_coef_rdy && k2_coef_en) begin
+    end else if (k2_coef_rdy && k2_coef_en5) begin
       if (k2_sw_lst) begin
         stage9_cnt_k2 <= 12'h0;
       end else if (step_cnt5_k2 != 4'hF) begin
@@ -1385,32 +1465,7 @@ module stage_top
 
   assign a_mux5_k2 = ( step_cnt5_k2 != 4'hF) ? stage9_cnt_k2 : 0;
 
-  /////////////////////////////
-  // address mux for bpe 1-5 //
-  /////////////////////////////
-
-  always @(posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      bpe_mux_k2 <= 0;
-    end else begin
-      bpe_mux_k2 <= (k2_bpe_act == 5'b00001) ? FOR_BPE1 :
-                    (k2_bpe_act == 5'b00010) ? FOR_BPE2 :
-                    (k2_bpe_act == 5'b00100) ? FOR_BPE3 :
-                    (k2_bpe_act == 5'b01000) ? FOR_BPE4 :
-                    (k2_bpe_act == 5'b10000) ? FOR_BPE5 :
-                    (k2_bpe_act == 5'b00000) ? bpe_mux_k2 : 3'b111;
-    end
-  end
-
-  ////////////
-  // k2_pop //
-  ////////////
-
-  assign k2_pop = (bpe_mux_k2 == FOR_BPE1) ? step_cnt1_k2 == 2 : 
-                  (bpe_mux_k2 == FOR_BPE2) ? step_cnt2_k2 == 2 : 
-                  (bpe_mux_k2 == FOR_BPE3) ? step_cnt3_k2 == 2 : 
-                  (bpe_mux_k2 == FOR_BPE4) ? step_cnt4_k2 == 11 : 
-                  (bpe_mux_k2 == FOR_BPE5) ? step_cnt5_k2 == 3 : 0;
+  assign k10_pop = (step_cnt5_k2 == 4'd3);
 
   ///////////////////////////////////////////////
   //                  KERNAL 3                 //
@@ -1420,12 +1475,12 @@ module stage_top
   // BPE 1 //
   ///////////
   wire k3_bpe1_en;
-  assign k3_bpe1_en = (isempty) ? k3_bpe_act == 5'b00001 : pop && bpe_mux_k3 == 1;
+  assign k3_bpe1_en = (isempty) ? k3_bpe_act[0] : pop && fetching_kernal_next == 11;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k3 <= 4'hF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en1) begin
       if (k3_sw_lst) begin
         step_cnt1_k3 <= 4'hF;
       end else if (step_cnt1_k3 == 4'hF && k3_bpe1_en) begin
@@ -1445,7 +1500,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en && step_cnt1_k3 != 4'h2) begin
+    end else if (k3_coef_rdy && k3_coef_en1 && step_cnt1_k3 != 4'h2) begin
       if (k3_sw_lst) begin
         stage1_cnt_k3 <= 12'hFFF;
       end else if (k3_bpe1_en) begin
@@ -1465,7 +1520,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en1) begin
       if (k3_sw_lst) begin
         stage2_cnt_k3 <= 12'hFFF;
       end else if (step_cnt1_k3 == 0 || step_cnt1_k3 == 1) begin
@@ -1486,17 +1541,18 @@ module stage_top
                       (step_cnt1_k3 == 1) ? stage2_cnt_k3 :
                       (step_cnt1_k3 == 2) ? stage2_cnt_k3 : 0;
   
+  assign k11_pop = (step_cnt1_k3 == 2);
 
   ///////////
   // BPE 2 //
   ///////////
   wire k3_bpe2_en;
-  assign k3_bpe2_en = (isempty) ? k3_bpe_act == 5'b00010 : pop && bpe_mux_k3 == 2;
+  assign k3_bpe2_en = (isempty) ? k3_bpe_act[1] : pop && fetching_kernal_next == 12;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k3 <= 4'hF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en2) begin
       if (k3_sw_lst) begin
         step_cnt2_k3 <= 4'hF;
       end else if (step_cnt2_k3 == 4'hF && k3_bpe2_en) begin
@@ -1516,7 +1572,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en && step_cnt2_k3 != 4'h2) begin
+    end else if (k3_coef_rdy && k3_coef_en2 && step_cnt2_k3 != 4'h2) begin
       if (k3_sw_lst) begin
         stage3_cnt_k3 <= 12'hFFF;
       end else if (k3_bpe2_en) begin
@@ -1536,7 +1592,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en2) begin
       if (k3_sw_lst) begin
         stage4_cnt_k3 <= 12'hFFF;
       end else if (step_cnt2_k3 == 0 || step_cnt2_k3 == 1) begin
@@ -1557,16 +1613,18 @@ module stage_top
                       (step_cnt2_k3 == 1) ? stage4_cnt_k3 :
                       (step_cnt2_k3 == 2) ? stage4_cnt_k3 : 0;
 
+  assign k12_pop = (step_cnt2_k3 == 2);
+
   ///////////
   // BPE 3 //
   ///////////
   wire k3_bpe3_en;
-  assign k3_bpe3_en = (isempty) ? k3_bpe_act == 5'b00100 : pop && bpe_mux_k3 == 3;
+  assign k3_bpe3_en = (isempty) ? k3_bpe_act[2] : pop && fetching_kernal_next == 13;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k3 <= 4'hF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en3) begin
       if (k3_sw_lst) begin
         step_cnt3_k3 <= 4'hF;
       end else if (step_cnt3_k3 == 4'hF && k3_bpe3_en) begin
@@ -1586,7 +1644,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en && step_cnt3_k3 != 4'h2) begin
+    end else if (k3_coef_rdy && k3_coef_en3 && step_cnt3_k3 != 4'h2) begin
       if (k3_sw_lst) begin
         stage5_cnt_k3 <= 12'hFFF;
       end else if (k3_bpe3_en) begin
@@ -1606,7 +1664,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en3) begin
       if (k3_sw_lst) begin
         stage6_cnt_k3 <= 12'hFFF;
       end else if (step_cnt3_k3 == 0 || step_cnt3_k3 == 1) begin
@@ -1627,16 +1685,18 @@ module stage_top
                       (step_cnt3_k3 == 1) ? stage6_cnt_k3 :
                       (step_cnt3_k3 == 2) ? stage6_cnt_k3 : 0;
 
+  assign k13_pop = (step_cnt3_k3 == 2);
+
   ///////////
   // BPE 4 //
   ///////////
   wire k3_bpe4_en;
-  assign k3_bpe4_en = (isempty) ? k3_bpe_act == 5'b01000 : pop && bpe_mux_k3 == 4;
+  assign k3_bpe4_en = (isempty) ? k3_bpe_act[3] : pop && fetching_kernal_next == 14;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k3 <= 4'hF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en4) begin
       if (k3_sw_lst) begin
         step_cnt4_k3 <= 4'hF;
       end else if (step_cnt4_k3 == 4'hF && k3_bpe4_en) begin
@@ -1656,7 +1716,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en && step_cnt4_k3 != 4'd11) begin
+    end else if (k3_coef_rdy && k3_coef_en4 && step_cnt4_k3 != 4'd11) begin
       if (k3_sw_lst) begin
         stage7_cnt_k3 <= 12'hFFF;
       end else if (k3_bpe4_en || step_cnt4_k3 == 2 || step_cnt4_k3 == 5 || step_cnt4_k3 == 8) begin
@@ -1676,7 +1736,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k3 <= 12'hFFF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en4) begin
       if (k3_sw_lst) begin
         stage8_cnt_k3 <= 12'hFFF;
       end else if (step_cnt4_k3 == 0 || step_cnt4_k3 == 1 || step_cnt4_k3 == 3 || step_cnt4_k3 == 4 
@@ -1698,15 +1758,17 @@ module stage_top
                       (step_cnt4_k3 == 1 || step_cnt4_k3 == 4 || step_cnt4_k3 == 7 || step_cnt4_k3 == 10) ? stage8_cnt_k3 :
                       (step_cnt4_k3 == 2 || step_cnt4_k3 == 5 || step_cnt4_k3 == 8 || step_cnt4_k3 == 11) ? stage8_cnt_k3 : 0;
 
+  assign k14_pop = (step_cnt4_k3 == 11);
+
   ///////////
   // BPE 5 //
   ///////////
   wire k3_bpe5_en;
-  assign k3_bpe5_en = (isempty) ? k3_bpe_act == 5'b10000 : pop && bpe_mux_k3 == 5;
+  assign k3_bpe5_en = (isempty) ? k3_bpe_act[4] : pop && fetching_kernal_next == 15;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k3 <= 4'hF;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en5) begin
       if (k3_sw_lst) begin
         step_cnt5_k3 <= 4'hF;
       end else if (step_cnt5_k3 == 4'hF && k3_bpe5_en) begin
@@ -1726,7 +1788,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k3 <= 12'h0;
-    end else if (k3_coef_rdy && k3_coef_en) begin
+    end else if (k3_coef_rdy && k3_coef_en5) begin
       if (k3_sw_lst) begin
         stage9_cnt_k3 <= 12'h0;
       end else if (step_cnt5_k3 != 4'hF) begin
@@ -1741,32 +1803,7 @@ module stage_top
 
   assign a_mux5_k3 = ( step_cnt5_k3 != 4'hF) ? stage9_cnt_k3 : 0;
 
-  /////////////////////////////
-  // address mux for bpe 1-5 //
-  /////////////////////////////
-
-  always @(posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      bpe_mux_k3 <= 0;
-    end else begin
-      bpe_mux_k3 <= (k3_bpe_act == 5'b00001) ? FOR_BPE1 :
-                    (k3_bpe_act == 5'b00010) ? FOR_BPE2 :
-                    (k3_bpe_act == 5'b00100) ? FOR_BPE3 :
-                    (k3_bpe_act == 5'b01000) ? FOR_BPE4 :
-                    (k3_bpe_act == 5'b10000) ? FOR_BPE5 :
-                    (k3_bpe_act == 5'b00000) ? bpe_mux_k3 : 3'b111;
-    end
-  end
-
-  ////////////
-  // k3_pop //
-  ////////////
-
-  assign k3_pop = (bpe_mux_k3 == FOR_BPE1) ? step_cnt1_k3 == 2 : 
-                  (bpe_mux_k3 == FOR_BPE2) ? step_cnt2_k3 == 2 : 
-                  (bpe_mux_k3 == FOR_BPE3) ? step_cnt3_k3 == 2 : 
-                  (bpe_mux_k3 == FOR_BPE4) ? step_cnt4_k3 == 11 : 
-                  (bpe_mux_k3 == FOR_BPE5) ? step_cnt5_k3 == 3 : 0;
+  assign k15_pop = (step_cnt5_k3 == 4'd3);
 
   ///////////////////////////////////////////////
   //                  KERNAL 4                 //
@@ -1776,12 +1813,12 @@ module stage_top
   // BPE 1 //
   ///////////
   wire k4_bpe1_en;
-  assign k4_bpe1_en = (isempty) ? k4_bpe_act == 5'b00001 : pop && bpe_mux_k4 == 1;
+  assign k4_bpe1_en = (isempty) ? k4_bpe_act[0] : pop && fetching_kernal_next == 16;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k4 <= 4'hF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en1) begin
       if (k4_sw_lst) begin
         step_cnt1_k4 <= 4'hF;
       end else if (step_cnt1_k4 == 4'hF && k4_bpe1_en) begin
@@ -1801,7 +1838,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en && step_cnt1_k4 != 4'h2) begin
+    end else if (k4_coef_rdy && k4_coef_en1 && step_cnt1_k4 != 4'h2) begin
       if (k4_sw_lst) begin
         stage1_cnt_k4 <= 12'hFFF;
       end else if (k4_bpe1_en) begin
@@ -1821,7 +1858,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en1) begin
       if (k4_sw_lst) begin
         stage2_cnt_k4 <= 12'hFFF;
       end else if (step_cnt1_k4 == 0 || step_cnt1_k4 == 1) begin
@@ -1842,17 +1879,18 @@ module stage_top
                       (step_cnt1_k4 == 1) ? stage2_cnt_k4 :
                       (step_cnt1_k4 == 2) ? stage2_cnt_k4 : 0;
   
+  assign k16_pop = (step_cnt1_k4 == 2);
 
   ///////////
   // BPE 2 //
   ///////////
   wire k4_bpe2_en;
-  assign k4_bpe2_en = (isempty) ? k4_bpe_act == 5'b00010 : pop && bpe_mux_k4 == 2;
+  assign k4_bpe2_en = (isempty) ? k4_bpe_act[1] : pop && fetching_kernal_next == 17;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k4 <= 4'hF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en2) begin
       if (k4_sw_lst) begin
         step_cnt2_k4 <= 4'hF;
       end else if (step_cnt2_k4 == 4'hF && k4_bpe2_en) begin
@@ -1872,7 +1910,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en && step_cnt2_k4 != 4'h2) begin
+    end else if (k4_coef_rdy && k4_coef_en2 && step_cnt2_k4 != 4'h2) begin
       if (k4_sw_lst) begin
         stage3_cnt_k4 <= 12'hFFF;
       end else if (k4_bpe2_en) begin
@@ -1892,7 +1930,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en2) begin
       if (k4_sw_lst) begin
         stage4_cnt_k4 <= 12'hFFF;
       end else if (step_cnt2_k4 == 0 || step_cnt2_k4 == 1) begin
@@ -1913,16 +1951,18 @@ module stage_top
                       (step_cnt2_k4 == 1) ? stage4_cnt_k4 :
                       (step_cnt2_k4 == 2) ? stage4_cnt_k4 : 0;
 
+  assign k17_pop = (step_cnt2_k4 == 2);
+
   ///////////
   // BPE 3 //
   ///////////
   wire k4_bpe3_en;
-  assign k4_bpe3_en = (isempty) ? k4_bpe_act == 5'b00100 : pop && bpe_mux_k4 == 3;
+  assign k4_bpe3_en = (isempty) ? k4_bpe_act[2] : pop && fetching_kernal_next == 18;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k4 <= 4'hF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en3) begin
       if (k4_sw_lst) begin
         step_cnt3_k4 <= 4'hF;
       end else if (step_cnt3_k4 == 4'hF && k4_bpe3_en) begin
@@ -1942,7 +1982,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en && step_cnt3_k4 != 4'h2) begin
+    end else if (k4_coef_rdy && k4_coef_en3 && step_cnt3_k4 != 4'h2) begin
       if (k4_sw_lst) begin
         stage5_cnt_k4 <= 12'hFFF;
       end else if (k4_bpe3_en) begin
@@ -1962,7 +2002,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en3) begin
       if (k4_sw_lst) begin
         stage6_cnt_k4 <= 12'hFFF;
       end else if (step_cnt3_k4 == 0 || step_cnt3_k4 == 1) begin
@@ -1983,16 +2023,18 @@ module stage_top
                       (step_cnt3_k4 == 1) ? stage6_cnt_k4 :
                       (step_cnt3_k4 == 2) ? stage6_cnt_k4 : 0;
 
+  assign k18_pop = (step_cnt3_k4 == 2);
+
   ///////////
   // BPE 4 //
   ///////////
   wire k4_bpe4_en;
-  assign k4_bpe4_en = (isempty) ? k4_bpe_act == 5'b01000 : pop && bpe_mux_k4 == 4;
+  assign k4_bpe4_en = (isempty) ? k4_bpe_act[3] : pop && fetching_kernal_next == 19;
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k4 <= 4'hF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en4) begin
       if (k4_sw_lst) begin
         step_cnt4_k4 <= 4'hF;
       end else if (step_cnt4_k4 == 4'hF && k4_bpe4_en) begin
@@ -2012,7 +2054,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en && step_cnt4_k4 != 4'd11) begin
+    end else if (k4_coef_rdy && k4_coef_en4 && step_cnt4_k4 != 4'd11) begin
       if (k4_sw_lst) begin
         stage7_cnt_k4 <= 12'hFFF;
       end else if (k4_bpe4_en || step_cnt4_k4 == 2 || step_cnt4_k4 == 5 || step_cnt4_k4 == 8) begin
@@ -2032,7 +2074,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k4 <= 12'hFFF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en4) begin
       if (k4_sw_lst) begin
         stage8_cnt_k4 <= 12'hFFF;
       end else if (step_cnt4_k4 == 0 || step_cnt4_k4 == 1 || step_cnt4_k4 == 3 || step_cnt4_k4 == 4 
@@ -2054,15 +2096,17 @@ module stage_top
                       (step_cnt4_k4 == 1 || step_cnt4_k4 == 4 || step_cnt4_k4 == 7 || step_cnt4_k4 == 10) ? stage8_cnt_k4 :
                       (step_cnt4_k4 == 2 || step_cnt4_k4 == 5 || step_cnt4_k4 == 8 || step_cnt4_k4 == 11) ? stage8_cnt_k4 : 0;
 
+  assign k19_pop = (step_cnt4_k4 == 11);
+
   ///////////
   // BPE 5 //
   ///////////
   wire k4_bpe5_en;
-  assign k4_bpe5_en = (isempty) ? k4_bpe_act == 5'b10000 : pop && bpe_mux_k4 == 5;
+  assign k4_bpe5_en = (isempty) ? k4_bpe_act[4] : pop && fetching_kernal_next == 20;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k4 <= 4'hF;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en5) begin
       if (k4_sw_lst) begin
         step_cnt5_k4 <= 4'hF;
       end else if (step_cnt5_k4 == 4'hF && k4_bpe5_en) begin
@@ -2082,7 +2126,7 @@ module stage_top
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k4 <= 12'h0;
-    end else if (k4_coef_rdy && k4_coef_en) begin
+    end else if (k4_coef_rdy && k4_coef_en5) begin
       if (k4_sw_lst) begin
         stage9_cnt_k4 <= 12'h0;
       end else if (step_cnt5_k4 != 4'hF) begin
@@ -2097,64 +2141,32 @@ module stage_top
 
   assign a_mux5_k4 = ( step_cnt5_k4 != 4'hF) ? stage9_cnt_k4 : 0;
 
-  /////////////////////////////
-  // address mux for bpe 1-5 //
-  /////////////////////////////
-
-  always @(posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      bpe_mux_k4 <= 0;
-    end else begin
-      bpe_mux_k4 <= (k4_bpe_act == 5'b00001) ? FOR_BPE1 :
-                    (k4_bpe_act == 5'b00010) ? FOR_BPE2 :
-                    (k4_bpe_act == 5'b00100) ? FOR_BPE3 :
-                    (k4_bpe_act == 5'b01000) ? FOR_BPE4 :
-                    (k4_bpe_act == 5'b10000) ? FOR_BPE5 :
-                    (k4_bpe_act == 5'b00000) ? bpe_mux_k4 : 3'b111;
-    end
-  end
-
-  ////////////
-  // k4_pop //
-  ////////////
-
-  assign k4_pop = (bpe_mux_k4 == FOR_BPE1) ? step_cnt1_k4 == 2 : 
-                  (bpe_mux_k4 == FOR_BPE2) ? step_cnt2_k4 == 2 : 
-                  (bpe_mux_k4 == FOR_BPE3) ? step_cnt3_k4 == 2 : 
-                  (bpe_mux_k4 == FOR_BPE4) ? step_cnt4_k4 == 11 : 
-                  (bpe_mux_k4 == FOR_BPE5) ? step_cnt5_k4 == 3 : 0;
+  assign k20_pop = (step_cnt5_k4 == 4'd3);
 
   ////////////////////////////////////
   //      address mux together      //
   ////////////////////////////////////
-
-  assign k1_mux = (bpe_mux_k1 == FOR_BPE1) ? a_mux1_k1[7:0] :
-                  (bpe_mux_k1 == FOR_BPE2) ? a_mux2_k1[7:0] :
-                  (bpe_mux_k1 == FOR_BPE3) ? a_mux3_k1[7:0] :
-                  (bpe_mux_k1 == FOR_BPE4) ? a_mux4_k1[7:0] :
-                  (bpe_mux_k1 == FOR_BPE5) ? a_mux5_k1[7:0] : 0;
-  assign k2_mux = (bpe_mux_k2 == FOR_BPE1) ? a_mux1_k2[7:0] :
-                  (bpe_mux_k2 == FOR_BPE2) ? a_mux2_k2[7:0] :
-                  (bpe_mux_k2 == FOR_BPE3) ? a_mux3_k2[7:0] :
-                  (bpe_mux_k2 == FOR_BPE4) ? a_mux4_k2[7:0] :
-                  (bpe_mux_k2 == FOR_BPE5) ? a_mux5_k2[7:0] : 0;
-
-  assign k3_mux = (bpe_mux_k3 == FOR_BPE1) ? a_mux1_k3[7:0] :
-                  (bpe_mux_k3 == FOR_BPE2) ? a_mux2_k3[7:0] :
-                  (bpe_mux_k3 == FOR_BPE3) ? a_mux3_k3[7:0] :
-                  (bpe_mux_k3 == FOR_BPE4) ? a_mux4_k3[7:0] :
-                  (bpe_mux_k3 == FOR_BPE5) ? a_mux5_k3[7:0] : 0;
-
-  assign k4_mux = (bpe_mux_k4 == FOR_BPE1) ? a_mux1_k4[7:0] :
-                  (bpe_mux_k4 == FOR_BPE2) ? a_mux2_k4[7:0] :
-                  (bpe_mux_k4 == FOR_BPE3) ? a_mux3_k4[7:0] :
-                  (bpe_mux_k4 == FOR_BPE4) ? a_mux4_k4[7:0] :
-                  (bpe_mux_k4 == FOR_BPE5) ? a_mux5_k4[7:0] : 0;
   
-  assign kernal_bpe_mux = (fetching_kernal == 1) ? k1_mux :
-                          (fetching_kernal == 2) ? k2_mux :
-                          (fetching_kernal == 3) ? k3_mux :
-                          (fetching_kernal == 4) ? k4_mux : 0;
+  assign kernal_bpe_mux = (fetching_kernal ==  1) ? a_mux1_k1[7:0] :
+                          (fetching_kernal ==  2) ? a_mux2_k1[7:0] :
+                          (fetching_kernal ==  3) ? a_mux3_k1[7:0] :
+                          (fetching_kernal ==  4) ? a_mux4_k1[7:0] :
+                          (fetching_kernal ==  5) ? a_mux5_k1[7:0] :
+                          (fetching_kernal ==  6) ? a_mux1_k2[7:0] :
+                          (fetching_kernal ==  7) ? a_mux2_k2[7:0] :
+                          (fetching_kernal ==  8) ? a_mux3_k2[7:0] :
+                          (fetching_kernal ==  9) ? a_mux4_k2[7:0] :
+                          (fetching_kernal == 10) ? a_mux5_k2[7:0] :
+                          (fetching_kernal == 11) ? a_mux1_k3[7:0] :
+                          (fetching_kernal == 12) ? a_mux2_k3[7:0] :
+                          (fetching_kernal == 13) ? a_mux3_k3[7:0] :
+                          (fetching_kernal == 14) ? a_mux4_k3[7:0] :
+                          (fetching_kernal == 15) ? a_mux5_k3[7:0] :
+                          (fetching_kernal == 16) ? a_mux1_k4[7:0] :
+                          (fetching_kernal == 17) ? a_mux2_k4[7:0] :
+                          (fetching_kernal == 18) ? a_mux3_k4[7:0] :
+                          (fetching_kernal == 19) ? a_mux4_k4[7:0] :
+                          (fetching_kernal == 20) ? a_mux5_k4[7:0] : 0;
   
   /////////////////////////
   // bit reverse address //
@@ -2194,10 +2206,73 @@ module stage_top
   //////////////
   // coef vld //
   //////////////
-  assign k1_coef_vld = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux == 1) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-  assign k2_coef_vld = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 2) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-  assign k3_coef_vld = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 3) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-  assign k4_coef_vld = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 4) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  always @ (posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      k1_coef_vld_r[0] <= 0;
+      k1_coef_vld_r[1] <= 0;
+      k1_coef_vld_r[2] <= 0;
+      k1_coef_vld_r[3] <= 0;
+      k1_coef_vld_r[4] <= 0;
+      k2_coef_vld_r[0] <= 0;
+      k2_coef_vld_r[1] <= 0;
+      k2_coef_vld_r[2] <= 0;
+      k2_coef_vld_r[3] <= 0;
+      k2_coef_vld_r[4] <= 0;
+      k3_coef_vld_r[0] <= 0;
+      k3_coef_vld_r[1] <= 0;
+      k3_coef_vld_r[2] <= 0;
+      k3_coef_vld_r[3] <= 0;
+      k3_coef_vld_r[4] <= 0;
+      k4_coef_vld_r[0] <= 0;
+      k4_coef_vld_r[1] <= 0;
+      k4_coef_vld_r[2] <= 0;
+      k4_coef_vld_r[3] <= 0;
+      k4_coef_vld_r[4] <= 0;
+    end else begin
+      k1_coef_vld_r[0] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  1) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+      k1_coef_vld_r[1] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  2) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+      k1_coef_vld_r[2] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux ==  3) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+      k1_coef_vld_r[3] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux ==  4) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+      k1_coef_vld_r[4] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  5) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+      k2_coef_vld_r[0] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  6) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+      k2_coef_vld_r[1] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux ==  7) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+      k2_coef_vld_r[2] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux ==  8) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+      k2_coef_vld_r[3] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux ==  9) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+      k2_coef_vld_r[4] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 10) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+      k3_coef_vld_r[0] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux == 11) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+      k3_coef_vld_r[1] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 12) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+      k3_coef_vld_r[2] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 13) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+      k3_coef_vld_r[3] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 14) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+      k3_coef_vld_r[4] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux == 15) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+      k4_coef_vld_r[0] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 16) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+      k4_coef_vld_r[1] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 17) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+      k4_coef_vld_r[2] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 18) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+      k4_coef_vld_r[3] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 19) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+      k4_coef_vld_r[4] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 20) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+    end
+  end
+
+  assign k1_coef_vld[0] = k1_coef_vld_r[0];
+  assign k1_coef_vld[1] = k1_coef_vld_r[1];
+  assign k1_coef_vld[2] = k1_coef_vld_r[2];
+  assign k1_coef_vld[3] = k1_coef_vld_r[3];
+  assign k1_coef_vld[4] = k1_coef_vld_r[4];
+  assign k2_coef_vld[0] = k2_coef_vld_r[0];
+  assign k2_coef_vld[1] = k2_coef_vld_r[1];
+  assign k2_coef_vld[2] = k2_coef_vld_r[2];
+  assign k2_coef_vld[3] = k2_coef_vld_r[3];
+  assign k2_coef_vld[4] = k2_coef_vld_r[4];
+  assign k3_coef_vld[0] = k3_coef_vld_r[0];
+  assign k3_coef_vld[1] = k3_coef_vld_r[1];
+  assign k3_coef_vld[2] = k3_coef_vld_r[2];
+  assign k3_coef_vld[3] = k3_coef_vld_r[3];
+  assign k3_coef_vld[4] = k3_coef_vld_r[4];
+  assign k4_coef_vld[0] = k4_coef_vld_r[0];
+  assign k4_coef_vld[1] = k4_coef_vld_r[1];
+  assign k4_coef_vld[2] = k4_coef_vld_r[2];
+  assign k4_coef_vld[3] = k4_coef_vld_r[3];
+  assign k4_coef_vld[4] = k4_coef_vld_r[4];
+
 
   /*----------------------------------------------------------------
                       sm pack and stream out
@@ -2220,7 +2295,6 @@ module stage_top
     reg [2:0] sm_cnt_next;
     reg [(pSS_WIDTH-1):0] sm_dat_r;
     
-
     assign  FIFO_wr_en = meta_decode;
     assign  FIFO_rd_en = en_sm && (sm_buffer_state == 0);
     assign  en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
@@ -2381,37 +2455,6 @@ module stage_top
 
     assign sm_vld = sm_buffer_state;
     assign sm_dat = sm_dat_r;
-
-  /*----------------------------------------------------------------
-                      kernal data stream out
-  -----------------------------------------------------------------*/
-  reg k1_sw_rdy_r;
-  reg k1_sw_rdy_next;
-  reg k2_sw_rdy_r;
-  reg k2_sw_rdy_next;
-  reg k3_sw_rdy_r;
-  reg k3_sw_rdy_next;
-  reg k4_sw_rdy_r;
-  reg k4_sw_rdy_next;
-
-  always @ (posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      k1_sw_rdy_r <= 0;
-      k2_sw_rdy_r <= 0;
-      k3_sw_rdy_r <= 0;
-      k4_sw_rdy_r <= 0;
-    end else begin
-      k1_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00);
-      k2_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01);
-      k3_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10);
-      k4_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11);
-    end
-  end
-
-  assign k1_sw_rdy = k1_sw_rdy_r;
-  assign k2_sw_rdy = k2_sw_rdy_r;
-  assign k3_sw_rdy = k3_sw_rdy_r;
-  assign k4_sw_rdy = k4_sw_rdy_r;
 
   /*----------------------------------------------------------------
                       Configuration Register
