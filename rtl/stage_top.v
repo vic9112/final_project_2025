@@ -473,14 +473,14 @@ module stage_top
     end else begin
       if (ss_rdy && ss_vld) begin
         if (kernal_mode[2:1] == 2'b10) begin
-          ss_buffer5 <= (pack_counter == 0 || pack_counter == 4) ? ss_dat[15: 0] : ss_buffer5;
-          ss_buffer6 <= (pack_counter == 0 || pack_counter == 4) ? ss_dat[31:16] : ss_buffer6;
-          ss_buffer7 <= (pack_counter == 1 || pack_counter == 5) ? ss_dat[15: 0] : ss_buffer7;
-          ss_buffer8 <= (pack_counter == 1 || pack_counter == 5) ? ss_dat[31:16] : ss_buffer8;
-          ss_buffer1 <= (pack_counter == 2 || pack_counter == 6) ? ss_dat[15: 0] : ss_buffer1;
-          ss_buffer2 <= (pack_counter == 2 || pack_counter == 6) ? ss_dat[31:16] : ss_buffer2;
-          ss_buffer3 <= (pack_counter == 3 || pack_counter == 7) ? ss_dat[15: 0] : ss_buffer3;
-          ss_buffer4 <= (pack_counter == 3 || pack_counter == 7) ? ss_dat[31:16] : ss_buffer4;
+          ss_buffer1 <= (pack_counter == 0 || pack_counter == 4) ? ss_dat[15: 0] : ss_buffer1;
+          ss_buffer2 <= (pack_counter == 0 || pack_counter == 4) ? ss_dat[31:16] : ss_buffer2;
+          ss_buffer3 <= (pack_counter == 1 || pack_counter == 5) ? ss_dat[15: 0] : ss_buffer3;
+          ss_buffer4 <= (pack_counter == 1 || pack_counter == 5) ? ss_dat[31:16] : ss_buffer4;
+          ss_buffer5 <= (pack_counter == 2 || pack_counter == 6) ? ss_dat[15: 0] : ss_buffer5;
+          ss_buffer6 <= (pack_counter == 2 || pack_counter == 6) ? ss_dat[31:16] : ss_buffer6;
+          ss_buffer7 <= (pack_counter == 3 || pack_counter == 7) ? ss_dat[15: 0] : ss_buffer7;
+          ss_buffer8 <= (pack_counter == 3 || pack_counter == 7) ? ss_dat[31:16] : ss_buffer8;
         end else if (kernal_mode[2:1] == 2'b11) begin
           ss_buffer1 <= (pack_counter == 0) ? ss_dat[15: 0] : ss_buffer1;
           ss_buffer2 <= (pack_counter == 1) ? ss_dat[15: 0] : ss_buffer2;
@@ -2287,7 +2287,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     wire       en_sm;
   // sm stream_out
     reg [(pDATA_WIDTH-1):0] sm_buffer;
-    reg [(pSS_WIDTH-1):0] sm_buffer_next;
+    reg [(pDATA_WIDTH-1):0] sm_buffer_next;
     reg sm_buffer_state;     // 0 for idle; 1 for occupied
     reg sm_buffer_state_next;    
     reg [2:0] sm_cnt;
