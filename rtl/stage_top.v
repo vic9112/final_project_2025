@@ -309,11 +309,15 @@ module stage_top
   parameter FOR_BPE5 = 5;
 
   //for test only
+  reg l;
+  always @ (posedge clk) begin
+    l <= 1;
+  end
   assign clk1 = clk;
   assign clk2 = clk;
   assign clk3 = clk;
   assign clk4 = clk;
-  assign ss_rdy = 1;
+  assign ss_rdy = l;
 
 
   /*----------------------------------------------------------------
@@ -398,10 +402,10 @@ module stage_top
       k3_mode_r <= 0;
       k4_mode_r <= 0;
     end else begin
-      k1_mode_r <= (meta_data[31:24] == KERNEL_1) ? meta_data[17:16] : k1_mode_r;
-      k2_mode_r <= (meta_data[31:24] == KERNEL_2) ? meta_data[17:16] : k2_mode_r;
-      k3_mode_r <= (meta_data[31:24] == KERNEL_3) ? meta_data[17:16] : k3_mode_r;
-      k4_mode_r <= (meta_data[31:24] == KERNEL_4) ? meta_data[17:16] : k4_mode_r;
+      k1_mode_r <= (meta_data[31:24] == KERNEL_1) ? meta_data[18:17] : k1_mode_r;
+      k2_mode_r <= (meta_data[31:24] == KERNEL_2) ? meta_data[18:17] : k2_mode_r;
+      k3_mode_r <= (meta_data[31:24] == KERNEL_3) ? meta_data[18:17] : k3_mode_r;
+      k4_mode_r <= (meta_data[31:24] == KERNEL_4) ? meta_data[18:17] : k4_mode_r;
     end
   end
 
@@ -2189,10 +2193,10 @@ module stage_top
   //////////////
   // coef vld //
   //////////////
-  assign k1_coef_vld = (coef_vld_mux == 1);
-  assign k2_coef_vld = (coef_vld_mux == 2);
-  assign k3_coef_vld = (coef_vld_mux == 3);
-  assign k4_coef_vld = (coef_vld_mux == 4);
+  assign k1_coef_vld = (k1_mode == 2'b10) ? (coef_vld_mux == 1) : (k1_mode == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld = (k2_mode == 2'b10) ? (coef_vld_mux == 2) : (k2_mode == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld = (k3_mode == 2'b10) ? (coef_vld_mux == 3) : (k3_mode == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld = (k4_mode == 2'b10) ? (coef_vld_mux == 4) : (k4_mode == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
 
   /*----------------------------------------------------------------
                       sm pack and stream out
