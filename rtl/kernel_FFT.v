@@ -88,6 +88,7 @@ module kernel_FFT #(
     output wire [12:0] sram_addr_32
 );
 
+integer i, j, k;
 reg phase;
 wire phase_next;
 
@@ -352,7 +353,8 @@ localparam FINISH_4th = 33;  // 100001
 wire ld_rdy_4th;
 
 // registers for output signals
-reg coef_4th_rdy;
+wire sm_rdy_4th;
+reg coef_rdy_4th;
 reg ss_rdy_4th_r, sm_vld_4th_r;
 reg [pDATA_WIDTH-1:0] BPE4_coef_r, BPE4_ain_r, BPE4_bin_r;
 reg BPE4_i_vld_r, BPE4_o_rdy_r;
@@ -402,11 +404,13 @@ localparam FINISH_5th = 9;
 wire [(pDATA_WIDTH-1):0] ld_dat_5th;
 // BPE5 output interface
 reg BPE5_i_vld_r, BPE5_o_rdy_r; 
+reg BPE5_act; // BPE5 active signal
 
 // fsm state registers
 reg [3:0] state_5th, state_5th_next;
 
 // AXI signals
+wire ss_vld_5th, sm_rdy_5th;
 reg ss_rdy_5th, sm_vld_5th;
 reg coef_5th_rdy;
 
@@ -1986,15 +1990,14 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg BPE4_i_vld_r, BPE4_o_rdy_r;
     // reg bpe_act_4th;
 
-    assign ld_rdy_4th = ss_rdy_4th;
-    assign BPE4_idle = ss_rdy_4th;
+    assign ld_rdy_4th = ss_rdy_4th_r;
+    assign BPE4_idle = ss_rdy_4th_r;
 
     /*===============================================================================================
     #                                       4th BPE                                                 #
     ================================================================================================*/
 
     // ==================== Output connection  ===================//
-    assign ss_rdy_4th = ss_rdy_4th_r;
     assign sm_vld_4th = sm_vld_4th_r;
     assign BPE4_coef = BPE4_coef_r;
     assign BPE4_ain = BPE4_ain_r;
@@ -2002,6 +2005,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign BPE4_i_vld = BPE4_i_vld_r;
     assign BPE4_o_rdy = BPE4_o_rdy_r;
     assign bpe_act[3] = bpe_act_4th;
+    assign coef_rdy[3] = coef_rdy_4th;
     //===================FSM for 4th BPE===================//
     // ================ Parameters for FSM ================//
     // localparam IDLE_4th = 0;     // 000000
@@ -2143,13 +2147,13 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
-        coef_4th_rdy <= 0;
+        coef_rdy_4th <= 0;
         bpe_act_4th  <= 0;
       end else begin
-        coef_4th_rdy <= 0;
+        coef_rdy_4th <= 0;
         bpe_act_4th  <= 0;
         if(coef_cnt_4th < 12 && state_4th != FILL0_0_4th) begin // Exclude FILL0_0_4th state in order to reset coefficients(counters)
-          coef_4th_rdy <= 1; 
+          coef_rdy_4th <= 1; 
           bpe_act_4th  <= 1;
         end
       end
@@ -2258,7 +2262,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg [$clog2(DATA_LENGTH)-1:0] in_cnt_4th, out_cnt_4th, bpe_in_cnt_4th, bpe_out_cnt_4th, coef_cnt_4th;
     // wire[$clog2(DATA_LENGTH)-1:0] in_cnt_4th_next, out_cnt_4th_next, bpe_in_cnt_4th_next, bpe_out_cnt_4th_next, coef_cnt_4th_next;
 
-    assign in_cnt_4th_next = (ld_vld_4th && ss_rdy_4th) ? in_cnt_4th + 1 : in_cnt_4th;
+    assign in_cnt_4th_next = (ld_vld_4th && ss_rdy_4th_r) ? in_cnt_4th + 1 : in_cnt_4th;
     assign out_cnt_4th_next = (sm_vld_4th && sm_rdy_4th) ? out_cnt_4th + 1 : out_cnt_4th;
     assign bpe_in_cnt_4th_next = (BPE4_i_vld && BPE4_i_rdy) ? bpe_in_cnt_4th + 1 : bpe_in_cnt_4th;
     assign bpe_out_cnt_4th_next = (BPE4_o_vld && BPE4_o_rdy) ? bpe_out_cnt_4th + 1 : bpe_out_cnt_4th;
@@ -2293,21 +2297,21 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // wire [pDATA_WIDTH-1:0] COE2_0_4th_tmp, COE2_1_4th_tmp, COE2_2_4th_tmp;
     // wire [pDATA_WIDTH-1:0] COE3_0_4th_tmp, COE3_1_4th_tmp, COE3_2_4th_tmp;
 
-    assign COE0_0_4th_tmp = (coef_cnt_4th == 0 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE0_0_4th; // No need to reset
-    assign COE0_1_4th_tmp = (coef_cnt_4th == 1 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE0_1_4th;
-    assign COE0_2_4th_tmp = (coef_cnt_4th == 2 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE0_2_4th;
+    assign COE0_0_4th_tmp = (coef_cnt_4th == 0 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE0_0_4th; // No need to reset
+    assign COE0_1_4th_tmp = (coef_cnt_4th == 1 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE0_1_4th;
+    assign COE0_2_4th_tmp = (coef_cnt_4th == 2 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE0_2_4th;
 
-    assign COE1_0_4th_tmp = (coef_cnt_4th == 3 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE1_0_4th;
-    assign COE1_1_4th_tmp = (coef_cnt_4th == 4 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE1_1_4th;
-    assign COE1_2_4th_tmp = (coef_cnt_4th == 5 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE1_2_4th;
+    assign COE1_0_4th_tmp = (coef_cnt_4th == 3 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE1_0_4th;
+    assign COE1_1_4th_tmp = (coef_cnt_4th == 4 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE1_1_4th;
+    assign COE1_2_4th_tmp = (coef_cnt_4th == 5 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE1_2_4th;
 
-    assign COE2_0_4th_tmp = (coef_cnt_4th == 6 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE2_0_4th;
-    assign COE2_1_4th_tmp = (coef_cnt_4th == 7 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE2_1_4th;
-    assign COE2_2_4th_tmp = (coef_cnt_4th == 8 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE2_2_4th;
+    assign COE2_0_4th_tmp = (coef_cnt_4th == 6 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE2_0_4th;
+    assign COE2_1_4th_tmp = (coef_cnt_4th == 7 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE2_1_4th;
+    assign COE2_2_4th_tmp = (coef_cnt_4th == 8 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE2_2_4th;
 
-    assign COE3_0_4th_tmp = (coef_cnt_4th == 9 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE3_0_4th;
-    assign COE3_1_4th_tmp = (coef_cnt_4th == 10 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE3_1_4th;
-    assign COE3_2_4th_tmp = (coef_cnt_4th == 11 && (coef_4th_vld && coef_4th_rdy)) ? coef_dat : COE3_2_4th;
+    assign COE3_0_4th_tmp = (coef_cnt_4th == 9 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE3_0_4th;
+    assign COE3_1_4th_tmp = (coef_cnt_4th == 10 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE3_1_4th;
+    assign COE3_2_4th_tmp = (coef_cnt_4th == 11 && (coef_vld[3] && coef_rdy_4th)) ? coef_dat : COE3_2_4th;
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2350,17 +2354,17 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     always @(posedge clk or negedge rstn) begin // reg uses regular clk instead of 2x clk
       if (~rstn) begin
         for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0[i] <= 0;
-        for (i = 0; i < 2; i = i + 1) data_reg_4th_ram1[i] <= 0;
-        for (i = 0; i < 2; i = i + 1) data_reg_4th_ram2[i] <= 0;
+        for (j = 0; j < 2; j = j + 1) data_reg_4th_ram1[j] <= 0;
+        for (k = 0; k < 2; k = k + 1) data_reg_4th_ram2[k] <= 0;
       end else begin
         for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0[i] <= data_reg_4th_ram0_next[i];
-        for (i = 0; i < 2; i = i + 1) data_reg_4th_ram1[i] <= data_reg_4th_ram1_next[i];
-        for (i = 0; i < 2; i = i + 1) data_reg_4th_ram2[i] <= data_reg_4th_ram2_next[i];
+        for (j = 0; j < 2; j = j + 1) data_reg_4th_ram1[j] <= data_reg_4th_ram1_next[j];
+        for (k = 0; k < 2; k = k + 1) data_reg_4th_ram2[k] <= data_reg_4th_ram2_next[k];
       end
     end
     // FIFO 0    
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th_r) begin
         for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];
         case(state_4th)
           FILL0_0_4th: data_reg_4th_ram0_next[0] = ld_dat_4th;
@@ -2387,7 +2391,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 1
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th_r) begin
         data_reg_4th_ram1_next[1] = data_reg_4th_ram1[0];
         case(state_4th)
           FILL0_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
@@ -2415,7 +2419,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 2
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th) begin
+      if(ld_vld_4th && ss_rdy_4th_r) begin
         data_reg_4th_ram2_next[1] = data_reg_4th_ram2[0];
         case(state_4th)
           FILL0_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
@@ -2458,6 +2462,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign BPE5_coef = COEF_5th[(in_cnt_5th[2:0]>>1)];
     assign BPE5_i_vld = BPE5_i_vld_r;
     assign BPE5_o_rdy = BPE5_o_rdy_r;
+    assign bpe_act[4] = BPE5_act;
     // ==================== State Machine for 5th BPE ====================//
     // localparam DATA_LENGTH = 1024;
 
@@ -2539,6 +2544,19 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE5_o_rdy_r <= 1;
       end
     end
+    // bpe activation
+    always@(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        BPE5_act <= 0;
+      end else begin
+        BPE5_act <= 0;
+        if(state_5th == IDLE_5th && ss_vld_5th) begin
+          BPE5_act <= 1;
+        end else if(state_5th_next == BPE_I1_5th || state_5th_next == BPE_I2_5th || state_5th_next == BPE_I3_5th) begin
+          BPE5_act <= 1;
+        end
+      end
+    end
 
     // ================ Counters for 5th BPE ====================//
     // // Counters for 5th BPE
@@ -2552,7 +2570,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign in_cnt_5th_next = (ss_vld_5th && ss_rdy_5th) ? in_cnt_5th + 1 : in_cnt_5th;
     assign out_cnt_5th_next = (sm_vld_5th && sm_rdy_5th) ? out_cnt_5th + 1 : out_cnt_5th;
     assign bpe_out_cnt_5th_next = (BPE5_o_vld && BPE5_o_rdy) ? bpe_out_cnt_5th + 1 : bpe_out_cnt_5th;
-    assign coef_cnt_5th_next = (coef_5th_vld && coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th;
+    assign coef_cnt_5th_next = (coef_vld[4] && coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th;
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2634,10 +2652,10 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg [pDATA_WIDTH-1:0] COEF_5th_next [0:3];
 
     always@(*)begin
-      COEF_5th_next[0] = (coef_cnt_5th == 0 && (coef_5th_vld && coef_5th_rdy)) ? coef_dat : COEF_5th[0];
-      COEF_5th_next[1] = (coef_cnt_5th == 1 && (coef_5th_vld && coef_5th_rdy)) ? coef_dat : COEF_5th[1];
-      COEF_5th_next[2] = (coef_cnt_5th == 2 && (coef_5th_vld && coef_5th_rdy)) ? coef_dat : COEF_5th[2];
-      COEF_5th_next[3] = (coef_cnt_5th == 3 && (coef_5th_vld && coef_5th_rdy)) ? coef_dat : COEF_5th[3];
+      COEF_5th_next[0] = (coef_cnt_5th == 0 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[0];
+      COEF_5th_next[1] = (coef_cnt_5th == 1 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[1];
+      COEF_5th_next[2] = (coef_cnt_5th == 2 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[2];
+      COEF_5th_next[3] = (coef_cnt_5th == 3 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[3];
     end
 
     always@(posedge clk or negedge rstn) begin
