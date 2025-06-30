@@ -2146,10 +2146,10 @@ module stage_top
   ///////////////
   // coef data //
   ///////////////
-  assign k1_coef_dat = (k1_mode == 2'b10) ? fft_coef_ram_do : (k1_mode == 2'b11) ? : ntt_coef_ram_do : 0 ;
-  assign k2_coef_dat = (k2_mode == 2'b10) ? fft_coef_ram_do : (k2_mode == 2'b11) ? : ntt_coef_ram_do : 0 ;
-  assign k3_coef_dat = (k3_mode == 2'b10) ? fft_coef_ram_do : (k3_mode == 2'b11) ? : ntt_coef_ram_do : 0 ;
-  assign k4_coef_dat = (k4_mode == 2'b10) ? fft_coef_ram_do : (k4_mode == 2'b11) ? : ntt_coef_ram_do : 0 ;
+  assign k1_coef_dat = (k1_mode == 2'b10) ? fft_coef_ram_do : (k1_mode == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k2_coef_dat = (k2_mode == 2'b10) ? fft_coef_ram_do : (k2_mode == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k3_coef_dat = (k3_mode == 2'b10) ? fft_coef_ram_do : (k3_mode == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k4_coef_dat = (k4_mode == 2'b10) ? fft_coef_ram_do : (k4_mode == 2'b11) ?  ntt_coef_ram_do : 0 ;
 
   //////////////
   // coef vld //
