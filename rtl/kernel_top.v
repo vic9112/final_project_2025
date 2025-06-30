@@ -58,6 +58,11 @@ module kernel_top
     wire [127:0] BPE4_aout, BPE4_bout;
     wire BPE4_i_vld, BPE4_i_rdy, BPE4_o_vld, BPE4_o_rdy;
 
+    // BPE5
+    wire [127:0] BPE5_ain, BPE5_bin, BPE5_coef;
+    wire [127:0] BPE5_aout, BPE5_bout;
+    wire BPE5_i_vld, BPE5_i_rdy, BPE5_o_vld, BPE5_o_rdy;
+
 // ================= SRAM Wires ================= //
     // SRAM1 512x128
     wire [3:0]   WE_512;
@@ -221,6 +226,17 @@ module kernel_top
         .BPE4_i_rdy(BPE4_i_rdy),
         .BPE4_o_vld(BPE4_o_vld),
         .BPE4_o_rdy(BPE4_o_rdy),
+        
+        .BPE5_ain  (BPE5_ain),
+        .BPE5_bin  (BPE5_bin),
+        .BPE5_coef (BPE5_coef),
+        .BPE5_aout (BPE5_aout),
+        .BPE5_bout (BPE5_bout),
+        .BPE5_i_vld(BPE5_i_vld),
+        .BPE5_i_rdy(BPE5_i_rdy),
+        .BPE5_o_vld(BPE5_o_vld),
+        .BPE5_o_rdy(BPE5_o_rdy),
+
         .WE_512(WE_512),
         .sram_en_512(sram_en_512),
         .sram_din_512(sram_din_512),
@@ -297,6 +313,21 @@ module kernel_top
         .gm    (BPE4_coef),
         .ao    (BPE4_aout),
         .bo    (BPE4_bout)
+    );
+
+    butterfly BPE5 (
+        .clk   (clk),
+        .rstn  (rstn),
+        .mode  (mode_state),
+        .i_vld (BPE5_i_vld),
+        .i_rdy (BPE5_i_rdy),
+        .o_vld (BPE5_o_vld),
+        .o_rdy (BPE5_o_rdy),
+        .ai    (BPE5_ain),
+        .bi    (BPE5_bin),
+        .gm    (BPE5_coef),
+        .ao    (BPE5_aout),
+        .bo    (BPE5_bout)
     );
 
 
