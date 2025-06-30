@@ -408,7 +408,7 @@ reg ss_rdy_5th, sm_vld_5th;
 reg coef_5th_rdy;
 
 // BPE5 data output
-reg [pDATA_WIDTH-1:0] BPE5_dout;//438 
+reg [pDATA_WIDTH-1:0] BPE5_dout;//438
 
 // Counters for BPE5
 reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
