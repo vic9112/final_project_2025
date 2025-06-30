@@ -162,7 +162,7 @@ reg [(pDATA_WIDTH - 1):0] BPE1_bout_buffer;
 reg [(pDATA_WIDTH - 1):0] BPE1_ain_buffer;
 wire [(pDATA_WIDTH - 1):0] BPE1_ain_buffer_next;
 
-//assign sw_lst = 0;
+
 
 
 // =============================BPE 2========================== //
@@ -358,6 +358,7 @@ localparam BPE_O_7_4th = 30; // 011110
 localparam BPE_I_6_4th = 31; // 011111
 localparam BPE_I_7_4th = 32; // 100000
 localparam FINISH_4th = 33;  // 100001
+localparam WAIT_COEF_4th = 34;
 
 wire ld_rdy_4th;
 
@@ -409,11 +410,13 @@ localparam BPE_O1_5th = 6;
 localparam BPE_O2_5th = 7;
 localparam BPE_O3_5th = 8;
 localparam FINISH_5th = 9;
+localparam WAIT_COEF_5th = 10;
 //
 wire [(pDATA_WIDTH-1):0] ld_dat_5th;
 // BPE5 output interface
 reg BPE5_i_vld_r, BPE5_o_rdy_r; 
 reg BPE5_act; // BPE5 active signal
+reg [pDATA_WIDTH-1:0] bpe5_coef;
 
 // fsm state registers
 reg [3:0] state_5th, state_5th_next;
@@ -429,8 +432,8 @@ reg [pDATA_WIDTH-1:0] BPE5_dout;//438
 // Counters for BPE5
 reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
 wire[$clog2(DATA_LENGTH)-1:0] in_cnt_5th_next, out_cnt_5th_next;
-reg [1:0] coef_cnt_5th; 
-wire[1:0] coef_cnt_5th_next;
+reg [3:0] coef_cnt_5th; 
+wire[3:0] coef_cnt_5th_next;
 reg [3:0] bpe_out_cnt_5th; // 4 bits to support 16 outputs
 wire[3:0] bpe_out_cnt_5th_next;
 
@@ -442,8 +445,15 @@ reg [pDATA_WIDTH-1:0] delay_bout_5th_next [3:0];
 reg [pDATA_WIDTH-1:0] delay_bout_5th [3:0];
 
 // Coefficient for 5th BPE
-reg [pDATA_WIDTH-1:0] COEF_5th [0:3];
-reg [pDATA_WIDTH-1:0] COEF_5th_next [0:3];
+reg [pDATA_WIDTH-1:0] COEF0_0_5th, COEF0_1_5th, COEF0_2_5th, COEF0_3_5th;
+reg [pDATA_WIDTH-1:0] COEF1_0_5th, COEF1_1_5th, COEF1_2_5th, COEF1_3_5th;
+reg [pDATA_WIDTH-1:0] COEF2_0_5th, COEF2_1_5th, COEF2_2_5th, COEF2_3_5th;
+reg [pDATA_WIDTH-1:0] COEF3_0_5th, COEF3_1_5th, COEF3_2_5th, COEF3_3_5th;
+
+reg [pDATA_WIDTH-1:0] COEF0_0_5th_next, COEF0_1_5th_next, COEF0_2_5th_next, COEF0_3_5th_next;
+reg [pDATA_WIDTH-1:0] COEF1_0_5th_next, COEF1_1_5th_next, COEF1_2_5th_next, COEF1_3_5th_next;
+reg [pDATA_WIDTH-1:0] COEF2_0_5th_next, COEF2_1_5th_next, COEF2_2_5th_next, COEF2_3_5th_next;
+reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF3_3_5th_next;
 
 //==============================OUTPUT BUFFER=========================== //
 // output buffer for 5th BPE
@@ -2029,6 +2039,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     //===================FSM for 4th BPE===================//
     // ================ Parameters for FSM ================//
     // localparam IDLE_4th = 0;     // 000000
+      //  localparam WAIT_COEF_4th = 34;
     // localparam FILL0_0_4th = 1;  // 000001
     // localparam FILL0_1_4th = 2;  // 000010
     // localparam CALC0_0_4th = 3;  // 000011
@@ -2078,7 +2089,8 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(*)begin
       case(state_4th)
-        IDLE_4th:     state_4th_next = ld_vld_4th ? FILL0_0_4th : IDLE_4th;
+        IDLE_4th:     state_4th_next = ld_vld_4th ? WAIT_COEF_4th : IDLE_4th;
+        WAIT_COEF_4th:state_4th_next = (coef_vld[3]) ? FILL0_0_4th : WAIT_COEF_4th;
         FILL0_0_4th:  state_4th_next = in_cnt_4th[0] ? FILL0_1_4th : FILL0_0_4th;
         FILL0_1_4th:  state_4th_next = in_cnt_4th[0] ? CALC0_0_4th : FILL0_1_4th;
         CALC0_0_4th:  state_4th_next = in_cnt_4th[0] ? CALC0_1_4th : CALC0_0_4th;
@@ -2110,7 +2122,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE_O_6_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_O_7_4th : BPE_O_6_4th;
         BPE_O_7_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_I_6_4th : BPE_O_7_4th;
         BPE_I_6_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_I_7_4th : BPE_I_6_4th;
-        BPE_I_7_4th:  state_4th_next = bpe_in_cnt_4th[0] ? FILL0_0_4th : BPE_I_7_4th;
+        BPE_I_7_4th:  state_4th_next = bpe_in_cnt_4th[0] ? (coef_vld[3] ? FILL0_0_4th : WAIT_COEF_4th) : BPE_I_7_4th;
         FINISH_4th:   state_4th_next = IDLE_4th;
         default:      state_4th_next = IDLE_4th;
       endcase
@@ -2127,7 +2139,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         ss_rdy_4th_r <= 0;
       end else begin
         ss_rdy_4th_r <= 0;
-        if(state_4th < 17 & (&state_4th))begin // Former half states can accept input
+        if(state_4th < 17 & (|state_4th))begin // Former half states can accept input
           ss_rdy_4th_r <= 1;
         end
       end
@@ -2168,14 +2180,21 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
         coef_rdy_4th <= 0;
-        bpe_act_4th  <= 0;
       end else begin
         coef_rdy_4th <= 0;
-        bpe_act_4th  <= 0;
         if(coef_cnt_4th < 12 && state_4th != FILL0_0_4th) begin // Exclude FILL0_0_4th state in order to reset coefficients(counters)
           coef_rdy_4th <= 1; 
-          bpe_act_4th  <= 1;
         end
+      end
+    end
+
+    always@(posedge clk or negedge rstn) begin
+      if (~rstn) begin
+        bpe_act_4th <= 0;
+      end else begin
+        bpe_act_4th <= 0;
+        if(state_4th_next == WAIT_COEF_4th)      bpe_act_4th <= 1; 
+        else if(state_4th_next == BPE_I_7_4th)   bpe_act_4th <= 1;
       end
     end
     // coefficient to BPE4
@@ -2286,8 +2305,8 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign out_cnt_4th_next = (sm_vld_4th && sm_rdy_4th) ? out_cnt_4th + 1 : out_cnt_4th;
     assign bpe_in_cnt_4th_next = (BPE4_i_vld && BPE4_i_rdy) ? bpe_in_cnt_4th + 1 : bpe_in_cnt_4th;
     assign bpe_out_cnt_4th_next = (BPE4_o_vld && BPE4_o_rdy) ? bpe_out_cnt_4th + 1 : bpe_out_cnt_4th;
-    assign coef_cnt_4th_next = (coef_vld && coef_rdy) ? coef_cnt_4th + 1 :
-                               (state_4th == FILL0_0_4th) ? 0 : coef_cnt_4th;
+    assign coef_cnt_4th_next = (coef_vld[3] && coef_rdy[3]) ? coef_cnt_4th + 1 :
+                               (state_4th == BPE_I_7_4th) ? 0 : coef_cnt_4th;
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2479,14 +2498,16 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     assign BPE5_ain = data_reg_5th_ram0;
     assign BPE5_bin = ld_dat_5th;
-    assign BPE5_coef = COEF_5th[(in_cnt_5th[2:0]>>1)];
+    assign BPE5_coef = bpe5_coef;
     assign BPE5_i_vld = BPE5_i_vld_r;
     assign BPE5_o_rdy = BPE5_o_rdy_r;
+    assign coef_rdy[4] = 1;
     assign bpe_act[4] = BPE5_act;
     // ==================== State Machine for 5th BPE ====================//
     // localparam DATA_LENGTH = 1024;
 
     // localparam IDLE_5th = 0;
+    // localparam WAIT_COEF_5th = 10;
     // localparam BPE_I0_5th = 1;
     // localparam BPE_I1_5th = 2;
     // localparam BPE_I2_5th = 3;
@@ -2509,7 +2530,8 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(*)begin
       case(state_5th)
-        IDLE_5th:        state_5th_next = ss_vld_5th ? BPE_I0_5th : IDLE_5th;
+        IDLE_5th:        state_5th_next = ss_vld_5th ? WAIT_COEF_5th : IDLE_5th;
+        WAIT_COEF_5th:   state_5th_next = coef_vld[4] ? BPE_I0_5th : WAIT_COEF_5th;
         BPE_I0_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I1_5th : BPE_I0_5th;
         BPE_I1_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I2_5th : BPE_I1_5th;
         BPE_I2_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I3_5th : BPE_I2_5th;
@@ -2518,7 +2540,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE_O1_5th:      state_5th_next = &out_cnt_5th[1:0] ? BPE_O2_5th : BPE_O1_5th;
         BPE_O2_5th:      state_5th_next = &out_cnt_5th[1:0] ? BPE_O3_5th : BPE_O2_5th;
         BPE_O3_5th:      state_5th_next = (out_cnt_5th == (DATA_LENGTH-1) & sm_vld_5th && sm_rdy_5th) ? FINISH_5th : 
-                                       &out_cnt_5th[1:0] ? BPE_I0_5th : BPE_O3_5th;
+                                       &out_cnt_5th[1:0] ? (coef_vld[4] ? BPE_I0_5th : WAIT_COEF_5th) : BPE_O3_5th;
         FINISH_5th:  state_5th_next = IDLE_5th;
         default:     state_5th_next = IDLE_5th;
       endcase
@@ -2572,17 +2594,39 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE5_act <= 0;
         if(state_5th == IDLE_5th && ss_vld_5th) begin
           BPE5_act <= 1;
-        end else if(state_5th_next == BPE_I1_5th || state_5th_next == BPE_I2_5th || state_5th_next == BPE_I3_5th) begin
+        end else if(state_5th_next == BPE_O0_5th) begin
           BPE5_act <= 1;
         end
       end
+    end
+
+    always@(*) begin
+      case(in_cnt_5th[1:0])
+        2'b00: bpe5_coef = (state_5th == BPE_I0_5th) ? COEF0_0_5th :
+                           (state_5th == BPE_I1_5th) ? COEF1_0_5th :
+                           (state_5th == BPE_I2_5th) ? COEF2_0_5th : 
+                           (state_5th == BPE_I3_5th) ? COEF3_0_5th : 0;
+        2'b01: bpe5_coef = (state_5th == BPE_I0_5th) ? COEF0_1_5th :
+                           (state_5th == BPE_I1_5th) ? COEF1_1_5th :
+                           (state_5th == BPE_I2_5th) ? COEF2_1_5th : 
+                           (state_5th == BPE_I3_5th) ? COEF3_1_5th : 0;
+        2'b10: bpe5_coef = (state_5th == BPE_I0_5th) ? COEF0_2_5th :
+                           (state_5th == BPE_I1_5th) ? COEF1_2_5th :
+                           (state_5th == BPE_I2_5th) ? COEF2_2_5th :
+                           (state_5th == BPE_I3_5th) ? COEF3_2_5th : 0;
+        2'b11: bpe5_coef = (state_5th == BPE_I0_5th) ? COEF0_3_5th :
+                           (state_5th == BPE_I1_5th) ? COEF1_3_5th :
+                           (state_5th == BPE_I2_5th) ? COEF2_3_5th :
+                           (state_5th == BPE_I3_5th) ? COEF3_3_5th : 0;
+        default: bpe5_coef = 0;
+      endcase
     end
 
     // ================ Counters for 5th BPE ====================//
     // // Counters for 5th BPE
     // reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
     // wire[$clog2(DATA_LENGTH)-1:0] in_cnt_5th_next, out_cnt_5th_next;
-    // reg [1:0] coef_cnt_5th; 
+    // reg [3:0] coef_cnt_5th; 
     // wire[1:0] coef_cnt_5th_next;
     // reg [3:0] bpe_out_cnt_5th; // 4 bits to support 16 outputs
     // wire[3:0] bpe_out_cnt_5th_next;
@@ -2670,25 +2714,54 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // // Coefficient for 5th BPE
     // reg [pDATA_WIDTH-1:0] COEF_5th [0:3];
     // reg [pDATA_WIDTH-1:0] COEF_5th_next [0:3];
+    // // coefficient FIFOs for 5th BPE
+    // reg [pDATA_WIDTH-1:0] COEF0_0_5th, COEF0_1_5th, COEF0_2_5th, COEF0_3_5th;
+    // reg [pDATA_WIDTH-1:0] COEF1_0_5th, COEF1_1_5th, COEF1_2_5th, COEF1_3_5th;
+    // reg [pDATA_WIDTH-1:0] COEF2_0_5th, COEF2_1_5th, COEF2_2_5th, COEF2_3_5th;
+    // reg [pDATA_WIDTH-1:0] COEF3_0_5th, COEF3_1_5th, COEF3_2_5th, COEF3_3_5th;
+
+    // reg [pDATA_WIDTH-1:0] COEF0_0_5th_next, COEF0_1_5th_next, COEF0_2_5th_next, COEF0_3_5th_next;
+    // reg [pDATA_WIDTH-1:0] COEF1_0_5th_next, COEF1_1_5th_next, COEF1_2_5th_next, COEF1_3_5th_next;
+    // reg [pDATA_WIDTH-1:0] COEF2_0_5th_next, COEF2_1_5th_next, COEF2_2_5th_next, COEF2_3_5th_next;
+    // reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF3_3_5th_next;
 
     always@(*)begin
-      COEF_5th_next[0] = (coef_cnt_5th == 0 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[0];
-      COEF_5th_next[1] = (coef_cnt_5th == 1 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[1];
-      COEF_5th_next[2] = (coef_cnt_5th == 2 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[2];
-      COEF_5th_next[3] = (coef_cnt_5th == 3 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF_5th[3];
+      COEF0_0_5th_next = (coef_cnt_5th == 0 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF0_0_5th;
+      COEF0_1_5th_next = (coef_cnt_5th == 1 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF0_1_5th;
+      COEF0_2_5th_next = (coef_cnt_5th == 2 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF0_2_5th;
+      COEF0_3_5th_next = (coef_cnt_5th == 3 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF0_3_5th;
+
+      COEF1_0_5th_next = (coef_cnt_5th == 4 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF1_0_5th;
+      COEF1_1_5th_next = (coef_cnt_5th == 5 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF1_1_5th;
+      COEF1_2_5th_next = (coef_cnt_5th == 6 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF1_2_5th;
+      COEF1_3_5th_next = (coef_cnt_5th == 7 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF1_3_5th;
+
+      COEF2_0_5th_next = (coef_cnt_5th == 8 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF2_0_5th;
+      COEF2_1_5th_next = (coef_cnt_5th == 9 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF2_1_5th;
+      COEF2_2_5th_next = (coef_cnt_5th == 10 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF2_2_5th;
+      COEF2_3_5th_next = (coef_cnt_5th == 11 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF2_3_5th;
+
+      COEF3_0_5th_next = (coef_cnt_5th == 12 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF3_0_5th;
+      COEF3_1_5th_next = (coef_cnt_5th == 13 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF3_1_5th;
+      COEF3_2_5th_next = (coef_cnt_5th == 14 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF3_2_5th;
+      COEF3_3_5th_next = (coef_cnt_5th == 15 && (coef_vld[4] && coef_5th_rdy)) ? coef_dat : COEF3_3_5th;
     end
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
-        COEF_5th[0] <= 0;
-        COEF_5th[1] <= 0;
-        COEF_5th[2] <= 0;
-        COEF_5th[3] <= 0;
+        COEF0_0_5th <= 0; COEF0_1_5th <= 0; COEF0_2_5th <= 0; COEF0_3_5th <= 0;
+        COEF1_0_5th <= 0; COEF1_1_5th <= 0; COEF1_2_5th <= 0; COEF1_3_5th <= 0;
+        COEF2_0_5th <= 0; COEF2_1_5th <= 0; COEF2_2_5th <= 0; COEF2_3_5th <= 0;
+        COEF3_0_5th <= 0; COEF3_1_5th <= 0; COEF3_2_5th <= 0; COEF3_3_5th <= 0;
       end else begin
-        COEF_5th[0] <= COEF_5th_next[0];
-        COEF_5th[1] <= COEF_5th_next[1];
-        COEF_5th[2] <= COEF_5th_next[2];
-        COEF_5th[3] <= COEF_5th_next[3];
+        COEF0_0_5th <= COEF0_0_5th_next; COEF0_1_5th <= COEF0_1_5th_next; 
+        COEF0_2_5th <= COEF0_2_5th_next; COEF0_3_5th <= COEF0_3_5th_next;
+        COEF1_0_5th <= COEF1_0_5th_next; COEF1_1_5th <= COEF1_1_5th_next; 
+        COEF1_2_5th <= COEF1_2_5th_next; COEF1_3_5th <= COEF1_3_5th_next;
+        COEF2_0_5th <= COEF2_0_5th_next; COEF2_1_5th <= COEF2_1_5th_next; 
+        COEF2_2_5th <= COEF2_2_5th_next; COEF2_3_5th <= COEF2_3_5th_next;
+        COEF3_0_5th <= COEF3_0_5th_next; COEF3_1_5th <= COEF3_1_5th_next; 
+        COEF3_2_5th <= COEF3_2_5th_next; COEF3_3_5th <= COEF3_3_5th_next;
       end
     end
     
