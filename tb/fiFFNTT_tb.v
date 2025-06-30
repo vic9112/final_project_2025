@@ -55,7 +55,9 @@ module fiFFNTT_tb;
   // Clock & Reset
   reg clk = 0;
   reg rstn = 0;
+  reg clk_2x = 0;
   always #(CLK_PERIOD/2) clk = ~clk;
+  always #(CLK_PERIOD/4) clk_2x = ~clk_2x;  // 2x freq clock
   initial begin 
     #(CLK_PERIOD*5); 
     rstn = 1; 
@@ -123,6 +125,7 @@ module fiFFNTT_tb;
     .pIOPS_WIDTH(128)
   ) DUT (
     .clk        (clk),
+    .clk_2x     (clk_2x),
     .rstn       (rstn),
     .awready    (awready),
     .awvalid    (awvalid),
@@ -518,15 +521,15 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("addr0_511_128b.hex", coef_mem0);
+    $readmemh("fft_g_in.dat", coef_mem0);
     //$readmemh("iFFT_coef.hex", coef_mem1);
     //$readmemh("NTT_coef.hex", coef_mem2);
     //$readmemh("iNTT_coef.hex", coef_mem3);
-    $readmemh("FFT_in.hex", in_mem0);
+    $readmemh("fft_a_in.dat", in_mem0);
     //$readmemh("iFFT_in.hex", in_mem1);
     //$readmemh("NTT_in.hex", in_mem2);
     //$readmemh("iNTT_in.hex", in_mem3);
-    $readmemh("FFT_out.hex", golden_mem0);
+    $readmemh("fft_golden_a.dat", golden_mem0);
     //$readmemh("iFFT_out.hex", golden_mem1);
     //$readmemh("NTT_out.hex", golden_mem2);
     //$readmemh("iNTT_out.hex", golden_mem3);
