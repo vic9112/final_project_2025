@@ -563,7 +563,7 @@ module fiFFNTT_tb;
 
     // coef in
     //for (k = 0; k < 4; k = k + 1) begin
-      stream_meta(COEF_BASE + k, 8'b0, get_COEF_LEN(0));
+      stream_meta(COEF_BASE + 0, 8'b00010100, get_COEF_LEN(0));
       ss_stream_coef(get_COEF_LEN(0), 0);
     //end
       
