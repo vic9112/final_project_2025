@@ -2286,7 +2286,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     reg  [1:0] wr_ptr_next, rd_ptr_next;
     wire       en_sm;
   // sm stream_out
-    reg [(pSS_WIDTH-1):0] sm_buffer;
+    reg [(pDATA_WIDTH-1):0] sm_buffer;
     reg [(pSS_WIDTH-1):0] sm_buffer_next;
     reg sm_buffer_state;     // 0 for idle; 1 for occupied
     reg sm_buffer_state_next;    
