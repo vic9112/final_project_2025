@@ -312,6 +312,41 @@ wire BPE3_out_done_next;
 
 
 // =============================BPE 4=========================== //
+// Parameters for FSM 
+localparam IDLE_4th = 0;     // 000000
+localparam FILL0_0_4th = 1;  // 000001
+localparam FILL0_1_4th = 2;  // 000010
+localparam CALC0_0_4th = 3;  // 000011
+localparam CALC0_1_4th = 4;  // 000100
+localparam FILL1_0_4th = 5;  // 000101
+localparam FILL1_1_4th = 6;  // 000110
+localparam CALC1_0_4th = 7;  // 000111
+localparam CALC1_1_4th = 8;  // 001000
+localparam FILL2_0_4th = 9;  // 001001
+localparam FILL2_1_4th = 10; // 001010
+localparam CALC2_0_4th = 11; // 001011
+localparam CALC2_1_4th = 12; // 001100
+localparam FILL3_0_4th = 13; // 001101
+localparam FILL3_1_4th = 14; // 001110
+localparam CALC3_0_4th = 15; // 001111
+localparam CALC3_1_4th = 16; // 010000
+localparam BPE_O_0_4th = 17; // 010001
+localparam BPE_O_1_4th = 18; // 010010
+localparam BPE_I_0_4th = 19; // 010011
+localparam BPE_I_1_4th = 20; // 010100
+localparam BPE_O_2_4th = 21; // 010101
+localparam BPE_O_3_4th = 22; // 010110
+localparam BPE_I_2_4th = 23; // 010111
+localparam BPE_I_3_4th = 24; // 011000
+localparam BPE_O_4_4th = 25; // 011001
+localparam BPE_O_5_4th = 26; // 011010
+localparam BPE_I_4_4th = 27; // 011011
+localparam BPE_I_5_4th = 28; // 011100
+localparam BPE_O_6_4th = 29; // 011101
+localparam BPE_O_7_4th = 30; // 011110
+localparam BPE_I_6_4th = 31; // 011111
+localparam BPE_I_7_4th = 32; // 100000
+localparam FINISH_4th = 33;  // 100001
 
 wire ld_rdy_4th;
 
@@ -1964,40 +1999,41 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign BPE4_o_rdy = BPE4_o_rdy_r;
     assign bpe_act[3] = bpe_act_4th;
     //===================FSM for 4th BPE===================//
-    localparam IDLE_4th = 0;     // 000000
-    localparam FILL0_0_4th = 1;  // 000001
-    localparam FILL0_1_4th = 2;  // 000010
-    localparam CALC0_0_4th = 3;  // 000011
-    localparam CALC0_1_4th = 4;  // 000100
-    localparam FILL1_0_4th = 5;  // 000101
-    localparam FILL1_1_4th = 6;  // 000110
-    localparam CALC1_0_4th = 7;  // 000111
-    localparam CALC1_1_4th = 8;  // 001000
-    localparam FILL2_0_4th = 9;  // 001001
-    localparam FILL2_1_4th = 10; // 001010
-    localparam CALC2_0_4th = 11; // 001011
-    localparam CALC2_1_4th = 12; // 001100
-    localparam FILL3_0_4th = 13; // 001101
-    localparam FILL3_1_4th = 14; // 001110
-    localparam CALC3_0_4th = 15; // 001111
-    localparam CALC3_1_4th = 16; // 010000
-    localparam BPE_O_0_4th = 17; // 010001
-    localparam BPE_O_1_4th = 18; // 010010
-    localparam BPE_I_0_4th = 19; // 010011
-    localparam BPE_I_1_4th = 20; // 010100
-    localparam BPE_O_2_4th = 21; // 010101
-    localparam BPE_O_3_4th = 22; // 010110
-    localparam BPE_I_2_4th = 23; // 010111
-    localparam BPE_I_3_4th = 24; // 011000
-    localparam BPE_O_4_4th = 25; // 011001
-    localparam BPE_O_5_4th = 26; // 011010
-    localparam BPE_I_4_4th = 27; // 011011
-    localparam BPE_I_5_4th = 28; // 011100
-    localparam BPE_O_6_4th = 29; // 011101
-    localparam BPE_O_7_4th = 30; // 011110
-    localparam BPE_I_6_4th = 31; // 011111
-    localparam BPE_I_7_4th = 32; // 100000
-    localparam FINISH_4th = 33;  // 100001
+    // ================ Parameters for FSM ================//
+    // localparam IDLE_4th = 0;     // 000000
+    // localparam FILL0_0_4th = 1;  // 000001
+    // localparam FILL0_1_4th = 2;  // 000010
+    // localparam CALC0_0_4th = 3;  // 000011
+    // localparam CALC0_1_4th = 4;  // 000100
+    // localparam FILL1_0_4th = 5;  // 000101
+    // localparam FILL1_1_4th = 6;  // 000110
+    // localparam CALC1_0_4th = 7;  // 000111
+    // localparam CALC1_1_4th = 8;  // 001000
+    // localparam FILL2_0_4th = 9;  // 001001
+    // localparam FILL2_1_4th = 10; // 001010
+    // localparam CALC2_0_4th = 11; // 001011
+    // localparam CALC2_1_4th = 12; // 001100
+    // localparam FILL3_0_4th = 13; // 001101
+    // localparam FILL3_1_4th = 14; // 001110
+    // localparam CALC3_0_4th = 15; // 001111
+    // localparam CALC3_1_4th = 16; // 010000
+    // localparam BPE_O_0_4th = 17; // 010001
+    // localparam BPE_O_1_4th = 18; // 010010
+    // localparam BPE_I_0_4th = 19; // 010011
+    // localparam BPE_I_1_4th = 20; // 010100
+    // localparam BPE_O_2_4th = 21; // 010101
+    // localparam BPE_O_3_4th = 22; // 010110
+    // localparam BPE_I_2_4th = 23; // 010111
+    // localparam BPE_I_3_4th = 24; // 011000
+    // localparam BPE_O_4_4th = 25; // 011001
+    // localparam BPE_O_5_4th = 26; // 011010
+    // localparam BPE_I_4_4th = 27; // 011011
+    // localparam BPE_I_5_4th = 28; // 011100
+    // localparam BPE_O_6_4th = 29; // 011101
+    // localparam BPE_O_7_4th = 30; // 011110
+    // localparam BPE_I_6_4th = 31; // 011111
+    // localparam BPE_I_7_4th = 32; // 100000
+    // localparam FINISH_4th = 33;  // 100001
 
     // fsm state registers
     // reg [5:0] state_4th;
@@ -2728,6 +2764,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]];
     assign sw_vld = output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH];
     assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH]; // ready to receive data when empty
+    assign sw_lst = & kern_out_cnt_r;
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
