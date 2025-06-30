@@ -12,7 +12,7 @@ module kernel_FFT #(
     input wire sw_rdy,
     output wire [(pDATA_WIDTH - 1):0] sw_dat,
     input wire [4:0]  coef_vld,
-    output wire [4:0] coef_rdy,
+    output wire       coef_rdy,
     input wire [(pDATA_WIDTH - 1):0] coef_dat,
     output wire [4:0] bpe_act,
     input wire [7:0] mode,
@@ -88,7 +88,6 @@ module kernel_FFT #(
     output wire [12:0] sram_addr_32
 );
 
-integer i, j, k;
 reg phase;
 wire phase_next;
 
@@ -162,7 +161,7 @@ reg [(pDATA_WIDTH - 1):0] BPE1_bout_buffer;
 reg [(pDATA_WIDTH - 1):0] BPE1_ain_buffer;
 wire [(pDATA_WIDTH - 1):0] BPE1_ain_buffer_next;
 
-
+assign sw_lst = 0;
 
 
 // =============================BPE 2========================== //
@@ -204,8 +203,8 @@ reg trigger_once_2nd;
 wire [15:0] counter_2nd_next;
 wire [15:0] counter_2nd_delay_next;
 wire [15:0] counter_2nd_adv_next;
+wire [15:0] stage2_counter_2nd_delay_next;
 wire [15:0] stage2_counter_2nd_next;
-wire [15:0] stage2_counter_delay_2nd_next;
 wire counting_2nd_next;
 wire trigger_once_2nd_next;
 
@@ -232,6 +231,11 @@ wire [13:0] bpe2_output_addr;
 reg [8:0] bpe2_output_counter;
 wire [8:0] bpe2_output_counter_next;
 wire ld_sram_512_vld;
+
+
+reg [1:0] state_io_2nd;
+reg [1:0] state_io_2nd_next;
+
 
 
 
@@ -278,7 +282,7 @@ wire [15:0] counter_3rd_next;
 wire [15:0] counter_3rd_delay_next;
 wire [15:0] counter_3rd_adv_next;
 wire [15:0] stage2_counter_3rd_next;
-wire [15:0] stage2_counter_delay_3rd_next;
+wire [15:0] stage2_counter_3rd_delay_next;
 wire counting_3rd_next;
 wire trigger_once_3rd_next;
 
@@ -310,6 +314,10 @@ reg BPE3_out_done;
 reg [4:0] counter_3rd_output;
 wire [4:0] counter_3rd_output_next;
 wire BPE3_out_done_next; 
+
+
+reg [1:0] state_i_3rd;
+reg [1:0] state_i_3rd_next;
 
 
 
@@ -476,6 +484,7 @@ always @(posedge clk or negedge rstn) begin
   end
 end
 
+assign coef_rdy = 1;
 assign coef_count_next = (coef_vld[0]) ? coef_count + 1 : coef_count;
 assign coef_reg_0_next = (coef_vld[0]) & (coef_count[1:0] == 2'b00) ? coef_dat : coef_reg_0;
 assign coef_reg_1_next = (coef_vld[0]) & (coef_count[1:0] == 2'b01) ? coef_dat : coef_reg_1;
@@ -837,7 +846,7 @@ always @(*) begin
   endcase
 end
 
-assign BPE1_ain_buffer_next = (counter_1st[1:0] == 2'b00) ? BPE1_ain_buffer : sram_din_512;
+assign BPE1_ain_buffer_next = (counter_1st[1:0] == 2'b00) ? BPE1_ain_buffer : sram_dout_512;
 
 //BPEinPreBuffer
 always @(posedge clk) begin
@@ -936,23 +945,28 @@ always @(*) begin
 end
 
 // ====================================BPE2、BPE3 I/O Control ============================= //
+localparam WAIT = 2'b00;
+localparam INPUT = 2'b01;
+localparam OUTPUT = 2'b10;
+
+
 
 always @(*) begin
   case (state_1st)
     RECEIVE_CAL_OUTPUT: begin
-      ld_vld_2nd = (counter_1st == 2'b10);
+      ld_vld_2nd = (counter_1st[1:0] == 2'b10);
       ld_dat_2nd = BPE1_aout;
     end
     CAL_OUTPUT: begin
-      ld_vld_2nd = (counter_1st == 2'b10);
+      ld_vld_2nd = (counter_1st[1:0] == 2'b10);
       ld_dat_2nd = BPE1_aout;
     end
     CAL1: begin
-      ld_vld_2nd = (counter_1st == 2'b10);
+      ld_vld_2nd = (counter_1st[1:0] == 2'b10);
       ld_dat_2nd = BPE1_aout;
     end
     TRANSFER: begin
-      ld_vld_2nd = (counter_1st == 2'b00) & (state_io_2nd == INPUT);
+      ld_vld_2nd = (counter_1st[1:0] == 2'b00) & (state_io_2nd == INPUT);
       ld_dat_2nd = sram_dout_512;
     end
     default: begin
@@ -965,7 +979,7 @@ end
 always @(*) begin
   case (state_1st)
     TRANSFER: begin
-      ld_vld_3rd = (counter_1st == 2'b01) & (state_i_3rd == INPUT);
+      ld_vld_3rd = (counter_1st[1:0] == 2'b01) & (state_i_3rd == INPUT);
       ld_dat_3rd = sram_dout_512;
     end
     default: begin
@@ -975,15 +989,11 @@ always @(*) begin
   endcase
 end
 
-reg [1:0] state_io_2nd;
+/*reg [1:0] state_io_2nd;
 reg [1:0] state_io_2nd_next;
 
 reg [1:0] state_i_3rd;
-reg [1:0] state_i_3rd_next;
-
-localparam WAIT = 2'b00;
-localparam INPUT = 2'b01;
-localparam OUTPUT = 2'b10;
+reg [1:0] state_i_3rd_next;*/
 
 always @(posedge clk or negedge rstn) begin
   if (~rstn) begin
@@ -1004,7 +1014,11 @@ always @(*) begin
       state_io_2nd_next = (input_done_2nd) ? WAIT : INPUT;
     end
     OUTPUT: begin
-      state_io_2nd_next = (output_done_2nd) ? WAIT : OUTPUT;
+      state_io_2nd_next =  &bpe2_output_counter[8:0] & (output_done_2nd) ? 2'b11 :
+                           (output_done_2nd) ? WAIT : OUTPUT;
+    end
+    2'b11: begin
+      state_io_2nd_next = (decode) ? WAIT : 2'b11;
     end
     default: begin
       state_io_2nd_next = WAIT;
@@ -1027,7 +1041,11 @@ always @(*) begin
                            (state_3rd == IDLE) & (bpe3_can_input) ? INPUT : WAIT;
     end
     INPUT: begin
-      state_i_3rd_next = (input_done_3rd) ? WAIT : INPUT;
+      state_i_3rd_next = &bpe3_input_counter[8:0] & (input_done_3rd) ? 2'b11 : 
+                         (input_done_3rd) ? WAIT : INPUT;
+    end
+    2'b11: begin
+      state_i_3rd_next = (decode) ? WAIT : 2'b11;
     end
     default: begin
       state_i_3rd_next = WAIT;
@@ -1042,7 +1060,7 @@ wire [8:0] bpe2_input_counter_next;*/
 
 always @(posedge clk or negedge rstn) begin
   if (~rstn | decode) begin
-    bpe2_input_counter <= 128;
+    bpe2_input_counter <= 0;
   end else begin
     bpe2_input_counter <= bpe2_input_counter_next;
   end
@@ -1076,7 +1094,7 @@ reg  [8:0] bpe3_input_counter;
 wire [8:0] bpe3_input_counter_next;
 wire bpe3_can_input;*/
 
-assign bpe3_can_input = bpe2_output_counter > bpe3_input_counter;
+assign bpe3_can_input = (bpe2_output_counter > bpe3_input_counter) | (~(|bpe2_output_counter[8:0]) & (|bpe3_input_counter[8:0]));
 
 always @(posedge clk or negedge rstn) begin
   if (~rstn | decode) begin
@@ -1098,7 +1116,7 @@ assign ld_sram_512_vld = (state_2nd == TRANSFER) & (counter_1st[1:0] == 2'b0) & 
 assign ld_rdy_2nd = (counter_2nd[1:0] == 2'b00);
 
 //coef_done
-assign coef_done_2nd = (coef_count_2nd == 2'b11);
+assign coef_done_2nd = coef_count_2nd[1:0] == 2'b11; 
 assign bpe_act[1] = (state_2nd == 4'b0) & ld_vld_2nd;
 
 always @(posedge clk or negedge rstn) begin
@@ -1176,7 +1194,7 @@ end
 // Counter
 wire wait_ld_2nd;
 wire coef_not_ready_2nd;
-assign coef_not_ready_2nd = (counter_2nd == 254) & (~coef_done_2nd);
+assign coef_not_ready_2nd = (counter_2nd == 252) & (~coef_done_2nd);
 assign wait_ld_2nd = (state_2nd >= 4'd1 && state_2nd <= 4'd5) && (counter_2nd[1:0] == 2'b00);
 assign trigger_once_2nd_next  = trigger_once_2nd | ld_vld_2nd;
 assign counting_2nd_next  = (ld_vld_2nd && !trigger_once_2nd) ? 1'b1 : counting_2nd;
@@ -1189,7 +1207,7 @@ assign counter_2nd_next =
 
 assign counter_2nd_delay_next = counter_2nd - 27;
 assign counter_2nd_adv_next   = counter_2nd + 2;
-assign stage2_counter_2nd_next    = counter_2nd - 182;
+assign stage2_counter_2nd_next  = counter_2nd - 156;
 assign stage2_counter_2nd_delay_next = stage2_counter_2nd - 28;
 
 always @(posedge clk or negedge rstn) begin
@@ -1201,9 +1219,7 @@ always @(posedge clk or negedge rstn) begin
     counter_2nd_delay_buffer <= 16'd0;
     counter_2nd_adv          <= 16'd0;
     stage2_counter_2nd           <= 16'd0;
-    stage2_counter_2nd_delay     <= 16'd0;
     stage2_counter_2nd_buffer    <= 16'd0;
-    stage2_counter_2nd_delay_buffer <= 16'd0;
   end else begin
     counter_2nd              <= counter_2nd_next;
     counting_2nd             <= counting_2nd_next;
@@ -1212,10 +1228,13 @@ always @(posedge clk or negedge rstn) begin
     counter_2nd_delay_buffer <= counter_2nd_delay;
     counter_2nd_adv          <= counter_2nd_adv_next;
     stage2_counter_2nd           <= stage2_counter_2nd_next;
-    stage2_counter_2nd_delay     <= stage2_counter_2nd_delay_next;
     stage2_counter_2nd_buffer    <= stage2_counter_2nd;
-    stage2_counter_2nd_delay_buffer <= stage2_counter_2nd_delay;
   end
+end
+
+always @(posedge clk) begin
+  stage2_counter_2nd_delay <= stage2_counter_2nd_delay_next;
+  stage2_counter_2nd_delay_buffer <= stage2_counter_2nd_delay;
 end
 
 
@@ -1276,27 +1295,27 @@ always @(*) begin
       sram_we_128 = 0;
     end
     RECEIVE_CAL2: begin
-      sram_we_128 = (counter_1st[1:0] == 2'b00) ? (ld_vld & phase) : 
-                    (counter_1st[1:0] == 2'b01) & (phase); 
+      sram_we_128 = (counter_2nd[1:0] == 2'b00) ? (ld_vld_2nd & phase) : 
+                    (counter_2nd[1:0] == 2'b01) & (phase); 
     end
     RECEIVE_CAL3: begin
-      sram_we_128 = (counter_1st[1:0] == 2'b00) ? (ld_vld & phase) : 
-                    (counter_1st[1:0] == 2'b01) & (phase);  
+      sram_we_128 = (counter_2nd[1:0] == 2'b00) ? (ld_vld_2nd & phase) : 
+                    (counter_2nd[1:0] == 2'b01) & (phase);  
     end
     RECEIVE_CAL_OUTPUT: begin
-      sram_we_128 = (counter_1st[1:0] == 2'b00) ? (ld_vld & phase) : (phase);
+      sram_we_128 = (counter_2nd[1:0] == 2'b00) ? (ld_vld_2nd & phase) : (phase);
     end
     CAL_OUTPUT: begin
       sram_we_128 = (phase);
     end
     CAL1: begin
-      sram_we_128 = (counter_1st[1:0] == 2'b11) ? 0 : (counter_1st[1:0] == 2'b10) | (phase);
+      sram_we_128 = (counter_2nd[1:0] == 2'b11) ? 0 : (counter_2nd[1:0] == 2'b10) | (phase);
     end
     CAL2: begin
-      sram_we_128 = ~(counter_1st[1]) & (phase);
+      sram_we_128 = ~(counter_2nd[1]) & (phase);
     end
     SAVE: begin
-      sram_we_128 = (counter_1st[1:0] == 2'b00);
+      sram_we_128 = (counter_2nd[1:0] == 2'b00);
     end
     TRANSFER: begin
       sram_we_128 = 0;
@@ -1369,7 +1388,7 @@ always @(*) begin
       sram_addr_one_cycle_2nd = {5'b0, counter_2nd[7:0], 13'b0};
     end
     RECEIVE_CAL1: begin // 1
-      sram_addr_one_cycle_2nd = {13'B0, 5'b0, counter_2nd[7:0]};
+      sram_addr_one_cycle_2nd = {13'b0, 5'b0, counter_2nd[7:0]};
     end
     RECEIVE_CAL2: begin // 2
       sram_addr_one_cycle_2nd = (counter_2nd[1:0] == 2'b00) ? {5'b0, counter_2nd_delay[7:0] ,5'b0, counter_2nd[7:0]} : 
@@ -1475,7 +1494,7 @@ always @(*) begin
   endcase
 end
 
-assign BPE2_ain_buffer_next = (counter_2nd[1:0] == 2'b00) ? BPE2_ain_buffer : sram_din_128;
+assign BPE2_ain_buffer_next = (counter_2nd[1:0] == 2'b00) ? BPE2_ain_buffer : sram_dout_128;
 
 //BPEinPreBuffer
 always @(posedge clk) begin
@@ -1641,7 +1660,7 @@ always @(*) begin
       state_3rd_next = (counter_3rd == 156) ? SAVE : RECEIVE_CAL_OUTPUT;
     end 
     SAVE: begin
-      state_3rd_next = (counter_3rd == 664) ? TRANSFER : SAVE;
+      state_3rd_next = (counter_3rd == 184) ? TRANSFER : SAVE;
     end
     TRANSFER: begin
       state_3rd_next = (output_done_3rd) ? IDLE : TRANSFER;
@@ -1655,8 +1674,8 @@ end
 // Counter
 wire wait_ld_3rd;
 wire coef_not_ready_3rd;
-assign coef_not_ready_3rd = (counter_3rd == 62) & (~coef_done_3rd);
-assign wait_ld_3rd = (state_3rd >= 4'd1 && state_3rd <= 4'd4) && (counter_3rd[1:0] == 2'b00);
+assign coef_not_ready_3rd = (counter_3rd == 60) & (~coef_done_3rd);
+assign wait_ld_3rd = (state_3rd >= 4'd1 && state_3rd <= 4'd3) && (counter_3rd[1:0] == 2'b00);
 assign trigger_once_3rd_next  = trigger_once_3rd | ld_vld_3rd;
 assign counting_3rd_next  = (ld_vld_3rd && !trigger_once_3rd) ? 1'b1 : counting_3rd;
 assign counter_3rd_next = 
@@ -1668,7 +1687,7 @@ assign counter_3rd_next =
 
 assign counter_3rd_delay_next = counter_3rd - 27;
 assign counter_3rd_adv_next   = counter_3rd + 2;
-assign stage2_counter_3rd_next    = counter_3rd + 3;
+assign stage2_counter_3rd_next    = counter_3rd + 4;
 assign stage2_counter_3rd_delay_next = stage2_counter_3rd - 28;
 
 always @(posedge clk or negedge rstn) begin
@@ -1737,26 +1756,26 @@ end
 always @(*) begin
   case (state_3rd)
     IDLE: begin
-      sram_we_32 = ld_vld_2nd & (phase);
+      sram_we_32 = ld_vld_3rd & (phase);
     end
     RECEIVE: begin
-      sram_we_32 = ld_vld_2nd & (phase);
+      sram_we_32 = ld_vld_3rd & (phase);
     end
     RECEIVE_CAL1: begin
       sram_we_32 = 0;
     end
     RECEIVE_CAL2: begin
-      sram_we_32 = (counter_1st[1:0] == 2'b00) ? (ld_vld & phase) : 
-                    (counter_1st[1:0] == 2'b01) & (phase); 
+      sram_we_32 = (counter_3rd[1:0] == 2'b00) ? (ld_vld_3rd & phase) : 
+                    (counter_3rd[1:0] == 2'b01) & (phase); 
     end
     RECEIVE_CAL3: begin
-      sram_we_32 = ~(counter_1st[1]) & (phase);
+      sram_we_32 = ~(counter_3rd[1]) & (phase);
     end
     RECEIVE_CAL_OUTPUT: begin
       sram_we_32 = phase;
     end
     SAVE: begin
-      sram_we_32 = ~(counter_1st[0]);
+      sram_we_32 = ~(counter_3rd[0]);
     end
     TRANSFER: begin
       sram_we_32 = 0;
@@ -1822,11 +1841,11 @@ always @(*) begin
     end
     RECEIVE_CAL2: begin // 2
       sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b00) ? {7'b0, counter_3rd_delay[5:0] ,7'b0, counter_3rd[5:0]} : 
-                                                          {7'b0000001, counter_3rd_delay_buffer[7:0], 13'b0};
+                                                          {7'b0000001, counter_3rd_delay_buffer[5:0], 13'b0};
     end
     RECEIVE_CAL3: begin // 3
       sram_addr_one_cycle_3rd = (counter_3rd[1:0] == 2'b00) ? {7'b0, counter_3rd_delay[5:0] ,8'b00000011, counter_3rd[4:0]} :
-                            (counter_3rd[1:0] == 2'b01) ? {7'b0000001, counter_3rd_delay_buffer[7:0], 8'b0, stage2_counter_3rd[4:0]} :
+                            (counter_3rd[1:0] == 2'b01) ? {7'b0000001, counter_3rd_delay_buffer[5:0], 8'b0, stage2_counter_3rd[4:0]} :
                             (counter_3rd[1:0] == 2'b10) ? {13'b0, 8'b00000001, stage2_counter_3rd_buffer[4:0]} :
                                                           {13'b0, 8'b00000010, counter_3rd_adv[4:0]};
     end
@@ -1882,10 +1901,10 @@ always @(*) begin
       BPE3_bin = ld_dat_3rd;
     end
     RECEIVE_CAL3: begin
-      BPE3_bin = sram_dout_128;
+      BPE3_bin = sram_dout_32;
     end
     RECEIVE_CAL_OUTPUT: begin
-      BPE3_bin = sram_dout_128;
+      BPE3_bin = sram_dout_32;
     end
     default: begin
       BPE3_bin = 0;
@@ -1893,7 +1912,7 @@ always @(*) begin
   endcase
 end
 
-assign BPE3_ain_buffer_next = (counter_3rd[1:0] == 2'b00) ? BPE3_ain_buffer : sram_din_32;
+assign BPE3_ain_buffer_next = (counter_3rd[1:0] == 2'b00) ? BPE3_ain_buffer : sram_dout_32;
 
 //BPEinPreBuffer
 always @(posedge clk) begin
@@ -1941,7 +1960,7 @@ always @(*) begin
 end
 
 always @(posedge clk) begin
-  BPE2_bout_buffer <= BPE2_bout;
+  BPE3_bout_buffer <= BPE3_bout;
 end
 
 always @(*) begin
@@ -1968,14 +1987,14 @@ end
 
 assign enable_output_3rd = (state_3rd == TRANSFER);
 always @(posedge clk or negedge rstn) begin
-  if (~rstn) begin
+  if (~rstn | output_done_3rd) begin
     counter_3rd_output <= 0;
   end else begin
     counter_3rd_output <= counter_3rd_output_next;
   end
 end
 
-assign counter_3rd_output_next = (enable_output_3rd) & ld_rdy_4th ? counter_3rd_output + 1 : 0;
+assign counter_3rd_output_next = (enable_output_3rd) & ld_rdy_4th ? counter_3rd_output + 1 : counter_3rd_output;
 
 assign output_done_3rd = &counter_3rd_output[4:0] & ld_rdy_4th;
 
