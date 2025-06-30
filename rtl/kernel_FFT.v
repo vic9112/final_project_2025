@@ -88,6 +88,7 @@ module kernel_FFT #(
     output wire [12:0] sram_addr_32
 );
 
+integer i, j, k;
 reg phase;
 wire phase_next;
 
@@ -161,7 +162,7 @@ reg [(pDATA_WIDTH - 1):0] BPE1_bout_buffer;
 reg [(pDATA_WIDTH - 1):0] BPE1_ain_buffer;
 wire [(pDATA_WIDTH - 1):0] BPE1_ain_buffer_next;
 
-assign sw_lst = 0;
+//assign sw_lst = 0;
 
 
 // =============================BPE 2========================== //
