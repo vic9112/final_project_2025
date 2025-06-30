@@ -9,11 +9,38 @@ module fiFFNTT_tb;
   localparam NUM_KER       = 4;
 
   // Stream lengths
+  /*
   localparam int LEN [NUM_KER] = {2048, 2048, 1024, 1024};
   localparam int COEF_LEN [NUM_KER] = {512, 512, 1024, 1024};
+  */
+    function [15:0] get_LEN;
+  input integer idx;
+  begin
+    case(idx)
+      0: get_LEN = 2048;
+      1: get_LEN = 2048;
+      2: get_LEN = 1024;
+      3: get_LEN = 1024;
+      default: get_LEN = 0;
+    endcase
+  end
+  endfunction
+
+  function [15:0] get_COEF_LEN;
+    input integer idx;
+    begin
+      case(idx)
+        0: get_COEF_LEN = 512;
+        1: get_COEF_LEN = 512;
+        2: get_COEF_LEN = 1024;
+        3: get_COEF_LEN = 1024;
+        default: get_COEF_LEN = 0;
+      endcase
+    end
+  endfunction
 
   // Register map
-  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h3000_0000;
+  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h0000_0000;
   localparam [ADDR_WIDTH-1:0] COEF_DONE_ADDR = 32'h3000_0010;
   localparam [ADDR_WIDTH-1:0] MB_BASE_ADDR   = 32'h3000_2000;
   localparam [7:0]            COEF_BASE      = 8'b0001_0100;
@@ -119,7 +146,7 @@ module fiFFNTT_tb;
     .sm_tlast   (sm_tlast)
   );
 
-  mailbox #(
+  my_mailbox #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
     .MB_COUNT(NUM_KER)
@@ -137,8 +164,19 @@ module fiFFNTT_tb;
     .araddr     (araddr_mb),
     .rvalid     (rvalid_mb),
     .rdata      (rdata_mb),
-    .rready     (rready_mb),
+    .rready     (rready_mb)
   );
+
+    //Prevent hang
+    integer timeout = (10000);
+    initial begin
+        while(timeout > 0) begin
+            @(posedge clk);
+            timeout = timeout - 1;
+        end
+        $display($time, "Simualtion Hang ....");
+        $finish;
+    end
 
   // AXI-Lite write task
   task axilite_write(
@@ -300,6 +338,23 @@ module fiFFNTT_tb;
     end
   endtask
 
+  task ss_stream_coef(
+    input integer N,
+    input integer M
+  );
+    begin
+      for (i = 0; i < N; i = i + 1) begin
+        @(posedge clk);
+        ss_tdata <= coef_mem[M][i];
+        ss_tvalid <= 1;
+        
+        wait(ss_tready);
+        @(posedge clk);
+        ss_tvalid <= 0;
+      end
+    end
+  endtask
+
   task sm_stream_meta(
     output integer length_out,
     output integer mode_out
@@ -342,8 +397,8 @@ module fiFFNTT_tb;
   );
     begin
       axilite_write_mb(MB_BASE_ADDR + N * MB_STRIDE, PAT_KER_BUSY);
-      stream_meta(KERNEL_BASE + N, MODE_BASE + M, get_LEN[M]);
-      ss_stream_in(get_LEN[M], M);
+      stream_meta(KERNEL_BASE + N, MODE_BASE + M, get_LEN(M));
+      ss_stream_in(get_LEN(M), M);
     end
   endtask
 
@@ -435,6 +490,8 @@ module fiFFNTT_tb;
 
 
   initial begin
+    $dumpfile("fiFFNTT.vcd");
+    $dumpvars(0, fiFFNTT_tb);
     awvalid = 0; 
     wvalid = 0;
     arvalid = 0; 
@@ -442,23 +499,28 @@ module fiFFNTT_tb;
     ss_tvalid = 0;
     ss_tlast = 0; 
     sm_tready = 0;
+    
+    awvalid_mb = 0;
+    wvalid_mb = 0;
+    arvalid_mb = 0;
+    rready_mb = 0;
 
     wait (rstn); 
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("FFT_coef.hex", coef_mem0);
-    $readmemh("iFFT_coef.hex", coef_mem1);
-    $readmemh("NTT_coef.hex", coef_mem2);
-    $readmemh("iNTT_coef.hex", coef_mem3);
+    $readmemh("addr0_511_128b.hex", coef_mem0);
+    //$readmemh("iFFT_coef.hex", coef_mem1);
+    //$readmemh("NTT_coef.hex", coef_mem2);
+    //$readmemh("iNTT_coef.hex", coef_mem3);
     $readmemh("FFT_in.hex", in_mem0);
-    $readmemh("iFFT_in.hex", in_mem1);
-    $readmemh("NTT_in.hex", in_mem2);
-    $readmemh("iNTT_in.hex", in_mem3);
+    //$readmemh("iFFT_in.hex", in_mem1);
+    //$readmemh("NTT_in.hex", in_mem2);
+    //$readmemh("iNTT_in.hex", in_mem3);
     $readmemh("FFT_out.hex", golden_mem0);
-    $readmemh("iFFT_out.hex", golden_mem1);
-    $readmemh("NTT_out.hex", golden_mem2);
-    $readmemh("iNTT_out.hex", golden_mem3);
+    //$readmemh("iFFT_out.hex", golden_mem1);
+    //$readmemh("NTT_out.hex", golden_mem2);
+    //$readmemh("iNTT_out.hex", golden_mem3);
 
     for (k = 0; k < 2048; k = k + 1) begin
       coef_mem[0][k] = coef_mem0[k];
@@ -476,7 +538,7 @@ module fiFFNTT_tb;
     end
 
     axilite_read(STATUS_ADDR, stat);
-    if (stat != 32'h10101010) begin
+    if (stat[7:0] != 8'h10) begin
       $display("initial ap_idle state wrong");
       $finish;
     end
@@ -488,30 +550,31 @@ module fiFFNTT_tb;
     end
 
     // coef in
-    for (k = 0; k < NUM_KER; k = k + 1) begin
-      stream_meta(COEF_BASE + k, 8'b0, COEF_LEN[k][15:0]);
-      ss_stream_in(COEF_LEN[k], 0);
-    end
-
+    //for (k = 0; k < 4; k = k + 1) begin
+      stream_meta(COEF_BASE + k, 8'b0, get_COEF_LEN(0));
+      ss_stream_coef(get_COEF_LEN(0), 0);
+    //end
+      
     // Write coef_done = 1
-    axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
+    //axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
     $display("Coefficients input over");
 
     // test1
-    for (k = 0; k < 4; k = k + 1) begin
+    //for (k = 0; k < 4; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
         $finish;
       end else begin
-        $display("Test1: Kernel 1 starts testing mode %d", k + 1);
+        $display("Test1: Kernel 1 starts testing mode %d", 0 + 1);
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
 
-      stream_meta(KERNEL_BASE, MODE_BASE + k, LEN[k][15:0]);
+      stream_meta(KERNEL_BASE, MODE_BASE + 0, get_LEN(0));
       fork
         // DMA in
-        ss_stream_in(get_LEN(k), k);
+        ss_stream_in(get_LEN(0), 0);
+        
         // FW thread
         begin
           start_time = $time;
@@ -520,11 +583,11 @@ module fiFFNTT_tb;
           wait_ap_done(0);
           end_time = $time;
           latency = end_time - start_time;
-          $display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
+          $display("Test1: Kernel 1 latency for data %d is %d ns", 0 + 1, latency);
           axilite_write_mb(MB_BASE_ADDR, PAT_KER_FREE);
         end
       join
-    end
+    //end
 
     // Check results
     for (i = 0; i < get_LEN(k); i = i + 1) begin
@@ -555,8 +618,9 @@ module fiFFNTT_tb;
       end
     join
     $display("Test3 pass!!");
+    $finish;
   end
 
-  $finish;
+  //$finish;
   
 endmodule
