@@ -2220,6 +2220,7 @@ module stage_top
     reg [2:0] sm_cnt_next;
     reg [(pSS_WIDTH-1):0] sm_dat_r;
     
+
     assign  FIFO_wr_en = meta_decode;
     assign  FIFO_rd_en = en_sm && (sm_buffer_state == 0);
     assign  en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
@@ -2380,6 +2381,37 @@ module stage_top
 
     assign sm_vld = sm_buffer_state;
     assign sm_dat = sm_dat_r;
+
+  /*----------------------------------------------------------------
+                      kernal data stream out
+  -----------------------------------------------------------------*/
+  reg k1_sw_rdy_r;
+  reg k1_sw_rdy_next;
+  reg k2_sw_rdy_r;
+  reg k2_sw_rdy_next;
+  reg k3_sw_rdy_r;
+  reg k3_sw_rdy_next;
+  reg k4_sw_rdy_r;
+  reg k4_sw_rdy_next;
+
+  always @ (posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      k1_sw_rdy_r <= 0;
+      k2_sw_rdy_r <= 0;
+      k3_sw_rdy_r <= 0;
+      k4_sw_rdy_r <= 0;
+    end else begin
+      k1_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00);
+      k2_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01);
+      k3_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10);
+      k4_sw_rdy_r <= (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11);
+    end
+  end
+
+  assign k1_sw_rdy = k1_sw_rdy_r;
+  assign k2_sw_rdy = k2_sw_rdy_r;
+  assign k3_sw_rdy = k3_sw_rdy_r;
+  assign k4_sw_rdy = k4_sw_rdy_r;
 
   /*----------------------------------------------------------------
                       Configuration Register
