@@ -402,17 +402,18 @@ module stage_top
       k3_mode_r <= 0;
       k4_mode_r <= 0;
     end else begin
-      k1_mode_r <= (meta_data[31:24] == KERNEL_1) ? meta_data[18:17] : k1_mode_r;
-      k2_mode_r <= (meta_data[31:24] == KERNEL_2) ? meta_data[18:17] : k2_mode_r;
-      k3_mode_r <= (meta_data[31:24] == KERNEL_3) ? meta_data[18:17] : k3_mode_r;
-      k4_mode_r <= (meta_data[31:24] == KERNEL_4) ? meta_data[18:17] : k4_mode_r;
+      k1_mode_r <= (meta_data[31:24] == KERNEL_1) ? meta_data[17:16] : k1_mode_r;
+      k2_mode_r <= (meta_data[31:24] == KERNEL_2) ? meta_data[17:16] : k2_mode_r;
+      k3_mode_r <= (meta_data[31:24] == KERNEL_3) ? meta_data[17:16] : k3_mode_r;
+      k4_mode_r <= (meta_data[31:24] == KERNEL_4) ? meta_data[17:16] : k4_mode_r;
     end
   end
 
-  assign k1_mode = {6'b000000, k1_mode_r[1:0]};
-  assign k2_mode = {6'b000000, k2_mode_r[1:0]};
-  assign k3_mode = {6'b000000, k3_mode_r[1:0]};
-  assign k4_mode = {6'b000000, k4_mode_r[1:0]};
+  assign k1_mode = k1_mode_r;
+  assign k2_mode = k2_mode_r;
+  assign k3_mode = k3_mode_r;
+  assign k4_mode = k4_mode_r;
+
 
   /*----------------------------------------------------------------
                             pack counter
@@ -2185,18 +2186,18 @@ module stage_top
   ///////////////
   // coef data //
   ///////////////
-  assign k1_coef_dat = (k1_mode_r == 2'b10) ? fft_coef_ram_do : (k1_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
-  assign k2_coef_dat = (k2_mode_r == 2'b10) ? fft_coef_ram_do : (k2_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
-  assign k3_coef_dat = (k3_mode_r == 2'b10) ? fft_coef_ram_do : (k3_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
-  assign k4_coef_dat = (k4_mode_r == 2'b10) ? fft_coef_ram_do : (k4_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k1_coef_dat = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? fft_coef_ram_do : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k2_coef_dat = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? fft_coef_ram_do : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k3_coef_dat = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? fft_coef_ram_do : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
+  assign k4_coef_dat = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? fft_coef_ram_do : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ?  ntt_coef_ram_do : 0 ;
 
   //////////////
   // coef vld //
   //////////////
-  assign k1_coef_vld = (k1_mode_r == 2'b10) ? (coef_vld_mux == 1) : (k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-  assign k2_coef_vld = (k2_mode_r == 2'b10) ? (coef_vld_mux == 2) : (k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-  assign k3_coef_vld = (k3_mode_r == 2'b10) ? (coef_vld_mux == 3) : (k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-  assign k4_coef_vld = (k4_mode_r == 2'b10) ? (coef_vld_mux == 4) : (k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux == 1) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 2) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 3) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 4) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
 
   /*----------------------------------------------------------------
                       sm pack and stream out
