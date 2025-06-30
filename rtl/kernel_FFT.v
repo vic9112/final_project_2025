@@ -12,7 +12,7 @@ module kernel_FFT #(
     input wire sw_rdy,
     output wire [(pDATA_WIDTH - 1):0] sw_dat,
     input wire [4:0]  coef_vld,
-    output wire       coef_rdy,
+    output wire [4:0] coef_rdy,
     input wire [(pDATA_WIDTH - 1):0] coef_dat,
     output wire [4:0] bpe_act,
     input wire [7:0] mode,
@@ -485,7 +485,7 @@ always @(posedge clk or negedge rstn) begin
   end
 end
 
-assign coef_rdy = 1;
+assign coef_rdy[2:0] = 1;
 assign coef_count_next = (coef_vld[0]) ? coef_count + 1 : coef_count;
 assign coef_reg_0_next = (coef_vld[0]) & (coef_count[1:0] == 2'b00) ? coef_dat : coef_reg_0;
 assign coef_reg_1_next = (coef_vld[0]) & (coef_count[1:0] == 2'b01) ? coef_dat : coef_reg_1;
