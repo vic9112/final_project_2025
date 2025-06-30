@@ -59,6 +59,16 @@ module kernel_FFT #(
     input  wire BPE4_i_rdy,
     input  wire BPE4_o_vld,
 
+    output wire [(pDATA_WIDTH - 1):0] BPE5_ain,
+    output wire [(pDATA_WIDTH - 1):0] BPE5_bin,
+    output wire [(pDATA_WIDTH - 1):0] BPE5_coef,
+    output wire BPE5_i_vld,
+    output wire BPE5_o_rdy,
+    input  wire [(pDATA_WIDTH - 1):0] BPE5_aout,
+    input  wire [(pDATA_WIDTH - 1):0] BPE5_bout,
+    input  wire BPE5_i_rdy,
+    input  wire BPE5_o_vld,
+
     output wire [3:0] WE_512,
     output reg  sram_en_512,
     output wire [(pDATA_WIDTH - 1):0] sram_din_512,
@@ -1849,7 +1859,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
 // ==========================================BPE4 、 BPE5 ==================================//
 
-// 外面給你的訊號只會有ld_vld_4th和ld_dat_4th，你的BPE4在可收的時候ld_rdy_4th就要先拉著才能正常運作
+// 外面給你的訊號只會有ld_vld_4th和ld_dat_4th，你的BPE4在可收的時候ld_rdy_4th要先拉著才能正常運作
 
 
 
