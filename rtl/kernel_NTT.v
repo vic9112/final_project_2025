@@ -355,12 +355,15 @@ module kernel_NTT
         end
     end
 //=========data, coefficient ready (IOP -> kernel)==========//
-    assign ld_rdy = 1;
-    assign coef_rdy = 1;
-    assign BPE1_o_rdy = 1;
-    assign BPE2_o_rdy = 1;
-    assign BPE3_o_rdy = 1;
-    assign BPE4_o_rdy = 1;
+    reg l;
+    always @ (posedge clk) l <= 1;
+
+    assign ld_rdy = l;
+    assign coef_rdy = l;
+    assign BPE1_o_rdy = l;
+    assign BPE2_o_rdy = l;
+    assign BPE3_o_rdy = l;
+    assign BPE4_o_rdy = l;
 
     
 //==================clk_2x, two phase=======================//

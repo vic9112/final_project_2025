@@ -424,7 +424,11 @@ reg [3:0] state_5th, state_5th_next;
 // AXI signals
 wire ss_vld_5th, sm_rdy_5th;
 reg ss_rdy_5th, sm_vld_5th;
-reg coef_5th_rdy;
+wire coef_5th_rdy;
+
+reg l;
+always @ (posedge clk) l <= 1;
+assign coef_5th_rdy = l;
 
 // BPE5 data output
 reg [pDATA_WIDTH-1:0] BPE5_dout;//438
@@ -460,7 +464,7 @@ reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF
 reg [pDATA_WIDTH:0] output_buffer_w[0:31];
 reg [pDATA_WIDTH:0] output_buffer[0:31]; //
 reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_r; 
-reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
+wire[$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
 //reg [pDATA_WIDTH-1:0] BPE5_dout;
 
 // counters
@@ -1199,8 +1203,8 @@ always @(*) begin
     TRANSFER: begin
       state_2nd_next = (output_done_2nd) ? IDLE : TRANSFER;
     end
-    default: begin
-      state_2nd_next = IDLE;
+    default : begin
+      state_2nd_next = 0;
     end
   endcase
 end
@@ -2597,7 +2601,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE5_act <= 0;
         if(state_5th == IDLE_5th && ss_vld_5th) begin
           BPE5_act <= 1;
-        end else if(state_5th_next == BPE_O0_5th) begin
+        end else if(state_5th_next == BPE_O0_5th & state_5th == BPE_I3_5th) begin
           BPE5_act <= 1;
         end
       end
@@ -2876,31 +2880,28 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
 
     
+    assign output_buf_in_cnt_w = sw_lst ? 0 : ((sm_vld_5th & sm_rdy_5th) ? output_buf_in_cnt_r + 1 : output_buf_in_cnt_r);
     // assign out_byte_cnt_w = (sw_vld & sw_rdy) ? out_byte_cnt_r + 1 : out_byte_cnt_r;
     assign kern_out_cnt_w = (sw_vld & sw_rdy) ? kern_out_cnt_r + 1 : kern_out_cnt_r; 
     // assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]][(kern_out_cnt_r << 5) +: (pDATA_WIDTH >> 2)];                      
-    assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]];
-    assign sw_vld = output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH];
-    assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:3]][pDATA_WIDTH]; // ready to receive data when empty
-    assign sw_lst = & kern_out_cnt_r;
+    assign sw_data = output_buffer[output_buf_in_cnt_r[0+:5]];
+    assign sw_vld = output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH];
+    assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH]; // ready to receive data when empty
+    // assign sw_lst = & kern_out_cnt_r;
+
+    reg o;
+    always @ (posedge clk) o<=0;
+    assign sw_lst = o;
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
         kern_out_cnt_r <= 0;
+        output_buf_in_cnt_r <= 0;
       end else begin
         kern_out_cnt_r <= kern_out_cnt_w;
+        output_buf_in_cnt_r <= output_buf_in_cnt_w;
       end
     end
-
-
-
-
-
-
-
-
-
-
 
 
 endmodule

@@ -234,7 +234,7 @@ module kernel_top
         .sw_vld   (sw_vld_fft),
         .sw_rdy   (sw_rdy),
         .sw_dat   (sw_dat_fft),
-        .coef_vld (coef_vld & use_fft),
+        .coef_vld (coef_vld & {5{use_fft}}),
         .coef_rdy (coef_rdy_fft),
         .coef_dat (coef_dat),
         .bpe_act  (bpe_act_fft),
