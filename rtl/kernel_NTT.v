@@ -113,10 +113,10 @@ module kernel_NTT
     localparam S6 = 4'b0101;
     localparam S7_to_10 = 4'b0110;
     localparam OUT = 4'b0111;
+    localparam IDLE = 4'b1000;
 
-    // localparam S8 = 4'b0111;
-    // localparam S9 = 4'b1000;
-    // localparam S10 = 4'b1001;
+    localparam NTT = 2'b10;
+    localparam iNTT = 2'b11;
 
     reg [6:0] s1_o_cnt, s2_o_cnt, s3_o_cnt, s4_o_cnt, s5_o_cnt, s6_o_cnt, s7_o_cnt, s8_o_cnt, s9_o_cnt, s10_o_cnt; 
     reg [3:0] stage, next_stage;
@@ -232,17 +232,17 @@ module kernel_NTT
     reg [(pDATA_WIDTH-1):0] s10_o_tmp_a, s10_o_tmp_b; 
 
     // s10 output : sram 128
-    wire [(pDATA_WIDTH_2x-1):0] s10_o_sram_din_128_tmp;
+    reg [(pDATA_WIDTH_2x-1):0] s10_o_sram_din_128_tmp;
     wire [25:0] s10_o_sram_addr_128_tmp;
-    wire [3:0]s10_o_WE_128;
-    wire s10_o_sram_en_128;
-    wire [(pDATA_WIDTH-1):0] s10_o_sram_din_128;
+    reg [3:0]s10_o_WE_128;
+    reg s10_o_sram_en_128;
+    reg [(pDATA_WIDTH-1):0] s10_o_sram_din_128;
     wire [12:0]  s10_o_sram_addr_128; 
 
     // sm output : sram 128
     reg sm_o_sram_en_128;
     reg sm_o_WE_128;
-    wire [(pDATA_WIDTH-1):0] sm_o_sram_addr_128;
+    wire [12:0] sm_o_sram_addr_128;
     reg [(pDATA_WIDTH-1):0] sm_o_sram_din_128;
 
     // s1 : BPE1
@@ -513,7 +513,7 @@ module kernel_NTT
 
 //============= output to bram 128===========//
     reg [6:0] s1_addr; 
-    wire [6:0] s1_current_addr;
+    wire [12:0] s1_current_addr_1, s1_current_addr_2;
 
 
     always@(posedge clk or negedge rstn) 
@@ -533,8 +533,8 @@ module kernel_NTT
         end else begin
             s1_o_sram_din_128_tmp [255:128] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s1_o_sram_din_128_tmp;
             s1_o_sram_din_128_tmp [127:0] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s1_o_sram_din_128_tmp;
-            s1_o_sram_addr_128_tmp [25:13] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (6'd32 + s1_current_addr)} : s1_o_sram_addr_128_tmp;
-            s1_o_sram_addr_128_tmp [12:0] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s1_current_addr} : s1_o_sram_addr_128_tmp;
+            s1_o_sram_addr_128_tmp [25:13] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? s1_current_addr_2 : s1_o_sram_addr_128_tmp;
+            s1_o_sram_addr_128_tmp [12:0] <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy) ? s1_current_addr_1 : s1_o_sram_addr_128_tmp;
             s1_o_WE_128 <= {4{(stage == S1 && BPE1_o_vld && BPE1_o_rdy)}};
             s1_o_sram_en_128 <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -558,7 +558,8 @@ module kernel_NTT
             s1_addr <= s1_addr;
         end
     end
-    assign s1_current_addr = s1_addr;  
+    assign s1_current_addr_1 = 4* (s1_addr);  
+    assign s1_current_addr_2 = 4* (s1_addr + 6'd32) ; 
 
 //====================================== butterfly stage 2 ======================================// 
 //============= stage 2 =============// 
@@ -579,9 +580,14 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0] s2_i_addr_1, s2_i_addr_2;
+
+    assign s2_i_addr_1 = 4 * s2_i_cnt;
+    assign s2_i_addr_2 = 4 * (7'd64 + s2_i_cnt);
+
     always@* begin
-        s2_i_sram_addr_128_tmp [25:13] <= (stage == S2 && s2_i_cnt <= 64) ? {4 * (7'd64 + s2_i_cnt)} : s2_i_sram_addr_128_tmp;
-        s2_i_sram_addr_128_tmp [12:0] <= (stage == S2 && s2_i_cnt <= 64) ? {4 * s2_i_cnt} : s2_i_sram_addr_128_tmp;
+        s2_i_sram_addr_128_tmp [25:13] <= (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_2 : s2_i_sram_addr_128_tmp;
+        s2_i_sram_addr_128_tmp [12:0] <= (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_1 : s2_i_sram_addr_128_tmp;
         s2_i_sram_en_128 = (stage == S2 && s2_i_cnt <= 64);
     end
 
@@ -615,7 +621,7 @@ end
 //============= output to bram 512===========//
     reg [6:0] s2_addr; 
     wire [6:0] s2_current_addr;
-
+    wire [12:0] s2_current_addr_1, s2_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -624,7 +630,11 @@ end
             s2_o_cnt <= (stage ==S2 && BPE1_o_vld && BPE1_o_rdy) ? 
                         ((s2_o_cnt == 7'd64) ? 0 : s2_o_cnt + 1) : s2_o_cnt;
         end 
-    
+
+
+    assign s2_current_addr_1 = 4 * s2_current_addr;
+    assign s2_current_addr_2 = 4 * (5'd16 + s2_current_addr);
+
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s2_o_sram_din_512_tmp <= 0;
@@ -634,8 +644,8 @@ end
         end else begin
             s2_o_sram_din_512_tmp [255:128] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s2_o_sram_din_512_tmp[255:128];
             s2_o_sram_din_512_tmp [127:0] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s2_o_sram_din_512_tmp[127:0];
-            s2_o_sram_addr_512_tmp [25:13] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (5'd16 + s2_current_addr)} : s2_o_sram_addr_512_tmp[25:13];
-            s2_o_sram_addr_512_tmp [12:0] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s2_current_addr} : s2_o_sram_addr_512_tmp[12:0];
+            s2_o_sram_addr_512_tmp [25:13] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? s2_current_addr_2 : s2_o_sram_addr_512_tmp[25:13];
+            s2_o_sram_addr_512_tmp [12:0] <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy) ? s2_current_addr_1 : s2_o_sram_addr_512_tmp[12:0];
             s2_o_WE_512 <= {4{(stage == S2 && BPE1_o_vld && BPE1_o_rdy)}};
             s2_o_sram_en_512 <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -680,9 +690,14 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0] s3_i_addr_1, s3_i_addr_2;
+
+    assign s3_i_addr_1 = 4 * s3_i_cnt;
+    assign s3_i_addr_2 = 4 * (7'd64 + s3_i_cnt);
+
     always@* begin
-        s3_i_sram_addr_512_tmp [25:13] <= (stage == S3 && s3_i_cnt <= 64) ? {4 * (7'd64 + s3_i_cnt)} : s3_i_sram_addr_512_tmp;
-        s3_i_sram_addr_512_tmp [12:0] <= (stage == S3 && s3_i_cnt <= 64) ? {4 * s3_i_cnt} : s3_i_sram_addr_512_tmp;
+        s3_i_sram_addr_512_tmp [25:13] <= (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_2 : s3_i_sram_addr_512_tmp;
+        s3_i_sram_addr_512_tmp [12:0] <= (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_1 : s3_i_sram_addr_512_tmp;
         s3_i_sram_en_512 = (stage == S3 && s3_i_cnt <= 64);
     end
 
@@ -718,7 +733,7 @@ end
 //============= output to bram 512===========//
     reg [6:0] s3_addr; 
     wire [6:0] s3_current_addr;
-
+    wire [12:0] s3_current_addr_1, s3_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -728,6 +743,11 @@ end
                         ((s3_o_cnt == 7'd64) ? 0 : s3_o_cnt + 1) : s3_o_cnt;
         end 
     
+
+
+    assign s3_current_addr_1 = 4 * s3_current_addr;
+    assign s3_current_addr_2 = 4 * (5'd8 + s3_current_addr);
+
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s3_o_sram_din_128_tmp <= 0;
@@ -737,8 +757,8 @@ end
         end else begin
             s3_o_sram_din_128_tmp [255:128] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s3_o_sram_din_128_tmp[255:128];
             s3_o_sram_din_128_tmp [127:0] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s3_o_sram_din_128_tmp[127:0];
-            s3_o_sram_addr_128_tmp [25:13] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (5'd8 + s3_current_addr)} : s3_o_sram_addr_128_tmp[25:13];
-            s3_o_sram_addr_128_tmp [12:0] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s3_current_addr} : s3_o_sram_addr_128_tmp[12:0];
+            s3_o_sram_addr_128_tmp [25:13] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? s3_current_addr_2 : s3_o_sram_addr_128_tmp[25:13];
+            s3_o_sram_addr_128_tmp [12:0] <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? s3_current_addr_1 : s3_o_sram_addr_128_tmp[12:0];
             s3_o_WE_128 <= {4{(stage == S3 && BPE1_o_vld && BPE1_o_rdy)}};
             s3_o_sram_en_128 <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -788,9 +808,14 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0] s4_i_addr_1, s4_i_addr_2;
+
+    assign s4_i_addr_1 = 4 * s4_i_cnt;
+    assign s4_i_addr_2 = 4 * (7'd64 + s4_i_cnt);
+
     always@* begin
-        s4_i_sram_addr_128_tmp [25:13] <= (stage == S4 && s4_i_cnt <= 64) ? {4 * (7'd64 + s4_i_cnt)} : s4_i_sram_addr_128_tmp;
-        s4_i_sram_addr_128_tmp [12:0] <= (stage == S4 && s4_i_cnt <= 64) ? {4 * s4_i_cnt} : s4_i_sram_addr_128_tmp;
+        s4_i_sram_addr_128_tmp [25:13] <= (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_2 : s4_i_sram_addr_128_tmp;
+        s4_i_sram_addr_128_tmp [12:0] <= (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_1 : s4_i_sram_addr_128_tmp;
         s4_i_sram_en_128 = (stage == S4 && s4_i_cnt <= 64);
     end
 
@@ -828,8 +853,10 @@ end
         end
 
 //============= output to bram 512===========//
-    reg [6:0] s4_addr; 
-    wire [6:0] s4_current_addr;
+    reg [6:0] s4_addr;
+    
+    wire [6:0] s4_current_addr; 
+    wire [12:0] s4_current_addr_1, s4_current_addr_2;
 
 
     always@(posedge clk or negedge rstn) 
@@ -840,6 +867,9 @@ end
                         ((s4_o_cnt == 7'd64) ? 0 : s4_o_cnt + 1) : s4_o_cnt;
         end 
     
+    assign s4_current_addr_1 = 4 * s4_current_addr;
+    assign s4_current_addr_2 = 4 * (5'd4 + s4_current_addr);
+
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s4_o_sram_din_512_tmp <= 0;
@@ -849,8 +879,8 @@ end
         end else begin
             s4_o_sram_din_512_tmp [255:128] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s4_o_sram_din_512_tmp[255:128];
             s4_o_sram_din_512_tmp [127:0] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s4_o_sram_din_512_tmp[127:0];
-            s4_o_sram_addr_512_tmp [25:13] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (5'd4 + s4_current_addr)} : s4_o_sram_addr_512_tmp[25:13];
-            s4_o_sram_addr_512_tmp [12:0] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s4_current_addr} : s4_o_sram_addr_512_tmp[12:0];
+            s4_o_sram_addr_512_tmp [25:13] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? s4_current_addr_2 : s4_o_sram_addr_512_tmp[25:13];
+            s4_o_sram_addr_512_tmp [12:0] <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy) ? s4_current_addr_1 : s4_o_sram_addr_512_tmp[12:0];
             s4_o_WE_512 <= {4{(stage == S4 && BPE1_o_vld && BPE1_o_rdy)}};
             s4_o_sram_en_512 <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -908,9 +938,13 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0] s5_i_addr_1, s5_i_addr_2;
+
+    assign s5_i_addr_1 = 4 * s5_i_cnt;
+    assign s5_i_addr_2 = 4 * (7'd64 + s5_i_cnt);
     always@* begin
-        s5_i_sram_addr_512_tmp [25:13] <= (stage == S5 && s5_i_cnt <= 64) ? {4 * (7'd64 + s5_i_cnt)} : s5_i_sram_addr_512_tmp;
-        s5_i_sram_addr_512_tmp [12:0] <= (stage == S5 && s5_i_cnt <= 64) ? {4 * s5_i_cnt} : s5_i_sram_addr_512_tmp;
+        s5_i_sram_addr_512_tmp [25:13] <= (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_2 : s5_i_sram_addr_512_tmp;
+        s5_i_sram_addr_512_tmp [12:0] <= (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_1 : s5_i_sram_addr_512_tmp;
         s5_i_sram_en_512 = (stage == S5 && s5_i_cnt <= 64);
     end
 
@@ -956,8 +990,9 @@ end
         end
 
 //============= output to bram 512===========//
-    reg [6:0] s5_addr; 
-    wire [6:0] s5_current_addr;
+    reg [6:0] s5_addr;
+    wire [6:0] s5_current_addr; 
+    wire [12:0] s5_current_addr_1, s5_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -967,6 +1002,9 @@ end
                         ((s5_o_cnt == 7'd64) ? 0 : s5_o_cnt + 1) : s5_o_cnt;
         end 
     
+    assign s5_current_addr_1 = 4 * s5_current_addr;
+    assign s5_current_addr_2 = 4 * (2'd2 + s5_current_addr);
+
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s5_o_sram_din_128_tmp <= 0;
@@ -976,8 +1014,8 @@ end
         end else begin
             s5_o_sram_din_128_tmp [255:128] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s5_o_sram_din_128_tmp[255:128];
             s5_o_sram_din_128_tmp [127:0] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s5_o_sram_din_128_tmp[127:0];
-            s5_o_sram_addr_128_tmp [25:13] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (2'd2 + s5_current_addr)} : s5_o_sram_addr_128_tmp[25:13];
-            s5_o_sram_addr_128_tmp [12:0] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s5_current_addr} : s5_o_sram_addr_128_tmp[12:0];
+            s5_o_sram_addr_128_tmp [25:13] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? s5_current_addr_2 : s5_o_sram_addr_128_tmp[25:13];
+            s5_o_sram_addr_128_tmp [12:0] <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy) ? s5_current_addr_1 : s5_o_sram_addr_128_tmp[12:0];
             s5_o_WE_128 <= {4{(stage == S5 && BPE1_o_vld && BPE1_o_rdy)}};
             s5_o_sram_en_128 <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -1034,9 +1072,14 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0]s6_i_addr_1, s6_i_addr_2;
+
+    assign s6_i_addr_1 = 4 * s6_i_cnt;
+    assign s6_i_addr_2 = 4 * (7'd64 + s6_i_cnt);
+
     always@* begin
-        s6_i_sram_addr_128_tmp [25:13] <= (stage == S6 && s6_i_cnt <= 64) ? {4 * (7'd64 + s6_i_cnt)} : s6_i_sram_addr_128_tmp;
-        s6_i_sram_addr_128_tmp [12:0] <= (stage == S6 && s6_i_cnt <= 64) ? {4 * s6_i_cnt} : s6_i_sram_addr_128_tmp;
+        s6_i_sram_addr_128_tmp [25:13] <= (stage == S6 && s6_i_cnt <= 64) ? s6_i_addr_2 : s6_i_sram_addr_128_tmp;
+        s6_i_sram_addr_128_tmp [12:0] <= (stage == S6 && s6_i_cnt <= 64) ? s6_i_addr_1 : s6_i_sram_addr_128_tmp;
         s6_i_sram_en_128 = (stage == S6 && s6_i_cnt <= 64);
     end
 
@@ -1100,7 +1143,8 @@ end
 
 //============= output to bram 512===========//
     reg [6:0] s6_addr; 
-    wire [6:0] s6_current_addr;
+    wire [6:0] s6_current_addr; 
+    wire [12:0] s6_current_addr_1, s6_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -1110,6 +1154,9 @@ end
                         ((s6_o_cnt == 7'd64) ? 0 : s6_o_cnt + 1) : s6_o_cnt;
         end 
     
+    assign s6_current_addr_1 = 4 * s6_current_addr;
+    assign s6_current_addr_2 = 4 * (1'd1 + s6_current_addr);
+
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s6_o_sram_din_512_tmp <= 0;
@@ -1119,8 +1166,8 @@ end
         end else begin
             s6_o_sram_din_512_tmp [255:128] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_bout} : s6_o_sram_din_512_tmp[255:128];
             s6_o_sram_din_512_tmp [127:0] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {BPE1_aout} : s6_o_sram_din_512_tmp[127:0];
-            s6_o_sram_addr_512_tmp [25:13] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {4 * (1'd1 + s6_current_addr)} : s6_o_sram_addr_512_tmp[25:13];
-            s6_o_sram_addr_512_tmp [12:0] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {4 * s6_current_addr} : s6_o_sram_addr_512_tmp[12:0];
+            s6_o_sram_addr_512_tmp [25:13] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {s6_current_addr_2} : s6_o_sram_addr_512_tmp[25:13];
+            s6_o_sram_addr_512_tmp [12:0] <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy) ? {s6_current_addr_1} : s6_o_sram_addr_512_tmp[12:0];
             s6_o_WE_512 <= {4{(stage == S6 && BPE1_o_vld && BPE1_o_rdy)}};
             s6_o_sram_en_512 <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy);
         end 
@@ -1171,9 +1218,14 @@ always@(posedge clk or negedge rstn) begin
 end
 
 //============= input to BPE1(data, coefficient) ===========//
+    wire [12:0]s7_i_addr_1, s7_i_addr_2;
+
+    assign s7_i_addr_1 = 4 * s7_i_cnt;
+    assign s7_i_addr_2 = 4 * (7'd64 + s7_i_cnt);
+
     always@* begin
-        s7_i_sram_addr_512_tmp [25:13] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? {4 * (7'd64 + s7_i_cnt)} : s7_i_sram_addr_512_tmp;
-        s7_i_sram_addr_512_tmp [12:0] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? {4 * s7_i_cnt} : s7_i_sram_addr_512_tmp;
+        s7_i_sram_addr_512_tmp [25:13] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_2 : s7_i_sram_addr_512_tmp;
+        s7_i_sram_addr_512_tmp [12:0] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_1 : s7_i_sram_addr_512_tmp;
         s7_i_sram_en_512 = (stage == S7_to_10 && s7_i_cnt <= 64);
     end
 
@@ -1628,7 +1680,10 @@ end
 
     
 //============= output to buffer before module or output ram===========//
-    reg [6:0] s10_ram_cnt;
+    wire [(pDATA_WIDTH-1):0] aout_iNTT, bout_iNTT;
+    wire o_vld1_iNTT, o_vld2_iNTT;
+    reg [6:0] s10_div_o_cnt;
+
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
             s10_o_cnt <= 0;
@@ -1636,33 +1691,91 @@ end
             s10_o_cnt <= (s10_o_cnt == 7'd64) ? 0 : (stage == S7_to_10 && BPE4_o_vld && BPE4_o_rdy) ? s10_o_cnt + 1 :  s10_o_cnt;   
         end 
 
+
+    // NTT output to buffer before ram
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
             s10_o_tmp_a <= 0;
             s10_o_tmp_b <= 0;
         end else begin
-            s10_o_tmp_a <= (stage == S7_to_10 && s10_o_cnt <= 7'd64 && BPE4_o_vld && BPE4_o_rdy) ?
-                         {BPE4_bout[63:48], BPE4_aout[63:48], BPE4_bout[47:32], BPE4_aout[47:32], BPE4_bout[31:16], BPE4_aout[31:16], BPE4_bout[15:0], BPE4_aout[15:0]}: s10_o_tmp_a;
-            s10_o_tmp_b <= (stage == S7_to_10 && s10_o_cnt <= 7'd64 && BPE4_o_vld && BPE4_o_rdy) ?
-                         {BPE4_bout[127:112], BPE4_aout[127:112], BPE4_bout[111:96], BPE4_aout[111:96], BPE4_bout[95:80], BPE4_aout[95:80], BPE4_bout[79:64], BPE4_aout[79:64]}: s10_o_tmp_a;
+            case(mode_state[1:0])
+            NTT: begin
+                s10_o_tmp_a <= (stage == S7_to_10 && s10_o_cnt <= 7'd64 && BPE4_o_vld && BPE4_o_rdy) ?
+                            {BPE4_bout[63:48], BPE4_aout[63:48], BPE4_bout[47:32], BPE4_aout[47:32], BPE4_bout[31:16], BPE4_aout[31:16], BPE4_bout[15:0], BPE4_aout[15:0]}: s10_o_tmp_a;
+                s10_o_tmp_b <= (stage == S7_to_10 && s10_o_cnt <= 7'd64 && BPE4_o_vld && BPE4_o_rdy) ?
+                            {BPE4_bout[127:112], BPE4_aout[127:112], BPE4_bout[111:96], BPE4_aout[111:96], BPE4_bout[95:80], BPE4_aout[95:80], BPE4_bout[79:64], BPE4_aout[79:64]}: s10_o_tmp_a;
+            end
+            iNTT: begin
+                s10_o_tmp_a <= (stage == S7_to_10 && o_vld1_iNTT && o_vld2_iNTT) ?
+                            {bout_iNTT[63:48], aout_iNTT[63:48], bout_iNTT[47:32], aout_iNTT[47:32], bout_iNTT[31:16], aout_iNTT[31:16], bout_iNTT[15:0], aout_iNTT[15:0]}: s10_o_tmp_a;
+                s10_o_tmp_b <= (stage == S7_to_10 && o_vld1_iNTT && o_vld2_iNTT) ?
+                            {bout_iNTT[127:112], aout_iNTT[127:112], bout_iNTT[111:96], aout_iNTT[111:96], bout_iNTT[95:80], aout_iNTT[95:80], bout_iNTT[79:64], aout_iNTT[79:64]}: s10_o_tmp_b;
+            end
+            endcase
         end
+
+    always@(posedge clk or negedge rstn)
+        if(!rstn) begin
+            s10_div_o_cnt <= 0;
+        end else begin
+            s10_div_o_cnt <= (s10_div_o_cnt == 7'd64) ? 0 : (o_vld1_iNTT) ? s10_div_o_cnt + 1: s10_div_o_cnt;
+        end
+
+    // iNTT output to divN
+    divN divN1(
+        .in_A(BPE4_aout),
+        .clk(clk),
+        .rst_n(rstn),
+        .in_valid(BPE4_o_vld && mode_state[1:0] == iNTT),
+        .result_int(aout_iNTT),
+        .out_valid(o_vld1_iNTT)
+    );
+
+    // iNTT output to divN
+    divN divN2(
+        .in_A(BPE4_bout),
+        .clk(clk),
+        .rst_n(rstn),
+        .in_valid(BPE4_o_vld && mode_state[1:0] == iNTT),
+        .result_int(bout_iNTT),
+        .out_valid(o_vld2_iNTT)
+    );
+
 //============= output ram ===========//
     reg [6:0] s10_addr; 
-    wire [6:0] s10_current_addr;
+    reg [6:0] s10_current_addr;
 
+    assign s10_o_sram_addr_128_tmp [25:13]  = 4 * (1'd1 + s10_current_addr);
+    assign s10_o_sram_addr_128_tmp [12:0] =  4 * s10_current_addr;
 
-    assign s10_o_sram_din_128_tmp [255:128] = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_b[127:0]} : s10_o_sram_din_128_tmp[255:128];
-    assign s10_o_sram_din_128_tmp [127:0] = (stage == S7_to_10  && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_a[127:0]} : s10_o_sram_din_128_tmp[127:0];
-    assign s10_o_sram_addr_128_tmp [25:13] = (stage == S7_to_10 &&  s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {4 * (1'd1 + s10_current_addr)} : s10_o_sram_addr_128_tmp[25:13];
-    assign s10_o_sram_addr_128_tmp [12:0] = (stage == S7_to_10 &&  s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {4 * s10_current_addr} : s10_o_sram_addr_128_tmp[12:0];
-    assign s10_o_WE_128 = {4{(stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64)}};
-    assign s10_o_sram_en_128 = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64);
+    assign s10_o_sram_addr_128 = (!phase) ? s10_o_sram_addr_128_tmp[25:13]: s10_o_sram_addr_128_tmp[12:0];
 
- 
-    assign s10_o_sram_din_128 = (phase) ? s10_o_sram_din_128_tmp[255:128]: s10_o_sram_din_128_tmp[127:0];
-    assign s10_o_sram_addr_128 = (phase) ? s10_o_sram_addr_128_tmp[25:13]: s10_o_sram_addr_128_tmp[12:0];
+    wire [6:0]temp;
+    assign temp = (s10_o_cnt-1) << 1;
+    always@* 
+        case(mode_state[1:0]) 
+            NTT:begin
+                s10_o_sram_din_128_tmp [255:128] = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_b[127:0]} : s10_o_sram_din_128_tmp[255:128];
+                s10_o_sram_din_128_tmp [127:0] = (stage == S7_to_10  && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_a[127:0]} : s10_o_sram_din_128_tmp[127:0];
+                s10_o_sram_din_128 = (!phase) ? s10_o_sram_din_128_tmp[255:128]: s10_o_sram_din_128_tmp[127:0];
+                
+                s10_o_WE_128 = {4{(stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64)}};
+                s10_o_sram_en_128 = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64);
+                
+                s10_current_addr = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? temp: s10_current_addr;
+            end
+            iNTT:begin
+                s10_o_sram_din_128_tmp [255:128] = (stage == S7_to_10 && s10_div_o_cnt >= 1'd1 && s10_div_o_cnt <= 7'd64) ? {s10_o_tmp_b[127:0]} : s10_o_sram_din_128_tmp[255:128];
+                s10_o_sram_din_128_tmp [127:0] = (stage == S7_to_10  && s10_div_o_cnt >= 1'd1 && s10_div_o_cnt <= 7'd64) ? {s10_o_tmp_a[127:0]} : s10_o_sram_din_128_tmp[127:0];
+                s10_o_sram_din_128 = (!phase) ? s10_o_sram_din_128_tmp[255:128]: s10_o_sram_din_128_tmp[127:0];
 
-    assign s10_current_addr = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? ((s10_o_cnt-1) << 1): s10_current_addr;
+                s10_o_WE_128 = {4{(stage == S7_to_10 && s10_div_o_cnt >= 1'd1 && s10_div_o_cnt <= 7'd64)}};
+                s10_o_sram_en_128 = (stage == S7_to_10 && s10_div_o_cnt >= 1'd1 && s10_div_o_cnt <= 7'd64);
+        
+                s10_current_addr = (stage == S7_to_10 && s10_div_o_cnt >= 1'd1 && s10_div_o_cnt <= 7'd64) ? ((s10_div_o_cnt-1) << 1): s10_current_addr;
+            end
+        endcase
+    
 
 
 //====================================== stream out======================================// 
@@ -1675,8 +1788,8 @@ end
     localparam WAIT_OUT = 1'b1;
     reg sm_state, next_sm_state;
     reg next_sm_o_en, next_sw_vld;
-    reg [12:0] sm_o_sram_addr_128_tmp;
-    reg [12:0] next_sm_o_sram_addr_128_tmp;
+    reg [6:0] sm_o_sram_addr_128_tmp;
+    reg [6:0] next_sm_o_sram_addr_128_tmp;
 
     always@* begin
         case(sm_state)
@@ -1726,7 +1839,7 @@ end
 
     // assign sw_dat = (sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
     assign sm_o_sram_addr_128 = sm_o_sram_addr_128_tmp * 4;
-    assign sw_lst = (sm_o_sram_addr_128_tmp == 126 && sw_vld && sw_rdy);
+    assign sw_lst = (sm_o_sram_addr_128_tmp == 127);
 //====================================== sram signal controller ======================================// 
 
 // ============ sram 512 * 128 ============ //
@@ -1755,6 +1868,29 @@ end
                 BPE1_bin   = s1_BPE1_bin;
                 BPE1_coef  = s1_BPE1_coef;
                 BPE1_i_vld = s1_BPE1_i_vld;
+
+                // sram 512*128 
+                sram_en_512   = 0;
+                WE_512        = 4'b0000;
+                sram_addr_512 = 0;
+                sram_din_512  = 0;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S2: begin
                 // sram 128*128 (read)
@@ -1776,6 +1912,23 @@ end
                 BPE1_bin   = s2_BPE1_bin;
                 BPE1_coef  = s2_BPE1_coef;
                 BPE1_i_vld = s2_BPE1_i_vld;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S3: begin
                 // sram 512*128 (read)
@@ -1795,6 +1948,23 @@ end
                 BPE1_bin   = s3_BPE1_bin;
                 BPE1_coef  = s3_BPE1_coef;
                 BPE1_i_vld = s3_BPE1_i_vld;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S4: begin
                 // sram 128*128 (read)
@@ -1813,6 +1983,23 @@ end
                 BPE1_bin   = s4_BPE1_bin;
                 BPE1_coef  = s4_BPE1_coef;
                 BPE1_i_vld = s4_BPE1_i_vld;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S5: begin
                 // sram 512*128 (read)
@@ -1831,6 +2018,23 @@ end
                 BPE1_bin   = s5_BPE1_bin;
                 BPE1_coef  = s5_BPE1_coef;
                 BPE1_i_vld = s5_BPE1_i_vld;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S6: begin
                 // sram 128*128 (read)
@@ -1849,6 +2053,23 @@ end
                 BPE1_bin   = s6_BPE1_bin;
                 BPE1_coef  = s6_BPE1_coef;
                 BPE1_i_vld = s6_BPE1_i_vld;
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
             S7_to_10: begin
                 // sram 512*128 (read)
@@ -1884,7 +2105,8 @@ end
                 BPE4_coef  = s10_BPE4_coef;
                 BPE4_i_vld = s10_BPE4_i_vld;
 
-                next_stage = (s10_o_sram_en_128 && s10_o_cnt == 7'd64) ? OUT : S7_to_10;
+                next_stage = (mode_state[1:0] == NTT && s10_o_sram_en_128 && s10_o_cnt == 7'd64 || 
+                              mode_state[1:0] == iNTT && s10_div_o_cnt == 7'd64) ? OUT : S7_to_10;
             end
             OUT: begin
                 // sram 128*128 (read)
@@ -1892,8 +2114,40 @@ end
                 WE_128        = sm_o_WE_128;
                 sram_addr_128 = sm_o_sram_addr_128;
                 sram_din_128  = sm_o_sram_din_128;
-                next_stage = OUT;
+                next_stage = (sw_lst) ? IDLE : OUT;
+
+                // sram 512*128 
+                sram_en_512   = 0;
+                WE_512        = 4'b0000;
+                sram_addr_512 = 0;
+                sram_din_512  = 0;
+
+                // BPE1
+                BPE1_ain   = 0; 
+                BPE1_bin   = 0; 
+                BPE1_coef  = 0; 
+                BPE1_i_vld = 0; 
+
+                // BPE2 
+                BPE2_ain   = 0;
+                BPE2_bin   = 0;
+                BPE2_coef  = 0;
+                BPE2_i_vld = 0;
+                 // BPE3
+                BPE3_ain   = 0;
+                BPE3_bin   = 0;
+                BPE3_coef  = 0;
+                BPE3_i_vld = 0;
+
+                // BPE4
+                BPE4_ain   = 0;
+                BPE4_bin   = 0;
+                BPE4_coef  = 0;
+                BPE4_i_vld = 0;
             end
+            IDLE:
+                next_stage = IDLE;
+
             default: begin
                 // sram 512*128 
                 sram_en_512   = 0;
@@ -1938,7 +2192,6 @@ end
             stage <= next_stage;
         end
     end
-
 
 endmodule
 
