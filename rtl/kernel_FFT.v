@@ -1199,6 +1199,9 @@ always @(*) begin
     TRANSFER: begin
       state_2nd_next = (output_done_2nd) ? IDLE : TRANSFER;
     end
+    default: begin
+      state_2nd_next = IDLE;
+    end
   endcase
 end
 
