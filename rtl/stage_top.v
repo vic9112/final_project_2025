@@ -2287,7 +2287,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     wire       FIFO_rd_en;
     reg  [1:0] wr_ptr, rd_ptr;
     reg  [1:0] wr_ptr_next, rd_ptr_next;
+    wire       empty;
     wire       en_sm;
+    reg        lst_flag;
+
   // sm stream_out
     reg [(pDATA_WIDTH-1):0] sm_buffer;
     reg [(pDATA_WIDTH-1):0] sm_buffer_next;
@@ -2296,10 +2299,24 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     reg [2:0] sm_cnt;
     reg [2:0] sm_cnt_next;
     reg [(pSS_WIDTH-1):0] sm_dat_r;
-    
-    assign  FIFO_wr_en = meta_decode && ~destination[4];
-    assign  FIFO_rd_en = en_sm && (sm_buffer_state == 0) && (k1_sw_lst || k2_sw_lst || k3_sw_lst || k4_sw_lst);
+
     assign  en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
+    assign  empty = (wr_ptr == rd_ptr);
+
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        last_flag <= 0;
+      end else if (en_sm && (k1_sw_lst || k2_sw_lst || k3_sw_lst || k4_sw_lst)) begin
+        last_flag <= 1;
+      end else if ((FIFO_out[2] == 0 && sm_cnt == 3 && sm_rdy) || (FIFO_out[2] == 1 && sm_cnt == 7 && sm_rdy)) begin
+        last_flag <= 0;
+      end else begin
+        last_flag <= last_flag;
+      end
+    end
+
+    assign  FIFO_wr_en = meta_decode && ~destination[4];
+    assign  FIFO_rd_en = last_flag && ((FIFO_out[2] == 0 && sm_cnt == 3 && sm_rdy) || (FIFO_out[2] == 1 && sm_cnt == 7 && sm_rdy));
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
@@ -2307,7 +2324,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
         rd_ptr <= 0;
       end else begin
         wr_ptr <= wr_ptr_next;
-         rd_ptr <= rd_ptr_next;
+        rd_ptr <= rd_ptr_next;
       end
     end
 
@@ -2318,7 +2335,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
         wr_ptr_next = wr_ptr;
       end
 
-      if (FIFO_rd_en) begin
+      if (FIFO_rd_en && !empty) begin
           rd_ptr_next = rd_ptr + 1;
       end else begin
           rd_ptr_next = rd_ptr;
@@ -2354,8 +2371,6 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
 
     // sm_buffer
 
-    
-
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
         sm_buffer <= 0;
@@ -2369,7 +2384,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
     
     always@* begin
-      if (sm_buffer_state == 0 && en_sm) begin
+      if (en_sm) begin
         case (FIFO_out[1:0])
           2'b00: begin
             sm_buffer_next = k1_sw_dat;
@@ -2394,20 +2409,20 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
 
     always@* begin
       if (FIFO_out[2] == 0) begin     // FFT or iFFT
-        if (sm_buffer_state == 0 && en_sm) begin
+        if (en_sm) begin
           sm_buffer_state_next = 1;
-        end else if (sm_buffer_state == 1 && sm_cnt == 3) begin
-            sm_buffer_state_next = 0;
+        end else if (sm_buffer_state == 1 && sm_cnt == 3 && sm_rdy) begin
+          sm_buffer_state_next = 0;
         end else begin
-            sm_buffer_state_next = sm_buffer_state;
+          sm_buffer_state_next = sm_buffer_state;
         end
       end else begin                  // NTT or iNTT
-        if (sm_buffer_state == 0 && en_sm) begin
-            sm_buffer_state_next = 1;
-        end else if (sm_buffer_state == 1 && sm_cnt == 7) begin
-            sm_buffer_state_next = 0;
+        if (en_sm) begin
+          sm_buffer_state_next = 1;
+        end else if (sm_buffer_state == 1 && sm_cnt == 7 && sm_rdy) begin
+          sm_buffer_state_next = 0;
         end else begin
-            sm_buffer_state_next = sm_buffer_state;
+          sm_buffer_state_next = sm_buffer_state;
         end
       end
     end
@@ -2461,54 +2476,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   /*----------------------------------------------------------------
                       kernal data stream out
   -----------------------------------------------------------------*/
-  reg k1_sw_rdy_r;
-  reg k1_sw_rdy_next;
-  reg k2_sw_rdy_r;
-  reg k2_sw_rdy_next;
-  reg k3_sw_rdy_r;
-  reg k3_sw_rdy_next;
-  reg k4_sw_rdy_r;
-  reg k4_sw_rdy_next;
 
-  always @ (posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      k1_sw_rdy_r <= 0;
-      k2_sw_rdy_r <= 0;
-      k3_sw_rdy_r <= 0;
-      k4_sw_rdy_r <= 0;
-    end else begin
-// For Kernel 1
-      if ((sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00))
-        k1_sw_rdy_r <= 1;
-      else if (k1_sw_rdy_r && k1_sw_lst)
-        k1_sw_rdy_r <= 0;
-
-      // For Kernel 2
-      if ((sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01))
-        k2_sw_rdy_r <= 1;
-      else if (k2_sw_rdy_r && k2_sw_lst)
-        k2_sw_rdy_r <= 0;
-
-      // For Kernel 3
-      if ((sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10))
-        k3_sw_rdy_r <= 1;
-      else if (k3_sw_rdy_r && k3_sw_lst)
-        k3_sw_rdy_r <= 0;
-
-      // For Kernel 4
-      if ((sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11))
-        k4_sw_rdy_r <= 1;
-      else if (k4_sw_rdy_r && k4_sw_lst)
-        k4_sw_rdy_r <= 0;
-    end
-  end
-
-  assign k1_sw_rdy = k1_sw_rdy_r;
-  assign k2_sw_rdy = k2_sw_rdy_r;
-  assign k3_sw_rdy = k3_sw_rdy_r;
-  assign k4_sw_rdy = k4_sw_rdy_r;
-
-
+  assign k1_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00) && k1_sw_vld;
+  assign k2_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01) && k2_sw_vld;
+  assign k3_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10) && k3_sw_vld;
+  assign k4_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11) && k4_sw_vld;
+  
   /*----------------------------------------------------------------
                       Configuration Register
   -----------------------------------------------------------------*/
