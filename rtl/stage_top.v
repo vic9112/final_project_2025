@@ -2477,10 +2477,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
                       kernal data stream out
   -----------------------------------------------------------------*/
 
-  assign k1_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00) && k1_sw_vld;
-  assign k2_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01) && k2_sw_vld;
-  assign k3_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10) && k3_sw_vld;
-  assign k4_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11) && k4_sw_vld;
+  assign k1_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b00) ;
+  assign k2_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b01) ;
+  assign k3_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b10) ;
+  assign k4_sw_rdy = (sm_buffer_state == 0) && (FIFO_out[1:0] == 2'b11) ;
   
   /*----------------------------------------------------------------
                       Configuration Register
