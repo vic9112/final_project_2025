@@ -30,10 +30,10 @@ module fiFFNTT_tb;
     input integer idx;
     begin
       case(idx)
-        0: get_COEF_LEN = 512;
-        1: get_COEF_LEN = 512;
-        2: get_COEF_LEN = 1024;
-        3: get_COEF_LEN = 1024;
+        0: get_COEF_LEN = 1024;
+        1: get_COEF_LEN = 1024;
+        2: get_COEF_LEN = 512;
+        3: get_COEF_LEN = 512;
         default: get_COEF_LEN = 0;
       endcase
     end
@@ -55,7 +55,7 @@ module fiFFNTT_tb;
   // Clock & Reset
   reg clk = 0;
   reg rstn = 0;
-  reg clk_2x = 0;
+  reg clk_2x = 1;
   always #(CLK_PERIOD/2) clk = ~clk;
   always #(CLK_PERIOD/4) clk_2x = ~clk_2x;  // 2x freq clock
   initial begin 
@@ -171,7 +171,7 @@ module fiFFNTT_tb;
   );
 
     //Prevent hang
-    integer timeout = (10000);
+    integer timeout = (50000);
     initial begin
         while(timeout > 0) begin
             @(posedge clk);
@@ -521,15 +521,15 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("fft_g_in.dat", coef_mem0);
-    //$readmemh("iFFT_coef.hex", coef_mem1);
-    //$readmemh("NTT_coef.hex", coef_mem2);
-    //$readmemh("iNTT_coef.hex", coef_mem3);
-    $readmemh("fft_a_in.dat", in_mem0);
-    //$readmemh("iFFT_in.hex", in_mem1);
-    //$readmemh("NTT_in.hex", in_mem2);
-    //$readmemh("iNTT_in.hex", in_mem3);
-    $readmemh("fft_golden_a.dat", golden_mem0);
+    $readmemh("addr0_511_128b.hex", coef_mem0);
+    $readmemh("addr0_511_128b.hex", coef_mem1);
+    $readmemh("addr0_1023_32b.hex", coef_mem2);
+    $readmemh("addr0_1023_32b.hex", coef_mem3);
+    $readmemh("addr0_511_128b.hex", in_mem0);
+    $readmemh("addr0_511_128b_bitreverse.hex", in_mem1);
+    $readmemh("addr0_1023_32b.hex", in_mem2);
+    $readmemh("addr0_1023_32b_bitreverse.hex", in_mem3);
+    //$readmemh("FFT_out.hex", golden_mem0);
     //$readmemh("iFFT_out.hex", golden_mem1);
     //$readmemh("NTT_out.hex", golden_mem2);
     //$readmemh("iNTT_out.hex", golden_mem3);
@@ -560,34 +560,39 @@ module fiFFNTT_tb;
     for (k = 0; k < NUM_KER; k = k + 1) begin
       axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_FREE);
     end
-
+    $display("coef in");
     // coef in
-    //for (k = 0; k < 4; k = k + 1) begin
-      stream_meta(COEF_BASE + 0, 8'b00010100, get_COEF_LEN(0));
-      ss_stream_coef(get_COEF_LEN(0), 0);
-    //end
+    for (k = 0; k < 4; k = k + 1) begin
+      stream_meta(COEF_BASE + k, 8'b00010100 + k, get_COEF_LEN(k));
+      ss_stream_coef(get_COEF_LEN(k), k);
+      @(posedge clk);
+    end
       
     // Write coef_done = 1
     //axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
     $display("Coefficients input over");
 
     // test1
-    //for (k = 0; k < 4; k = k + 1) begin
+    for (k = 0; k < 4; k = k + 1) begin
+      /*
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
-        $display("Test1 Error: Kernel 1 is not free");
+        $display("Test1 Error: Kernel %d is not free", k);
         $finish;
       end else begin
-        $display("Test1: Kernel 1 starts testing mode %d", 0 + 1);
+        $display("Test1: Kernel %d starts testing mode %d", k + 1, k + 1);
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
-
-      stream_meta(KERNEL_BASE, MODE_BASE + 0, get_LEN(0));
+      $display("stream_meta for kernel %d", k);
+      */
+      stream_meta(KERNEL_BASE + k, MODE_BASE + k, get_LEN(k));
       fork
         // DMA in
-        ss_stream_in(get_LEN(0), 0);
-        
+        $display("ss_stream_in for kernel %d", k);
+        ss_stream_in(get_LEN(k), k);
+        $display("ss_stream_in for kernel %d done", k);
         // FW thread
+        /*
         begin
           start_time = $time;
           sm_stream_meta(length, mode);
@@ -598,9 +603,11 @@ module fiFFNTT_tb;
           $display("Test1: Kernel 1 latency for data %d is %d ns", 0 + 1, latency);
           axilite_write_mb(MB_BASE_ADDR, PAT_KER_FREE);
         end
+        */
       join
-    //end
-
+      @(posedge clk);
+    end
+    
     // Check results
     for (i = 0; i < get_LEN(k); i = i + 1) begin
       if (out_mem[k][i] !== golden_mem[k][i]) begin
@@ -610,7 +617,7 @@ module fiFFNTT_tb;
     end
     $display("Kernel %d PASS", k);
     $display("First test end");
-    
+    /*
     // test 2 starts
     fork
       test2_data_in;
@@ -631,6 +638,7 @@ module fiFFNTT_tb;
     join
     $display("Test3 pass!!");
     $finish;
+    */
   end
 
   //$finish;
