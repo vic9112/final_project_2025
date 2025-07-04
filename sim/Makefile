@@ -35,10 +35,6 @@ sim:
 	../rtl/butterfly/hdl/add_13_overflow.v \
 	../rtl/butterfly/hdl/add_11_overflow.v \
 	../rtl/butterfly/hdl/add_107.v \
-	../rtl/cmul/LOD.v \
-	../rtl/cmul/fmul.v \
-	../rtl/cmul/fadd.v \
-	../rtl/cmul/cmul.v \
 	../rtl/divN/hdl/mul_64.v \
 	../rtl/divN/hdl/mul_16.v \
 	../rtl/divN/hdl/mul16_array_intt.v \
