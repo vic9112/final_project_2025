@@ -325,40 +325,56 @@ reg [1:0] state_i_3rd_next;
 // =============================BPE 4=========================== //
 // Parameters for FSM 
 localparam IDLE_4th = 0;     // 000000
-localparam FILL0_0_4th = 1;  // 000001
-localparam FILL0_1_4th = 2;  // 000010
-localparam CALC0_0_4th = 3;  // 000011
-localparam CALC0_1_4th = 4;  // 000100
-localparam FILL1_0_4th = 5;  // 000101
-localparam FILL1_1_4th = 6;  // 000110
-localparam CALC1_0_4th = 7;  // 000111
-localparam CALC1_1_4th = 8;  // 001000
-localparam FILL2_0_4th = 9;  // 001001
-localparam FILL2_1_4th = 10; // 001010
-localparam CALC2_0_4th = 11; // 001011
-localparam CALC2_1_4th = 12; // 001100
-localparam FILL3_0_4th = 13; // 001101
-localparam FILL3_1_4th = 14; // 001110
-localparam CALC3_0_4th = 15; // 001111
-localparam CALC3_1_4th = 16; // 010000
-localparam BPE_O_0_4th = 17; // 010001
-localparam BPE_O_1_4th = 18; // 010010
-localparam BPE_I_0_4th = 19; // 010011
-localparam BPE_I_1_4th = 20; // 010100
-localparam BPE_O_2_4th = 21; // 010101
-localparam BPE_O_3_4th = 22; // 010110
-localparam BPE_I_2_4th = 23; // 010111
-localparam BPE_I_3_4th = 24; // 011000
-localparam BPE_O_4_4th = 25; // 011001
-localparam BPE_O_5_4th = 26; // 011010
-localparam BPE_I_4_4th = 27; // 011011
-localparam BPE_I_5_4th = 28; // 011100
-localparam BPE_O_6_4th = 29; // 011101
-localparam BPE_O_7_4th = 30; // 011110
-localparam BPE_I_6_4th = 31; // 011111
-localparam BPE_I_7_4th = 32; // 100000
-localparam FINISH_4th = 33;  // 100001
-localparam WAIT_COEF_4th = 34;
+localparam WAIT_COEF_4th = 1;
+localparam FILL0_0_4th = 2;  // 000001
+localparam FILL0_1_4th = 3;  // 000010
+localparam CALC0_0_4th = 4;  // 000011
+localparam CALC0_1_4th = 5;  // 000100
+localparam FILL1_0_4th = 6;  // 000101
+localparam FILL1_1_4th = 7;  // 000110
+localparam CALC1_0_4th = 8;  // 000111
+localparam CALC1_1_4th = 9;  // 001000
+localparam FILL2_0_4th = 10;  // 001001
+localparam FILL2_1_4th = 11; // 001010
+localparam CALC2_0_4th = 12; // 001011
+localparam CALC2_1_4th = 13; // 001100
+localparam FILL3_0_4th = 14; // 001101
+localparam FILL3_1_4th = 15; // 001110
+localparam CALC3_0_4th = 16; // 001111
+localparam CALC3_1_4th = 17; // 010000
+localparam BPE_O_0_4th = 18; // 010001
+localparam BPE_O_1_4th = 19; // 010010
+localparam BPE_I_0_4th = 20; // 010011
+localparam BPE_I_1_4th = 21; // 010100
+localparam BPE_O_2_4th = 22; // 010101
+localparam BPE_O_3_4th = 23; // 010110
+localparam BPE_I_2_4th = 24; // 010111
+localparam BPE_I_3_4th = 25; // 011000
+localparam BPE_O_4_4th = 26; // 011001
+localparam BPE_O_5_4th = 27; // 011010
+localparam BPE_I_4_4th = 28; // 011011
+localparam BPE_I_5_4th = 29; // 011100
+localparam BPE_O_6_4th = 30; // 011101
+localparam BPE_O_7_4th = 31; // 011110
+localparam BPE_I_6_4th = 32; // 011111
+localparam BPE_I_7_4th = 33; // 100000
+localparam TRAN_0_4th = 34; // 100001
+localparam TRAN_1_4th = 35; // 100010
+localparam TRAN_2_4th = 36; // 100011
+localparam TRAN_3_4th = 37; // 100100
+localparam TRAN_4_4th = 38; // 100101
+localparam TRAN_5_4th = 39; // 100110
+localparam TRAN_6_4th = 40; // 100111
+localparam TRAN_7_4th = 41; // 101000
+localparam TRAN_8_4th = 42; // 101001
+localparam TRAN_9_4th = 43; // 101010
+localparam TRAN_10_4th = 44; // 101011
+localparam TRAN_11_4th = 45; // 101100
+localparam TRAN_12_4th = 46; // 101101
+localparam TRAN_13_4th = 47; // 101110
+localparam TRAN_14_4th = 48; // 101111
+localparam TRAN_15_4th = 49; // 110000
+localparam FINISH_4th = 50;  // 100001
 
 wire ld_rdy_4th;
 
@@ -399,7 +415,7 @@ reg [(pDATA_WIDTH-1):0] data_789;
 // ==============================BPE 5=========================== //
 
 // parameters for BPE5
-localparam DATA_LENGTH = 1024;
+localparam DATA_LENGTH = 512;
 localparam IDLE_5th = 0;
 localparam BPE_I0_5th = 1;
 localparam BPE_I1_5th = 2;
@@ -436,8 +452,8 @@ reg [pDATA_WIDTH-1:0] BPE5_dout;//438
 // Counters for BPE5
 reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
 wire[$clog2(DATA_LENGTH)-1:0] in_cnt_5th_next, out_cnt_5th_next;
-reg [3:0] coef_cnt_5th; 
-wire[3:0] coef_cnt_5th_next;
+reg [4:0] coef_cnt_5th; 
+wire[4:0] coef_cnt_5th_next;
 reg [3:0] bpe_out_cnt_5th; // 4 bits to support 16 outputs
 wire[3:0] bpe_out_cnt_5th_next;
 
@@ -463,13 +479,13 @@ reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF
 // output buffer for 5th BPE
 reg [pDATA_WIDTH:0] output_buffer_w[0:31];
 reg [pDATA_WIDTH:0] output_buffer[0:31]; //
-reg [$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_r; 
-wire[$clog2(pDATA_WIDTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
+reg [$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_r; 
+wire[$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
 //reg [pDATA_WIDTH-1:0] BPE5_dout;
 
 // counters
-reg [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_r; // output counter for kernel
-wire [$clog2(pDATA_WIDTH)-1:0] kern_out_cnt_w;
+reg [$clog2(DATA_LENGTH)-1:0] kern_out_cnt_r; // output counter for kernel
+wire [$clog2(DATA_LENGTH)-1:0] kern_out_cnt_w;
 
 // =================================================================================END OF DECLARATIONS ================================================================================== //
 // ld_rdy
@@ -2042,7 +2058,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign BPE4_i_vld = BPE4_i_vld_r;
     assign BPE4_o_rdy = BPE4_o_rdy_r;
     assign bpe_act[3] = bpe_act_4th;
-    assign coef_rdy[3] = coef_rdy_4th;
+    assign coef_rdy[3] = 1;
     //===================FSM for 4th BPE===================//
     // ================ Parameters for FSM ================//
     // localparam IDLE_4th = 0;     // 000000
@@ -2085,6 +2101,9 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg [5:0] state_4th;
     // reg [5:0] state_4th_next;
 
+    wire coef_done_4th;
+
+    assign coef_done_4th = coef_cnt_4th == 12;
 
     always @(posedge clk or negedge rstn) begin
         if (~rstn) begin
@@ -2096,42 +2115,58 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(*)begin
       case(state_4th)
-        IDLE_4th:     state_4th_next = ld_vld_4th ? WAIT_COEF_4th : IDLE_4th;
-        WAIT_COEF_4th:state_4th_next = (coef_vld[3]) ? FILL0_0_4th : WAIT_COEF_4th;
-        FILL0_0_4th:  state_4th_next = in_cnt_4th[0] ? FILL0_1_4th : FILL0_0_4th;
-        FILL0_1_4th:  state_4th_next = in_cnt_4th[0] ? CALC0_0_4th : FILL0_1_4th;
-        CALC0_0_4th:  state_4th_next = in_cnt_4th[0] ? CALC0_1_4th : CALC0_0_4th;
-        CALC0_1_4th:  state_4th_next = in_cnt_4th[0] ? FILL1_0_4th : CALC0_1_4th;
-        FILL1_0_4th:  state_4th_next = in_cnt_4th[0] ? FILL1_1_4th : FILL1_0_4th;
-        FILL1_1_4th:  state_4th_next = in_cnt_4th[0] ? CALC1_0_4th : FILL1_1_4th;
-        CALC1_0_4th:  state_4th_next = in_cnt_4th[0] ? CALC1_1_4th : CALC1_0_4th;
-        CALC1_1_4th:  state_4th_next = in_cnt_4th[0] ? FILL2_0_4th : CALC1_1_4th;
-        FILL2_0_4th:  state_4th_next = in_cnt_4th[0] ? FILL2_1_4th : FILL2_0_4th;
-        FILL2_1_4th:  state_4th_next = in_cnt_4th[0] ? CALC2_0_4th : FILL2_1_4th;
-        CALC2_0_4th:  state_4th_next = in_cnt_4th[0] ? CALC2_1_4th : CALC2_0_4th;
-        CALC2_1_4th:  state_4th_next = in_cnt_4th[0] ? FILL3_0_4th : CALC2_1_4th;
-        FILL3_0_4th:  state_4th_next = in_cnt_4th[0] ? FILL3_1_4th : FILL3_0_4th;
-        FILL3_1_4th:  state_4th_next = in_cnt_4th[0] ? CALC3_0_4th : FILL3_1_4th;
-        CALC3_0_4th:  state_4th_next = in_cnt_4th[0] ? CALC3_1_4th : CALC3_0_4th;
-        CALC3_1_4th:  state_4th_next = in_cnt_4th[0] ? BPE_O_0_4th : CALC3_1_4th;
-        BPE_O_0_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_O_1_4th : BPE_O_0_4th;
-        BPE_O_1_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_I_0_4th : BPE_O_1_4th;
-        BPE_I_0_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_I_1_4th : BPE_I_0_4th;
-        BPE_I_1_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_O_2_4th : BPE_I_1_4th;
-        BPE_O_2_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_O_3_4th : BPE_O_2_4th;
-        BPE_O_3_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_I_2_4th : BPE_O_3_4th;
-        BPE_I_2_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_I_3_4th : BPE_I_2_4th;
-        BPE_I_3_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_O_4_4th : BPE_I_3_4th;
-        BPE_O_4_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_O_5_4th : BPE_O_4_4th;
-        BPE_O_5_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_I_4_4th : BPE_O_5_4th;
-        BPE_I_4_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_I_5_4th : BPE_I_4_4th;
-        BPE_I_5_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_O_6_4th : BPE_I_5_4th;
-        BPE_O_6_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_O_7_4th : BPE_O_6_4th;
-        BPE_O_7_4th:  state_4th_next = bpe_out_cnt_4th[0] ? BPE_I_6_4th : BPE_O_7_4th;
-        BPE_I_6_4th:  state_4th_next = bpe_in_cnt_4th[0] ? BPE_I_7_4th : BPE_I_6_4th;
-        BPE_I_7_4th:  state_4th_next = bpe_in_cnt_4th[0] ? (coef_vld[3] ? FILL0_0_4th : WAIT_COEF_4th) : BPE_I_7_4th;
-        FINISH_4th:   state_4th_next = IDLE_4th;
-        default:      state_4th_next = IDLE_4th;
+        IDLE_4th:       state_4th_next = ld_vld_4th ? WAIT_COEF_4th : IDLE_4th;
+        WAIT_COEF_4th:  state_4th_next = coef_done_4th ? FILL0_0_4th : WAIT_COEF_4th;
+        FILL0_0_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL0_1_4th : FILL0_0_4th);
+        FILL0_1_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC0_0_4th : FILL0_1_4th);
+        CALC0_0_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC0_1_4th : CALC0_0_4th);
+        CALC0_1_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL1_0_4th : CALC0_1_4th);
+        FILL1_0_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL1_1_4th : FILL1_0_4th);
+        FILL1_1_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC1_0_4th : FILL1_1_4th);
+        CALC1_0_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC1_1_4th : CALC1_0_4th);
+        CALC1_1_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL2_0_4th : CALC1_1_4th);
+        FILL2_0_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL2_1_4th : FILL2_0_4th);
+        FILL2_1_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC2_0_4th : FILL2_1_4th);
+        CALC2_0_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC2_1_4th : CALC2_0_4th);
+        CALC2_1_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL3_0_4th : CALC2_1_4th);
+        FILL3_0_4th:    state_4th_next = (in_cnt_4th[0] ?      FILL3_1_4th : FILL3_0_4th);
+        FILL3_1_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC3_0_4th : FILL3_1_4th);
+        CALC3_0_4th:    state_4th_next = (in_cnt_4th[0] ?      CALC3_1_4th : CALC3_0_4th);
+        CALC3_1_4th:    state_4th_next = (in_cnt_4th[0] ?      BPE_O_0_4th : CALC3_1_4th);
+        BPE_O_0_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_O_1_4th : BPE_O_0_4th);
+        BPE_O_1_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_I_0_4th : BPE_O_1_4th);
+        BPE_I_0_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_I_1_4th : BPE_I_0_4th);
+        BPE_I_1_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_O_2_4th : BPE_I_1_4th);
+        BPE_O_2_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_O_3_4th : BPE_O_2_4th);
+        BPE_O_3_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_I_2_4th : BPE_O_3_4th);
+        BPE_I_2_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_I_3_4th : BPE_I_2_4th);
+        BPE_I_3_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_O_4_4th : BPE_I_3_4th);
+        BPE_O_4_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_O_5_4th : BPE_O_4_4th);
+        BPE_O_5_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_I_4_4th : BPE_O_5_4th);
+        BPE_I_4_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_I_5_4th : BPE_I_4_4th);
+        BPE_I_5_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_O_6_4th : BPE_I_5_4th);
+        BPE_O_6_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_O_7_4th : BPE_O_6_4th);
+        BPE_O_7_4th:    state_4th_next = (bpe_out_cnt_4th[0] ? BPE_I_6_4th : BPE_O_7_4th);
+        BPE_I_6_4th:    state_4th_next = (bpe_in_cnt_4th[0] ?  BPE_I_7_4th : BPE_I_6_4th);
+        BPE_I_7_4th:    state_4th_next = (bpe_in_cnt_4th[0] ? TRAN_0_4th : BPE_I_7_4th);
+        TRAN_0_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_1_4th : TRAN_0_4th);
+        TRAN_1_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_2_4th : TRAN_1_4th);
+        TRAN_2_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_3_4th : TRAN_2_4th);
+        TRAN_3_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_4_4th : TRAN_3_4th);
+        TRAN_4_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_5_4th : TRAN_4_4th);
+        TRAN_5_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_6_4th : TRAN_5_4th);
+        TRAN_6_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_7_4th : TRAN_6_4th);
+        TRAN_7_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_8_4th : TRAN_7_4th);
+        TRAN_8_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_9_4th : TRAN_8_4th);
+        TRAN_9_4th:     state_4th_next = (out_cnt_4th[0] ? TRAN_10_4th : TRAN_9_4th);
+        TRAN_10_4th:    state_4th_next = (out_cnt_4th[0] ? TRAN_11_4th : TRAN_10_4th);
+        TRAN_11_4th:    state_4th_next = (out_cnt_4th[0] ? TRAN_12_4th : TRAN_11_4th);
+        TRAN_12_4th:    state_4th_next = (out_cnt_4th[0] ? TRAN_13_4th : TRAN_12_4th);
+        TRAN_13_4th:    state_4th_next = (out_cnt_4th[0] ? TRAN_14_4th : TRAN_13_4th);
+        TRAN_14_4th:    state_4th_next = (out_cnt_4th[0] ? TRAN_15_4th : TRAN_14_4th);
+        TRAN_15_4th:    state_4th_next = (out_cnt_4th[0] ? FINISH_4th : TRAN_15_4th);
+        FINISH_4th:     state_4th_next = IDLE_4th;
+        default:        state_4th_next = IDLE_4th;
       endcase
     end
     //===================Output Logic for 4th BPE===================//
@@ -2141,163 +2176,296 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // reg bpe_act_4th;
     
 
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        ss_rdy_4th_r <= 0;
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     ss_rdy_4th_r <= 0;
+    //   end else begin
+    //     ss_rdy_4th_r <= 0;
+    //     if(state_4th < 17 & (|state_4th))begin // Former half states can accept input
+    //       ss_rdy_4th_r <= 1;
+    //     end
+    //   end
+    // end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) sm_vld_4th_r <= 0;
+    //   else begin
+    //     sm_vld_4th_r <= 0;
+    //     if(state_4th < 17 && (|bpe_out_cnt_4th)) sm_vld_4th_r <= 1; 
+    //   end
+    // end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) data_789 <= 0;
+    //   else begin
+    //     data_789 <= 0;
+    //     if(state_4th < 17)begin
+    //       case(state_4th)
+    //         FILL0_0_4th: data_789 <= BPE4_aout;
+    //         FILL0_1_4th: data_789 <= data_reg_4th_ram1[1];
+    //         CALC0_0_4th: data_789 <= data_reg_4th_ram2[1];
+    //         CALC0_1_4th: data_789 <= data_reg_4th_ram2[1];
+    //         FILL1_0_4th: data_789 <= BPE4_aout;
+    //         FILL1_1_4th: data_789 <= data_reg_4th_ram1[1];
+    //         CALC1_0_4th: data_789 <= data_reg_4th_ram2[1];
+    //         CALC1_1_4th: data_789 <= data_reg_4th_ram2[1];
+    //         FILL2_0_4th: data_789 <= BPE4_aout;
+    //         FILL2_1_4th: data_789 <= data_reg_4th_ram1[1];
+    //         CALC2_0_4th: data_789 <= data_reg_4th_ram2[1];
+    //         CALC2_1_4th: data_789 <= data_reg_4th_ram2[1];
+    //         FILL3_0_4th: data_789 <= BPE4_aout;
+    //         FILL3_1_4th: data_789 <= data_reg_4th_ram1[1];
+    //         CALC3_0_4th: data_789 <= data_reg_4th_ram2[1];
+    //         CALC3_1_4th: data_789 <= data_reg_4th_ram2[1];
+    //       endcase
+    //     end
+    //   end
+    // end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     coef_rdy_4th <= 0;
+    //   end else begin
+    //     coef_rdy_4th <= 0;
+    //     if(coef_cnt_4th < 12 && state_4th != FILL0_0_4th) begin // Exclude FILL0_0_4th state in order to reset coefficients(counters)
+    //       coef_rdy_4th <= 1; 
+    //     end
+    //   end
+    // end
+
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     bpe_act_4th <= 0;
+    //   end else begin
+    //     bpe_act_4th <= 0;
+    //     if(state_4th_next == WAIT_COEF_4th && state_4th == IDLE_4th)      bpe_act_4th <= 1; 
+    //     else if(state_4th_next == BPE_I_7_4th && state_4th == BPE_I_6_4th)   bpe_act_4th <= 1;
+    //   end
+    // end
+    // // coefficient to BPE4
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     BPE4_coef_r <= 0;
+    //   end else begin
+    //     case(state_4th)
+    //       CALC0_0_4th: BPE4_coef_r <= COE0_0_4th;
+    //       CALC0_1_4th: BPE4_coef_r <= COE0_0_4th;
+    //       CALC1_0_4th: BPE4_coef_r <= COE1_0_4th;
+    //       CALC1_1_4th: BPE4_coef_r <= COE1_0_4th;
+    //       CALC2_0_4th: BPE4_coef_r <= COE2_0_4th;
+    //       CALC2_1_4th: BPE4_coef_r <= COE2_0_4th;
+    //       CALC3_0_4th: BPE4_coef_r <= COE3_0_4th;
+    //       CALC3_1_4th: BPE4_coef_r <= COE3_0_4th;
+
+    //       BPE_I_0_4th: BPE4_coef_r <= COE0_1_4th;
+    //       BPE_I_1_4th: BPE4_coef_r <= COE0_2_4th;
+    //       BPE_I_2_4th: BPE4_coef_r <= COE1_1_4th;
+    //       BPE_I_3_4th: BPE4_coef_r <= COE1_2_4th;
+    //       BPE_I_4_4th: BPE4_coef_r <= COE2_1_4th;
+    //       BPE_I_5_4th: BPE4_coef_r <= COE2_2_4th;
+    //       BPE_I_6_4th: BPE4_coef_r <= COE3_1_4th;
+    //       BPE_I_7_4th: BPE4_coef_r <= COE3_2_4th;
+    //       default: BPE4_coef_r <= 0;
+    //     endcase
+    //   end
+    // end
+    // // BPE4 input
+    // always@(posedge clk or negedge rstn) begin 
+    //   if (~rstn) begin
+    //     BPE4_ain_r <= 0;
+    //   end else begin
+    //     case(state_4th)
+    //       CALC0_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC0_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC1_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC1_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC2_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC2_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC3_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       CALC3_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
+    //       BPE_I_0_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_1_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_2_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_3_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_4_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_5_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_6_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       BPE_I_7_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
+    //       default: BPE4_ain_r <= 0;
+    //     endcase
+    //   end
+    // end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     BPE4_bin_r <= 0;
+    //   end else begin
+    //     case(state_4th)
+    //       CALC0_0_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC0_1_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC1_0_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC1_1_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC2_0_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC2_1_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC3_0_4th: BPE4_bin_r <= ld_dat_4th;
+    //       CALC3_1_4th: BPE4_bin_r <= ld_dat_4th;
+    //       BPE_I_0_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
+    //       BPE_I_1_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
+    //       BPE_I_2_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
+    //       BPE_I_3_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
+    //       BPE_I_4_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
+    //       BPE_I_5_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
+    //       BPE_I_6_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
+    //       BPE_I_7_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
+    //       default: BPE4_bin_r <= 0;
+    //     endcase
+    //   end
+    // end
+
+    // // BPE4 control signals
+    // always@(posedge clk or negedge rstn) begin
+    //   if(~rstn) begin
+    //     BPE4_i_vld_r <= 0;
+    //     BPE4_o_rdy_r <= 0;
+    //   end else begin
+    //     BPE4_i_vld_r <= (state_4th == CALC0_0_4th || state_4th == CALC0_1_4th || state_4th == CALC1_0_4th || state_4th == CALC1_1_4th ||
+    //                    state_4th == CALC2_0_4th || state_4th == CALC2_1_4th || state_4th == CALC3_0_4th || state_4th == CALC3_1_4th ||
+    //                    state_4th == BPE_I_0_4th || state_4th == BPE_I_1_4th || state_4th == BPE_I_2_4th || state_4th == BPE_I_3_4th ||
+    //                    state_4th == BPE_I_4_4th || state_4th == BPE_I_5_4th || state_4th == BPE_I_6_4th || state_4th == BPE_I_7_4th);
+    //     BPE4_o_rdy_r <= (state_4th == FILL0_0_4th || state_4th == FILL0_1_4th || state_4th == FILL1_0_4th || state_4th == FILL1_1_4th ||
+    //                    state_4th == FILL2_0_4th || state_4th == FILL2_1_4th || state_4th == FILL3_0_4th || state_4th == FILL3_1_4th ||
+    //                    state_4th == BPE_O_0_4th || state_4th == BPE_O_1_4th || state_4th == BPE_O_2_4th || state_4th == BPE_O_3_4th ||
+    //                    state_4th == BPE_O_4_4th || state_4th == BPE_O_5_4th || state_4th == BPE_O_6_4th || state_4th == BPE_O_7_4th);
+    //   end
+    // end
+    
+    always@(*) begin
+      if(state_4th < BPE_O_0_4th & (state_4th > WAIT_COEF_4th))begin
+        ss_rdy_4th_r = 1;
       end else begin
-        ss_rdy_4th_r <= 0;
-        if(state_4th < 17 & (|state_4th))begin // Former half states can accept input
-          ss_rdy_4th_r <= 1;
-        end
+        ss_rdy_4th_r = 0;
       end
     end
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) sm_vld_4th_r <= 0;
-      else begin
-        sm_vld_4th_r <= 0;
-        if(state_4th < 17 && (|bpe_out_cnt_4th)) sm_vld_4th_r <= 1; 
-      end
+    always@(*) begin
+      if(state_4th >= TRAN_0_4th && (state_4th != FINISH_4th)) begin
+        sm_vld_4th_r = 1;
+      end else begin
+        sm_vld_4th_r = 0;
+      end 
     end
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) data_789 <= 0;
-      else begin
-        data_789 <= 0;
-        if(state_4th < 17)begin
+    always@(*) begin
+        // if(state_4th < 17)begin
           case(state_4th)
-            FILL0_0_4th: data_789 <= BPE4_aout;
-            FILL0_1_4th: data_789 <= data_reg_4th_ram1[1];
-            CALC0_0_4th: data_789 <= data_reg_4th_ram2[1];
-            CALC0_1_4th: data_789 <= data_reg_4th_ram2[1];
-            FILL1_0_4th: data_789 <= BPE4_aout;
-            FILL1_1_4th: data_789 <= data_reg_4th_ram1[1];
-            CALC1_0_4th: data_789 <= data_reg_4th_ram2[1];
-            CALC1_1_4th: data_789 <= data_reg_4th_ram2[1];
-            FILL2_0_4th: data_789 <= BPE4_aout;
-            FILL2_1_4th: data_789 <= data_reg_4th_ram1[1];
-            CALC2_0_4th: data_789 <= data_reg_4th_ram2[1];
-            CALC2_1_4th: data_789 <= data_reg_4th_ram2[1];
-            FILL3_0_4th: data_789 <= BPE4_aout;
-            FILL3_1_4th: data_789 <= data_reg_4th_ram1[1];
-            CALC3_0_4th: data_789 <= data_reg_4th_ram2[1];
-            CALC3_1_4th: data_789 <= data_reg_4th_ram2[1];
+            TRAN_0_4th: data_789 = BPE4_aout;
+            TRAN_1_4th: data_789 = data_reg_4th_ram1[1];
+            TRAN_2_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_3_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_4_4th: data_789 = BPE4_aout;
+            TRAN_5_4th: data_789 = data_reg_4th_ram1[1];
+            TRAN_6_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_7_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_8_4th: data_789 = BPE4_aout;
+            TRAN_9_4th: data_789 = data_reg_4th_ram1[1];
+            TRAN_10_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_11_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_12_4th: data_789 = BPE4_aout;
+            TRAN_13_4th: data_789 = data_reg_4th_ram1[1];
+            TRAN_14_4th: data_789 = data_reg_4th_ram2[1];
+            TRAN_15_4th: data_789 = data_reg_4th_ram2[1];
+            default: data_789 = 0;
           endcase
-        end
+        // end
       end
-    end
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        coef_rdy_4th <= 0;
+    always@(*) begin
+      if(coef_cnt_4th < 12 && state_4th != FILL0_0_4th) begin // Exclude FILL0_0_4th state in order to reset coefficients(counters)
+        coef_rdy_4th = 1; 
       end else begin
-        coef_rdy_4th <= 0;
-        if(coef_cnt_4th < 12 && state_4th != FILL0_0_4th) begin // Exclude FILL0_0_4th state in order to reset coefficients(counters)
-          coef_rdy_4th <= 1; 
-        end
+        coef_rdy_4th = 0;
       end
     end
 
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        bpe_act_4th <= 0;
+    always@(*) begin
+      if(state_4th_next == WAIT_COEF_4th && state_4th == IDLE_4th) begin
+        bpe_act_4th = 1; 
       end else begin
-        bpe_act_4th <= 0;
-        if(state_4th_next == WAIT_COEF_4th)      bpe_act_4th <= 1; 
-        else if(state_4th_next == BPE_I_7_4th)   bpe_act_4th <= 1;
+        bpe_act_4th = 0;
       end
     end
     // coefficient to BPE4
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        BPE4_coef_r <= 0;
-      end else begin
+    always@(*) begin
         case(state_4th)
-          CALC0_0_4th: BPE4_coef_r <= COE0_0_4th;
-          CALC0_1_4th: BPE4_coef_r <= COE0_0_4th;
-          CALC1_0_4th: BPE4_coef_r <= COE1_0_4th;
-          CALC1_1_4th: BPE4_coef_r <= COE1_0_4th;
-          CALC2_0_4th: BPE4_coef_r <= COE2_0_4th;
-          CALC2_1_4th: BPE4_coef_r <= COE2_0_4th;
-          CALC3_0_4th: BPE4_coef_r <= COE3_0_4th;
-          CALC3_1_4th: BPE4_coef_r <= COE3_0_4th;
+          CALC0_0_4th: BPE4_coef_r = COE0_0_4th;
+          CALC0_1_4th: BPE4_coef_r = COE0_0_4th;
+          CALC1_0_4th: BPE4_coef_r = COE1_0_4th;
+          CALC1_1_4th: BPE4_coef_r = COE1_0_4th;
+          CALC2_0_4th: BPE4_coef_r = COE2_0_4th;
+          CALC2_1_4th: BPE4_coef_r = COE2_0_4th;
+          CALC3_0_4th: BPE4_coef_r = COE3_0_4th;
+          CALC3_1_4th: BPE4_coef_r = COE3_0_4th;
 
-          BPE_I_0_4th: BPE4_coef_r <= COE0_1_4th;
-          BPE_I_1_4th: BPE4_coef_r <= COE0_2_4th;
-          BPE_I_2_4th: BPE4_coef_r <= COE1_1_4th;
-          BPE_I_3_4th: BPE4_coef_r <= COE1_2_4th;
-          BPE_I_4_4th: BPE4_coef_r <= COE2_1_4th;
-          BPE_I_5_4th: BPE4_coef_r <= COE2_2_4th;
-          BPE_I_6_4th: BPE4_coef_r <= COE3_1_4th;
-          BPE_I_7_4th: BPE4_coef_r <= COE3_2_4th;
-          default: BPE4_coef_r <= 0;
+          BPE_I_0_4th: BPE4_coef_r = COE0_1_4th;
+          BPE_I_1_4th: BPE4_coef_r = COE0_2_4th;
+          BPE_I_2_4th: BPE4_coef_r = COE1_1_4th;
+          BPE_I_3_4th: BPE4_coef_r = COE1_2_4th;
+          BPE_I_4_4th: BPE4_coef_r = COE2_1_4th;
+          BPE_I_5_4th: BPE4_coef_r = COE2_2_4th;
+          BPE_I_6_4th: BPE4_coef_r = COE3_1_4th;
+          BPE_I_7_4th: BPE4_coef_r = COE3_2_4th;
+          default: BPE4_coef_r = 0;
         endcase
-      end
     end
     // BPE4 input
-    always@(posedge clk or negedge rstn) begin 
-      if (~rstn) begin
-        BPE4_ain_r <= 0;
-      end else begin
+    always@(*) begin 
         case(state_4th)
-          CALC0_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC0_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC1_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC1_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC2_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC2_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC3_0_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          CALC3_1_4th: BPE4_ain_r <= data_reg_4th_ram0[3];
-          BPE_I_0_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_1_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_2_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_3_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_4_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_5_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_6_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          BPE_I_7_4th: BPE4_ain_r <= data_reg_4th_ram2[1];
-          default: BPE4_ain_r <= 0;
+          CALC0_0_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC0_1_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC1_0_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC1_1_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC2_0_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC2_1_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC3_0_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          CALC3_1_4th: BPE4_ain_r = data_reg_4th_ram0[3];
+          BPE_I_0_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_1_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_2_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_3_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_4_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_5_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_6_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          BPE_I_7_4th: BPE4_ain_r = data_reg_4th_ram2[1];
+          default: BPE4_ain_r = 0;
         endcase
-      end
     end
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        BPE4_bin_r <= 0;
-      end else begin
+    always@(*) begin
         case(state_4th)
-          CALC0_0_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC0_1_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC1_0_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC1_1_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC2_0_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC2_1_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC3_0_4th: BPE4_bin_r <= ld_dat_4th;
-          CALC3_1_4th: BPE4_bin_r <= ld_dat_4th;
-          BPE_I_0_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
-          BPE_I_1_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
-          BPE_I_2_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
-          BPE_I_3_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
-          BPE_I_4_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
-          BPE_I_5_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
-          BPE_I_6_4th: BPE4_bin_r <= data_reg_4th_ram1[1];
-          BPE_I_7_4th: BPE4_bin_r <= data_reg_4th_ram0[3];
-          default: BPE4_bin_r <= 0;
+          CALC0_0_4th: BPE4_bin_r = ld_dat_4th;
+          CALC0_1_4th: BPE4_bin_r = ld_dat_4th;
+          CALC1_0_4th: BPE4_bin_r = ld_dat_4th;
+          CALC1_1_4th: BPE4_bin_r = ld_dat_4th;
+          CALC2_0_4th: BPE4_bin_r = ld_dat_4th;
+          CALC2_1_4th: BPE4_bin_r = ld_dat_4th;
+          CALC3_0_4th: BPE4_bin_r = ld_dat_4th;
+          CALC3_1_4th: BPE4_bin_r = ld_dat_4th;
+          BPE_I_0_4th: BPE4_bin_r = data_reg_4th_ram1[1];
+          BPE_I_1_4th: BPE4_bin_r = data_reg_4th_ram0[3];
+          BPE_I_2_4th: BPE4_bin_r = data_reg_4th_ram1[1];
+          BPE_I_3_4th: BPE4_bin_r = data_reg_4th_ram0[3];
+          BPE_I_4_4th: BPE4_bin_r = data_reg_4th_ram1[1];
+          BPE_I_5_4th: BPE4_bin_r = data_reg_4th_ram0[3];
+          BPE_I_6_4th: BPE4_bin_r = data_reg_4th_ram1[1];
+          BPE_I_7_4th: BPE4_bin_r = data_reg_4th_ram0[3];
+          default: BPE4_bin_r = 0;
         endcase
-      end
     end
 
     // BPE4 control signals
-    always@(posedge clk or negedge rstn) begin
-      if(~rstn) begin
-        BPE4_i_vld_r <= 0;
-        BPE4_o_rdy_r <= 0;
-      end else begin
-        BPE4_i_vld_r <= (state_4th == CALC0_0_4th || state_4th == CALC0_1_4th || state_4th == CALC1_0_4th || state_4th == CALC1_1_4th ||
+    always@(*) begin
+        BPE4_o_rdy_r = (state_4th == BPE_O_0_4th || state_4th == BPE_O_1_4th || state_4th == BPE_O_2_4th || state_4th == BPE_O_3_4th ||
+                        state_4th == BPE_O_4_4th || state_4th == BPE_O_5_4th || state_4th == BPE_O_6_4th || state_4th == BPE_O_7_4th ||
+                        state_4th == TRAN_0_4th || state_4th == TRAN_1_4th || state_4th == TRAN_2_4th || state_4th == TRAN_3_4th ||
+                        state_4th == TRAN_4_4th || state_4th == TRAN_5_4th || state_4th == TRAN_6_4th || state_4th == TRAN_7_4th ||
+                        state_4th == TRAN_8_4th || state_4th == TRAN_9_4th || state_4th == TRAN_10_4th || state_4th == TRAN_11_4th ||
+                        state_4th == TRAN_12_4th || state_4th == TRAN_13_4th || state_4th == TRAN_14_4th || state_4th == TRAN_15_4th);
+        BPE4_i_vld_r = (state_4th == CALC0_0_4th || state_4th == CALC0_1_4th || state_4th == CALC1_0_4th || state_4th == CALC1_1_4th ||
                        state_4th == CALC2_0_4th || state_4th == CALC2_1_4th || state_4th == CALC3_0_4th || state_4th == CALC3_1_4th ||
                        state_4th == BPE_I_0_4th || state_4th == BPE_I_1_4th || state_4th == BPE_I_2_4th || state_4th == BPE_I_3_4th ||
                        state_4th == BPE_I_4_4th || state_4th == BPE_I_5_4th || state_4th == BPE_I_6_4th || state_4th == BPE_I_7_4th);
-        BPE4_o_rdy_r <= (state_4th == FILL0_0_4th || state_4th == FILL0_1_4th || state_4th == FILL1_0_4th || state_4th == FILL1_1_4th ||
-                       state_4th == FILL2_0_4th || state_4th == FILL2_1_4th || state_4th == FILL3_0_4th || state_4th == FILL3_1_4th ||
-                       state_4th == BPE_O_0_4th || state_4th == BPE_O_1_4th || state_4th == BPE_O_2_4th || state_4th == BPE_O_3_4th ||
-                       state_4th == BPE_O_4_4th || state_4th == BPE_O_5_4th || state_4th == BPE_O_6_4th || state_4th == BPE_O_7_4th);
-      end
     end
 
 
@@ -2410,7 +2578,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     // FIFO 0    
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th_r) begin
+      // if(ld_vld_4th && ss_rdy_4th_r) begin
         for (i = 1; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i-1];
         case(state_4th)
           FILL0_0_4th: data_reg_4th_ram0_next[0] = ld_dat_4th;
@@ -2429,25 +2597,18 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
           BPE_O_5_4th: data_reg_4th_ram0_next[0] = BPE4_bout;
           BPE_O_6_4th: data_reg_4th_ram0_next[0] = BPE4_bout;
           BPE_O_7_4th: data_reg_4th_ram0_next[0] = BPE4_bout;
+
           default:     data_reg_4th_ram0_next[0] = 0;
         endcase
-      end else begin
-        for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i];
-      end
+      // end else begin
+      //   for (i = 0; i < 4; i = i + 1) data_reg_4th_ram0_next[i] = data_reg_4th_ram0[i];
+      // end
     end
     // FIFO 1
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th_r) begin
+      // if(ld_vld_4th && ss_rdy_4th_r) begin
         data_reg_4th_ram1_next[1] = data_reg_4th_ram1[0];
         case(state_4th)
-          FILL0_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL0_1_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL1_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL1_1_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL2_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL2_1_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL3_0_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
-          FILL3_1_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
           BPE_O_0_4th: data_reg_4th_ram1_next[0] = BPE4_aout;
           BPE_O_1_4th: data_reg_4th_ram1_next[0] = BPE4_aout; 
           BPE_O_2_4th: data_reg_4th_ram1_next[0] = BPE4_aout;
@@ -2456,27 +2617,26 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
           BPE_O_5_4th: data_reg_4th_ram1_next[0] = BPE4_aout;
           BPE_O_6_4th: data_reg_4th_ram1_next[0] = BPE4_aout;
           BPE_O_7_4th: data_reg_4th_ram1_next[0] = BPE4_aout;
+          TRAN_0_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_1_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_4_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_5_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_8_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_9_4th:  data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_12_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
+          TRAN_13_4th: data_reg_4th_ram1_next[0] = BPE4_bout;
           default:     data_reg_4th_ram1_next[0] = 0;
         endcase
-      end else begin
-        data_reg_4th_ram1_next[0] = data_reg_4th_ram1[0];
-        data_reg_4th_ram1_next[1] = data_reg_4th_ram1[1];
-      end
+      // end else begin
+      //   data_reg_4th_ram1_next[0] = data_reg_4th_ram1[0];
+      //   data_reg_4th_ram1_next[1] = data_reg_4th_ram1[1];
+      // end
     end
     // FIFO 2
     always @(*)begin
-      if(ld_vld_4th && ss_rdy_4th_r) begin
+      // if(ld_vld_4th && ss_rdy_4th_r) begin
         data_reg_4th_ram2_next[1] = data_reg_4th_ram2[0];
         case(state_4th)
-          FILL0_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
-          CALC0_0_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
-          FILL1_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
-          CALC1_0_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
-          FILL2_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
-          CALC2_0_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
-          FILL3_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
-          CALC3_0_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
-  
           BPE_O_1_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
           BPE_I_0_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram0[3];
           BPE_O_3_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
@@ -2485,12 +2645,21 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
           BPE_I_4_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram0[3];
           BPE_O_7_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
           BPE_I_6_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram0[3];
+
+          TRAN_1_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
+          TRAN_2_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
+          TRAN_5_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
+          TRAN_6_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
+          TRAN_9_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
+          TRAN_10_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
+          TRAN_13_4th: data_reg_4th_ram2_next[0] = BPE4_aout;
+          TRAN_14_4th: data_reg_4th_ram2_next[0] = data_reg_4th_ram1[1];
           default:     data_reg_4th_ram2_next[0] = 0;
         endcase
-      end else begin
-        data_reg_4th_ram2_next[0] = data_reg_4th_ram2[0];
-        data_reg_4th_ram2_next[1] = data_reg_4th_ram2[1];
-      end
+      // end else begin
+      //   data_reg_4th_ram2_next[0] = data_reg_4th_ram2[0];
+      //   data_reg_4th_ram2_next[1] = data_reg_4th_ram2[1];
+      // end
     end
     //====================Connection with 5th BPE ====================//
     assign ss_vld_5th = sm_vld_4th;
@@ -2526,6 +2695,8 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // localparam FINISH_5th = 9;
 
     // reg [3:0] state_5th, state_5th_next;
+    wire coef_done_5th;
+    assign coef_done_5th = (coef_cnt_5th == 16);
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2535,19 +2706,18 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
       end
     end
 
-    always@(*)begin
+    always@(*)begin// =================================================================================================加入coef done?=========================================================
       case(state_5th)
         IDLE_5th:        state_5th_next = ss_vld_5th ? WAIT_COEF_5th : IDLE_5th;
-        WAIT_COEF_5th:   state_5th_next = coef_vld[4] ? BPE_I0_5th : WAIT_COEF_5th;
-        BPE_I0_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I1_5th : BPE_I0_5th;
-        BPE_I1_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I2_5th : BPE_I1_5th;
-        BPE_I2_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_I3_5th : BPE_I2_5th;
-        BPE_I3_5th:      state_5th_next = & in_cnt_5th[1:0] ? BPE_O0_5th : BPE_I3_5th;
-        BPE_O0_5th:      state_5th_next = &out_cnt_5th[1:0] ? BPE_O1_5th : BPE_O0_5th;
-        BPE_O1_5th:      state_5th_next = &out_cnt_5th[1:0] ? BPE_O2_5th : BPE_O1_5th;
-        BPE_O2_5th:      state_5th_next = &out_cnt_5th[1:0] ? BPE_O3_5th : BPE_O2_5th;
-        BPE_O3_5th:      state_5th_next = (out_cnt_5th == (DATA_LENGTH-1) & sm_vld_5th && sm_rdy_5th) ? FINISH_5th : 
-                                       &out_cnt_5th[1:0] ? (coef_vld[4] ? BPE_I0_5th : WAIT_COEF_5th) : BPE_O3_5th;
+        WAIT_COEF_5th:   state_5th_next = coef_done_5th ? BPE_I0_5th : WAIT_COEF_5th;
+        BPE_I0_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I1_5th : BPE_I0_5th;
+        BPE_I1_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I2_5th : BPE_I1_5th;
+        BPE_I2_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I3_5th : BPE_I2_5th;
+        BPE_I3_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_O0_5th : BPE_I3_5th;
+        BPE_O0_5th:      state_5th_next = &out_cnt_5th[2:0] ? BPE_O1_5th : BPE_O0_5th;
+        BPE_O1_5th:      state_5th_next = &out_cnt_5th[2:0] ? BPE_O2_5th : BPE_O1_5th;
+        BPE_O2_5th:      state_5th_next = &out_cnt_5th[2:0] ? BPE_O3_5th : BPE_O2_5th;
+        BPE_O3_5th:      state_5th_next = &out_cnt_5th[2:0] ? FINISH_5th : BPE_O3_5th;
         FINISH_5th:  state_5th_next = IDLE_5th;
         default:     state_5th_next = IDLE_5th;
       endcase
@@ -2559,52 +2729,89 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // // BPE5 data output
     // reg [pDATA_WIDTH-1:0] BPE5_dout;
 
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        ss_rdy_5th <= 0;
-      end else begin
-        ss_rdy_5th <= 0;
-        if(state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || 
-           state_5th == BPE_I3_5th & (|state_5th)) begin // IDLE_5th should not accept data
-          ss_rdy_5th <= 1;
-        end
-      end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     ss_rdy_5th <= 0;
+    //   end else begin
+    //     ss_rdy_5th <= 0;
+    //     if(state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || 
+    //        state_5th == BPE_I3_5th & (|state_5th)) begin // IDLE_5th should not accept data
+    //       ss_rdy_5th <= 1;
+    //     end
+    //   end
+    // end
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     sm_vld_5th <= 0;
+    //     BPE5_dout <= 0;
+    //   end else begin
+    //     sm_vld_5th <= 0;
+    //     if(state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) begin
+    //       sm_vld_5th <= 1; 
+    //       BPE5_dout <= ~out_cnt_5th[0] ? delay_aout_5th[3] : data_reg_5th_ram0;
+    //     end
+    //   end
+    // end
+    // // bpe_in_vld and bpe_out_rdy
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     BPE5_i_vld_r <= 0;
+    //     BPE5_o_rdy_r <= 0;
+    //   end else begin
+    //     BPE5_i_vld_r <= (state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || state_5th == BPE_I3_5th) & in_cnt_5th[0] ;
+    //     // BPE5_o_rdy <= (state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) & (~bpe_out_cnt_5th[0]);
+    //     BPE5_o_rdy_r <= 1;
+    //   end
+    // end
+    // // bpe activation
+    // always@(posedge clk or negedge rstn) begin
+    //   if (~rstn) begin
+    //     BPE5_act <= 0;
+    //   end else begin
+    //     BPE5_act <= 0;
+    //     if(state_5th == IDLE_5th && ss_vld_5th) begin
+    //       BPE5_act <= 1;
+    //     end else if(state_5th_next == BPE_O0_5th & state_5th == BPE_I3_5th) begin
+    //       BPE5_act <= 1;
+    //     end
+    //   end
+    // end
+
+    // always@(*) begin
+    //     ss_rdy_5th = 0;
+    //     if((state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || 
+    //        state_5th == BPE_I3_5th) & (|state_5th)) begin // IDLE_5th should not accept data
+    //       ss_rdy_5th = 1;
+    
+    //     end
+    // end
+
+    always@(*) begin
+        ss_rdy_5th = (state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || 
+                      state_5th == BPE_I3_5th); // IDLE_5th should not accept data
     end
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        sm_vld_5th <= 0;
-        BPE5_dout <= 0;
-      end else begin
-        sm_vld_5th <= 0;
+    always@(*) begin
+        sm_vld_5th = 0;
+        BPE5_dout = 0;
         if(state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) begin
-          sm_vld_5th <= 1; 
-          BPE5_dout <= ~out_cnt_5th[0] ? delay_aout_5th[3] : data_reg_5th_ram0;
+          sm_vld_5th = 1; 
+          BPE5_dout = ~out_cnt_5th[0] ? delay_aout_5th[3] : data_reg_5th_ram0;
         end
-      end
     end
     // bpe_in_vld and bpe_out_rdy
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        BPE5_i_vld_r <= 0;
-        BPE5_o_rdy_r <= 0;
-      end else begin
-        BPE5_i_vld_r <= (state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || state_5th == BPE_I3_5th) & in_cnt_5th[0] ;
+    always@(*) begin
+        BPE5_i_vld_r = (state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || state_5th == BPE_I3_5th) & in_cnt_5th[0] ;
         // BPE5_o_rdy <= (state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) & (~bpe_out_cnt_5th[0]);
-        BPE5_o_rdy_r <= 1;
-      end
+        BPE5_o_rdy_r = 1;
     end
     // bpe activation
-    always@(posedge clk or negedge rstn) begin
-      if (~rstn) begin
-        BPE5_act <= 0;
-      end else begin
-        BPE5_act <= 0;
+    always@(*) begin
+        BPE5_act = 0;
         if(state_5th == IDLE_5th && ss_vld_5th) begin
-          BPE5_act <= 1;
-        end else if(state_5th_next == BPE_O0_5th & state_5th == BPE_I3_5th) begin
-          BPE5_act <= 1;
+          BPE5_act = 1;
+        end else begin
+          BPE5_act = 0;
         end
-      end
     end
 
     always@(*) begin
@@ -2879,19 +3086,19 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
       endcase
     end
 
-    
     assign output_buf_in_cnt_w = sw_lst ? 0 : ((sm_vld_5th & sm_rdy_5th) ? output_buf_in_cnt_r + 1 : output_buf_in_cnt_r);
     // assign out_byte_cnt_w = (sw_vld & sw_rdy) ? out_byte_cnt_r + 1 : out_byte_cnt_r;
-    assign kern_out_cnt_w = (sw_vld & sw_rdy) ? kern_out_cnt_r + 1 : kern_out_cnt_r; 
-    // assign sw_data = output_buffer[output_buf_in_cnt_r[0+:3]][(kern_out_cnt_r << 5) +: (pDATA_WIDTH >> 2)];                      
-    assign sw_data = output_buffer[output_buf_in_cnt_r[0+:5]];
-    assign sw_vld = output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH];
-    assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH]; // ready to receive data when empty
-    // assign sw_lst = & kern_out_cnt_r;
+    assign kern_out_cnt_w = (sw_vld & sw_rdy) ? kern_out_cnt_r + 1 : kern_out_cnt_r;           
+    assign sw_vld = output_buffer[kern_out_cnt_r[0+:5]][pDATA_WIDTH];
+    // assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH]; // ready to receive data when empty
+    assign sw_lst = & kern_out_cnt_r;
+    assign sw_dat = output_buffer[kern_out_cnt_r[0+:5]][0+:pDATA_WIDTH]; // 128 bit data
 
-    reg o;
+    reg o, q;
     always @ (posedge clk) o<=0;
-    assign sw_lst = o;
+    always @ (posedge clk) q<=1;
+    // assign sw_lst = o;
+    assign sm_rdy_5th = q;
 
     always @(posedge clk or negedge rstn) begin
       if (~rstn) begin
