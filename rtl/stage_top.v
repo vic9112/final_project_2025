@@ -2299,7 +2299,8 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     reg [2:0] sm_cnt;
     reg [2:0] sm_cnt_next;
     reg [(pSS_WIDTH-1):0] sm_dat_r;
-
+    reg last_flag;
+    
     assign  en_sm = (k1_sw_vld && k1_sw_rdy) || (k2_sw_vld && k2_sw_rdy) || (k3_sw_vld && k3_sw_rdy) || (k4_sw_vld && k4_sw_rdy);
     assign  empty = (wr_ptr == rd_ptr);
 
