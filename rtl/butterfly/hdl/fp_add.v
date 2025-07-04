@@ -1,8 +1,3 @@
-//    `include "CLA_8.v"
-//    `include "add_107.v"
-//    `include "sub_107.v"
-//    `include "LOD_128.v"
-
 // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //
 // MIT License
@@ -25,6 +20,8 @@
 // 2025.6.1     hsuanjung,lo      4.0         change the included module name "LOD" => "LOD_128"
 // 2025.6.13    hsuanjung,lo      5.0         solve inf input case and NaN case
 // 2025.6.15    hsuanjung,lo      6.0         solve subnormal bias mistake
+// 2025.6.19    hsuanjung,lo      7.0         solve the error of fraction in pip4、pip5(modify flip flop width)
+// 2025.6.26    hsuanjung,lo      8.0         re-allocate pipline stage and operator to optomize area and freq(clk period)
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //==================================================================================================================================================================================
@@ -47,6 +44,119 @@
 //      result    >|                    xx                   |  r0  |  r1   |   xx  |    *  
 //
 //===================================================================================================================================================================================
+
+
+//===================================================================================================================================================================================//
+// < First stage >                                                                                                                                                                   //
+//                                                                                                                                                                                   //
+// * Subnormal case follow IEEE 754 double precision format :                                                                                                                        //
+//      1. while exp = 0 , bias must be -1022 (normal case has bias of -1023) , and the hidden bit will be zero .                                                                    //
+//          =>  shift the fraction one bit left in exp = 0 case , as followinng structure                                                                                            //
+//                                 1bit          52bits                                                                                                                              //
+//           normal frac    : |   1(hid)    |   mantissa  |                                                                                                                          //
+//                                                                                                                                                                                   //
+//                                52bits       1bit                                                                                                                                  //
+//           subnormal frac : |  mantissa   |   0   |                                                                                                                                //
+//                                                                                                                                                                                   //
+//       2. while exp = 2047  with all zero mantissa, the valuse must be infinite  => assert inf_A / inf_B high.                                                                     //
+//                                                                                                                                                                                   //
+//       3. while exp = 2047 with nonzero mantissa , the operand becomes NaN   =>  assert NaN high .                                                                                 //
+//                                                                                                                                                                                   //
+//       4. while the both operand are infinite , but they have different sign (one + , one -) , the result must become NaN => assert NaN high .                                     //
+//                                                                                                                                                                                   //
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// * In this stage , it also compute the diff of exponent and which operand has larger exponent ( exp_compare ) before alignment .                                                   //
+//===================================================================================================================================================================================//
+
+//===================================================================================================================================================================================//
+//  < Second stage >                                                                                                                                                                 //
+//  * Align the exponent  :                                                                                                                                                          //
+//     1. expand the fraction before shift to avoid data loss                                                                                                                        //
+//                        53bits          53bits                                                                                                                                     //
+//       frac_expand  |  pip1_frac |   0000000...000  |                                                                                                                              //
+//                                                                                                                                                                                   //
+//     2. shift the expanded fraction to align the exponent diff (shift the fraction that has smaller exponent)                                                                      //
+//         exp : exp_A > exp_B , with exp_diff = 3                                                                                                                                   //
+//                                                                                                                                                                                   //
+//                                        53bits         53bits                                                                                                                      //
+//               frac_A_shifted  :  |    fraction   |   0000....00 |                                                                                                                 //
+//                                                                                                                                                                                   //
+//                                    3bits     53bits     50bits                                                                                                                    //
+//               frac_B_shifted  :  |  000  |  fraction  | 00...00 |                                                                                                                 //
+//                                                                                                                                                                                   //
+//  * operand selsect :                                                                                                                                                              //
+//      To reduce the use of adder in next stage , select the operand_1 、 operand_2 , op command , and sign predict predict here.                                                   //
+//                                                                                                                                                                                   //
+//      sign_ab(sign_A/sign_B) |   0/0   |   0/1   |  1/0  |  1/1  |                                                                                                                 //
+//      op(pip3_op_nxt)        |   ADD   |   SUB   |  SUB  |  ADD  |                                                                                                                 //
+//      operation(op)          |   A+B   |   A-B   |  B-A  |  A+B  |                                                                                                                 //
+//      operand_1              |    A    |    A    |   B   |   A   |                                                                                                                 //
+//      operand_2              |    B    |    B    |   A   |   B   |                                                                                                                 //
+//      sign predict (op1>op2) |   pos   |   pos   |  pos  |  neg  |                                                                                                                 //
+//                                                                                                                                                                                   //
+//      And extract the GRS from operand_2 (these GRS will combine with the operand_2 before add & sub ):                                                                            //
+//                                  53bits      1bit      1bit     51bits                                                                                                            //
+//                              |  fraction  |  Guard |  Round |   ......  |                                                                                                         //
+//                                                              \  sticky  /                                                                                                         //
+//      Next stage will only do :                                                                                                                                                    //
+//                                operand_1 + operand_2                                                                                                                              //
+//                                operand_2 - operand_1   .... then select the result by pip3_op                                                                                     //
+//                                                                                                                                                                                   //
+//                *** predict the operand_1 is larger than the operand_2 ***                                                                                                         //
+//   *** if there is/are inf case , the perdictopn of sign may follow the inf number  **                                                                                             //
+//===================================================================================================================================================================================//
+
+//===================================================================================================================================================================================//
+// < Third stage >                                                                                                                                                                   //
+//   * Do add and sub of fraction , and then select the result fraction by cmd ( pip2_op )                                                                                           //
+//   * Before add/sub expand the fraction into 58bit as following structure (1bit sign and 1bit overflow for result ) :                                                              //
+//                            2bits    53bits      3bits                                                                                                                             //
+//              operand1  : |  00  |  fraction  |   000  |                                                                                                                           //
+//              operand2  : |  00  |  fraction  |   GRS  |  (G: Guard , R: Round , S: Sticky)                                                                                        //
+//   * As above stage , adjust the sign bit by result of frac after operation .                                                                                                      // 
+//   * If sign bit of  operated frac is 1 , and the prediction is positive => negative result 
+//
+//===================================================================================================================================================================================//
+
+//===================================================================================================================================================================================//
+// < Forth stage >                                                                                                                                                                   //
+//   * Rounding the operated fraction (pip3_frac) to nearest even with sticky.                                                                                                       //
+//   * operated frac has two condition ( overflow / no overflow ) :                                                                                                                  //
+//      -----------------------------------------------------------------------------------------------------                                                                        //
+//     | if overflow :                                                                                      |                                                                        //
+//     |                        |<--- 53bit frac --->|                                                      |                                                                        //   
+//     |                           1bit      52bits     1bit       1bit      2bits                          |                                                                        //
+//     |           pip3_frac :  |   1     |   FRAC   |  Guard  |  Round  |   Sticky   |                     |                                                                        //
+//     |                                                                                                    |                                                                        //
+//     |           => exp = exp + 1 ;                                                                       |                                                                        //
+//     |----------------------------------------------------------------------------------------------------|                                                                        //
+//     | if no overflow :                                                                                   |                                                                        //
+//     |                                1bit       |<- 53bits ->|   1bit      1bit        1bit              |                                                                        //
+//     |           pip3_frac :  |   0 (don't care) |    FRAC    |  Guard  |   Round   |   Sticky   |        |                                                                        //
+//     |----------------------------------------------------------------------------------------------------|                                                                        //
+//   * As the conditon of overflow to sel the range of FRAC and GRS                                                                                                                  //
+//                                                                                                                                                                                   //
+//   * After rounding , if frac_rounded has overflow , shift 1 bit of frac , and then add 1 to exp                                                                                   //
+//===================================================================================================================================================================================//
+
+//===================================================================================================================================================================================//
+// < Fifth stage >                                                                                                                                                                   //
+//   * Normalization :                                                                                                                                                               //
+//          1 . expand the rounded frac into the 64bit before feed into LOD_64                                                                                                       //
+//                                  53bits      11bits                                                                                                                               //
+//              frac_expand :    |   frac   |  0000...00  |                                                                                                                          //
+//                                                                                                                                                                                   //
+//          2. Detect the leading one position of rounded frac by LOD_64                                                                                                             //
+//                                                                                                                                                                                   //
+//          3. Shift the fraction and adjust the exponent to follow IEEE754 format                                                                                                   //
+//                                                                                                                                                                                   //
+//          * Maximum shift is the value of exp.If exceed the maximum value , set exp = 0 and shift the frac as maximum value .                                                      //
+//          * After all ,,check the subnormal case :                                                                                                                                 //
+//                                   1. if exp = 0 , shift the frac 1bit right (because the zero exp has bias of -1022 )                                                             //
+//                                   2. if exp >= 2047 , set the exp=2047 , frac = 0 .(infinite case)                                                                                //
+//                                   3. if input A、B has infinte value and the result is exist, set infinite value output                                                           //
+//                                   4. if the result is Not A Number , set sign = 0 / exp = 2047 / frac = 1 /                                                                       //
+//===================================================================================================================================================================================//
 
 module fp_add#(
     parameter pDATA_WIDTH = 64,
@@ -71,36 +181,50 @@ input                               in_valid ;
 output [(pDATA_WIDTH-1):0]          result;
 output                              out_valid ;   
 //============================================================================//
-localparam pADDER_WIDTH = pFRAC_WIDTH*2+3;
-localparam LOD_WIDTH    = 11'd128;
+localparam pLOD_WIDTH   = 64;
+
+//------------- sign detect -----------//
+localparam postive   = 0;
+localparam negative  = 1;
+localparam posA_posB = 2'b00;
+localparam negA_negB = 2'b11;
+localparam negA_posB = 2'b10;
+localparam posA_negB = 2'b01;
+//-------- op from pip1 <-> pip2 ------//
+localparam ADD       = 1;
+localparam SUB       = 0;
+//-------- op from pip1 <-> pip2 ------//
+localparam A_ADD_B   = 2'b00;
+localparam A_SUB_B   = 2'b01;
+localparam B_SUB_A   = 2'b10;
 
 //=============================== Decode ======================================//
+wire[(pFRAC_WIDTH)  :0]             frac_a        ;
+wire[(pFRAC_WIDTH)  :0]             frac_b        ;
 
-wire[(pFRAC_WIDTH):0]               frac_a;
-wire[(pFRAC_WIDTH):0]               frac_b;
+wire[(pEXP_WIDTH-1) :0]             exp_a         ;
+wire[(pEXP_WIDTH-1) :0]             exp_b         ;
+wire[(pEXP_WIDTH)   :0]             exp_A         ;
+wire[(pEXP_WIDTH)   :0]             exp_B         ;
+wire[(pEXP_WIDTH)   :0]             exp_diff_ab   ;
+wire[(pEXP_WIDTH)   :0]             exp_diff_ba   ;
+wire[(pEXP_WIDTH-1) :0]             pip1_exp_nxt  ;
+wire[(pEXP_WIDTH-1) :0]             pip1_shift_nxt;
+wire                                exp_compare   ;
 wire                                sign_a;
 wire                                sign_b;
-wire                                hid_a;
-wire                                hid_b;
-wire[(pEXP_WIDTH-1):0]              exp_a;
-wire[(pEXP_WIDTH-1):0]              exp_b;
-wire[(pEXP_WIDTH-1):0]              exp_diff_ab;
-wire[(pEXP_WIDTH-1):0]              exp_diff_ba;
-wire                                exp_compare;
-wire                                inf_a;
-wire                                inf_b;
-wire                                NaN  ;
+wire                                hid_a ;
+wire                                hid_b ;
+wire                                inf_a ; 
+wire                                inf_b ;
+wire                                NaN   ;
 wire                                mantissa_nonzero_a;
 wire                                mantissa_nonzero_b;
-//============================== Pipline stage 1 ==============================//
-reg [(pEXP_WIDTH-1):0]              pip1_exp_diff_ab ;
-reg [(pEXP_WIDTH-1):0]              pip1_exp_diff_ba ;
-
-reg [(pEXP_WIDTH-1):0]              pip1_exp_a  ;     
-reg [(pEXP_WIDTH-1):0]              pip1_exp_b  ;        
-
-reg [(pFRAC_WIDTH):0]               pip1_frac_a ;     
-reg [(pFRAC_WIDTH):0]               pip1_frac_b ;
+//=========================== Pipline stage 1 =================================//
+reg [(pEXP_WIDTH-1) :0]             pip1_exp    ;     
+reg [(pEXP_WIDTH-1) :0]             pip1_shift  ;
+reg [(pFRAC_WIDTH)  :0]             pip1_frac_a ;     
+reg [(pFRAC_WIDTH)  :0]             pip1_frac_b ;
 
 reg                                 pip1_sign_a ;     
 reg                                 pip1_sign_b ;    
@@ -109,85 +233,95 @@ reg                                 pip1_inf_b ;
 reg                                 pip1_NaN   ;
 reg                                 pip1_exp_compare ;
 reg                                 pip1_v; 
-//============================ exponent align =================================//
-wire[(pADDER_WIDTH-1):0]            frac_a_expand;      
-wire[(pADDER_WIDTH-1):0]            frac_b_expand;
-wire[(pADDER_WIDTH-1):0]            frac_a_shifted;      
-wire[(pADDER_WIDTH-1):0]            frac_b_shifted;  
-wire[(pEXP_WIDTH-1):0]              exp_diff; 
-//============================== OP analyze ===================================//
-reg [1:0]                           op;
-wire[1:0]                           sign_ab;
-//============================= pipeline stage2 ==============================//
-reg [(pADDER_WIDTH-1):0]            pip2_frac_a;
-reg [(pADDER_WIDTH-1):0]            pip2_frac_b;
-reg [1:0]                           pip2_op;
-reg [1:0]                           pip2_sign_ab;
-reg [(pEXP_WIDTH-1):0]              pip2_exp ;
-reg                                 pip2_v ;
-reg                                 pip2_inf_a ;
-reg                                 pip2_inf_b ;
-reg                                 pip2_NaN   ;
-//============================ fraction operate ==============================//
-wire signed[(pADDER_WIDTH-1):0]     frac_a_add_b;
-wire signed[(pADDER_WIDTH-1):0]     frac_a_sub_b;
-wire signed[(pADDER_WIDTH-1):0]     frac_b_sub_a;
-reg  signed[(pADDER_WIDTH-1):0]     frac_result ;
-//============================ pipeline stage3 ==============================//
-reg [1:0]                           pip3_op;
-reg [(pADDER_WIDTH-1):0]            pip3_frac_result;
-reg [(pEXP_WIDTH-1):0]              pip3_exp;
-reg                                 pip3_v;
-reg [1:0]                           pip3_sign_ab ;
-reg                                 pip3_inf_a ;
-reg                                 pip3_inf_b ;
-reg                                 pip3_NaN   ;
-wire                                inf_case  ;
-//============================ first normalizeation ==========================//
-wire                                lsb         ;
-wire                                guard_bit   ;
-wire                                round_bit   ;
-wire                                sticky_bit  ;
-reg                                 result_sign ;
-wire[(pADDER_WIDTH-1):0]            frac_abs    ;
-wire[(LOD_WIDTH-1):0]               frac_abs_expand;
-wire[(pADDER_WIDTH-1):0]            frac_normal_0;
-wire[(pEXP_WIDTH-1)  :0]            exp_normal_0 ;
-wire                                frac_sign;
-wire[(pEXP_WIDTH-1):0]              shift;
-wire[(pEXP_WIDTH-1):0]              shift_amount;
-wire[(pEXP_WIDTH-1):0]              shift_frac;
-wire[(pEXP_WIDTH-1):0]              maximum_shift;
-//============================= pipeline stage4 ==============================//
-reg                                 pip4_lsb;
-reg                                 pip4_sticky;
-reg                                 pip4_guard;
-reg                                 pip4_round;
-reg                                 pip4_result_sign;
-reg [(pEXP_WIDTH-1)  :0]            pip4_exp ;
-reg [(pFRAC_WIDTH-1):0]             pip4_frac;
-reg                                 pip4_v;
-reg                                 pip4_inf;
-reg                                 pip4_NaN;
-//====================== rounding and second normalization ===================//
-wire[(pFRAC_WIDTH) :0]              frac_normal_0_expand;
-wire[(pFRAC_WIDTH) :0]              frac_rounded;
-reg                                 round_op;
+//============================= Align exponent ================================//
+wire [(pFRAC_WIDTH*2+1) :0]         frac_a_shifted ;
+wire [(pFRAC_WIDTH*2+1) :0]         frac_a_expand  ;
+wire [(pFRAC_WIDTH*2+1) :0]         frac_b_shifted ;
+wire [(pFRAC_WIDTH*2+1) :0]         frac_b_expand  ;
+wire [(pFRAC_WIDTH*2+1) :0]         operand_1    ;
+wire [(pFRAC_WIDTH*2+1) :0]         operand_2    ;
+wire                                inf          ;
+wire [1:0]                          sign_ab      ;
+reg  [1:0]                          op           ;
+reg                                 pip2_op_nxt  ;
+reg                                 sign_predict ;
+wire                                operand_1_sticky ;
+wire                                operand_2_sticky ;
+//=========================== Pipline stage 2 =================================//
+reg  [(pFRAC_WIDTH)   :0]           pip2_operand_1 ; 
+reg  [(pFRAC_WIDTH)   :0]           pip2_operand_2 ;  
+reg  [(pEXP_WIDTH-1)  :0]           pip2_exp  ;
+reg                                 pip2_NaN  ;       
+reg                                 pip2_inf  ;   
+reg                                 pip2_sign ;      
+reg                                 pip2_op   ;       
+reg                                 pip2_sticky1   ;
+reg                                 pip2_round1    ;
+reg                                 pip2_guard1    ;
+reg                                 pip2_sticky2   ;
+reg                                 pip2_round2    ;
+reg                                 pip2_guard2    ;
+reg                                 pip2_v         ;
+//============================ frac operation ================================//
+wire [(pFRAC_WIDTH+5) :0]           operand1 ;
+wire [(pFRAC_WIDTH+5) :0]           operand2 ;
+wire [(pFRAC_WIDTH+5) :0]           adder_op1 ;
+wire [(pFRAC_WIDTH+5) :0]           adder_op2 ;
+wire [(pFRAC_WIDTH+5) :0]           op1_add_op2 ;
+wire [(pFRAC_WIDTH+5) :0]           op1_sub_op2 ;
+wire [(pFRAC_WIDTH+5) :0]           adder_out   ; 
+wire [(pFRAC_WIDTH+5) :0]           frac_result ;
+wire [(pFRAC_WIDTH+5) :0]           logic_one ;
+wire [(pFRAC_WIDTH+5) :0]           op1_sub_op2_abs ;
+wire [(pFRAC_WIDTH+5) :0]           op1_sub_op2_inv ;
+wire                                sign_result ;
+//=========================== Pipline stage 3 =================================//
+reg  [(pEXP_WIDTH-1)  :0]           pip3_exp  ;
+reg  [(pFRAC_WIDTH+4) :0]           pip3_frac ;
+reg                                 pip3_NaN  ;
+reg                                 pip3_inf  ;
+reg                                 pip3_sign ;
+reg                                 pip3_v    ;
+//============================== rounding =====================================//
+wire [(pEXP_WIDTH)    :0]           exp_add1 ;
+wire [(pEXP_WIDTH)    :0]           exp_add2 ;
+wire [(pEXP_WIDTH)    :0]           exp_normal_0 ;
+wire [(pFRAC_WIDTH)   :0]           frac     ;
+wire [(pFRAC_WIDTH+1) :0]           frac_add ;
+wire [(pFRAC_WIDTH+1) :0]           frac_rounded ;
+wire [(pEXP_WIDTH-1)  :0]           logic_two ;
+wire                                guard_bit  ;
+wire                                round_bit  ;
+wire                                sticky_bit ;
+wire                                lsb        ;
+//=========================== Pipline stage 4 =================================//
+reg                                 pip4_NaN  ;
+reg                                 pip4_inf  ;
+reg                                 pip4_sign ;
+reg  [(pEXP_WIDTH)    :0]           pip4_exp  ;
+reg  [(pFRAC_WIDTH)   :0]           pip4_frac ;
+reg                                 pip4_v    ;
+//============================ Normalization ==================================//
+wire [(pLOD_WIDTH-1):0]             frac_expand  ;
+wire [(pEXP_WIDTH  ):0]             shift        ;
+wire [(pEXP_WIDTH  ):0]             shift_amount ;
+wire [(pEXP_WIDTH  ):0]             exp_normal_1 ;
+wire [(pFRAC_WIDTH ):0]             frac_shifted ;
+wire [(pEXP_WIDTH-1) :0]            exp_final    ;
+reg  [(pFRAC_WIDTH-1):0]            frac_final   ;
+//=========================== Pipline stage 5 =================================//
+reg  [(pEXP_WIDTH-1) :0]            pip5_exp  ;
+reg  [(pFRAC_WIDTH-1):0]            pip5_frac ;
+reg                                 pip5_sign ;
+reg                                 pip5_v    ;
 
-wire[(pFRAC_WIDTH) :0]              frac_normal_1;
-wire[(pEXP_WIDTH-1):0]              exp_normal_1;
-//============================ pipeline stage5 ===============================//
-reg                                 pip5_result_sign;
-reg [(pEXP_WIDTH-1):0]              pip5_exp;
-reg [(pFRAC_WIDTH-1):0]             pip5_frac;
-reg                                 pip5_v;
-wire                                pip5_result_sign_nxt;
-wire                                nonzero_case ;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                  Decode                                                                                 //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////////////////////////////////////////////////
-//                                  Decode                                             //
-/////////////////////////////////////////////////////////////////////////////////////////
 assign NaN    = (in_A[pDATA_WIDTH-1] != in_B[pDATA_WIDTH-1])? ((inf_a & inf_b) | ( ((inf_a & mantissa_nonzero_a) | (inf_b & mantissa_nonzero_b)) )) : ((inf_a & mantissa_nonzero_a) | (inf_b & mantissa_nonzero_b));
+assign sign_a = in_A[pDATA_WIDTH-1];
+assign sign_b = in_B[pDATA_WIDTH-1];
 
 assign exp_a  = in_A[(pDATA_WIDTH-2) : pFRAC_WIDTH]; 
 assign exp_b  = in_B[(pDATA_WIDTH-2) : pFRAC_WIDTH];
@@ -198,367 +332,303 @@ assign hid_b  = |exp_b;
 assign inf_a  = &(exp_a);
 assign inf_b  = &(exp_b);
 
-assign frac_a = {hid_a , in_A[(pFRAC_WIDTH-1) : 0]};    //*  expand hidden bit of fraction
-assign frac_b = {hid_b , in_B[(pFRAC_WIDTH-1) : 0]};    //*  expand hidden bit of fraction
+assign frac_a = (hid_a)?  {hid_a , in_A[(pFRAC_WIDTH-1) : 0] } : {in_A[(pFRAC_WIDTH-1) : 0] , 1'b0};     //*  expand hidden bit of fraction and shift subnormal case
+assign frac_b = (hid_b)?  {hid_b , in_B[(pFRAC_WIDTH-1) : 0] } : {in_B[(pFRAC_WIDTH-1) : 0] , 1'b0};     //*  expand hidden bit of fraction and shift subnormal case
 
 assign mantissa_nonzero_a  = (| (in_A[(pFRAC_WIDTH-1):0]));
 assign mantissa_nonzero_b  = (| (in_B[(pFRAC_WIDTH-1):0]));
 
-assign sign_a = in_A[pDATA_WIDTH-1];
-assign sign_b = in_B[pDATA_WIDTH-1];
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                             EXP compare and select                                                                   //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////////////////////////////////////////////////
-//                       EXP COMPARE and complement generate                           //
-/////////////////////////////////////////////////////////////////////////////////////////
-assign exp_compare = (exp_a > exp_b)? 1'b1 : 1'b0;
-assign exp_diff_ab = exp_a - exp_b ;
-assign exp_diff_ba = exp_b - exp_a ;
 
-///////////////////////////////////////////////////////////////////////////////////////
-//                              PIPELINE stage1                                      //
-///////////////////////////////////////////////////////////////////////////////////////
+localparam a_bigger = 1'b1;
+localparam b_bigger = 1'b0;
+
+assign exp_A = { 1'b0 , exp_a } ;
+assign exp_B = { 1'b0 , exp_b } ; 
+
+sub_12 sub_12_00( .in_A( exp_A ) , .in_B( exp_B ) , .result( exp_diff_ab ));
+sub_12 sub_12_01( .in_A( exp_B ) , .in_B( exp_A ) , .result( exp_diff_ba ));
+// assign exp_diff_ab     = exp_a - exp_b ;
+// assign exp_diff_ba     = exp_b - exp_a ;
+
+// use sign bit to compare the bigger one.
+assign pip1_shift_nxt  = ( exp_diff_ba[pEXP_WIDTH] )?   exp_diff_ab[(pEXP_WIDTH-1):0] : exp_diff_ba[(pEXP_WIDTH-1):0] ;
+assign pip1_exp_nxt    = ( exp_diff_ba[pEXP_WIDTH] )?   exp_a                         : exp_b    ;
+assign exp_compare     = ( exp_diff_ba[pEXP_WIDTH] )?   a_bigger                      : b_bigger ;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                 PIPELINE stage 1                                                                     //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
-        pip1_exp_compare <= 1'b0;
-        pip1_exp_diff_ab <= {(pEXP_WIDTH){1'b0}}; 
-        pip1_exp_diff_ba <= {(pEXP_WIDTH){1'b0}}; 
-        
-        pip1_NaN         <= 1'b0;
+        pip1_NaN         <= 1'b0 ;
         pip1_inf_a       <= 1'b0 ;
         pip1_inf_b       <= 1'b0 ;
+        pip1_sign_a      <= 1'b0 ;
+        pip1_sign_b      <= 1'b0 ;
         pip1_frac_a      <= {(pFRAC_WIDTH+1){1'b0}} ;
         pip1_frac_b      <= {(pFRAC_WIDTH+1){1'b0}} ;
-        pip1_sign_a      <= 1'b0;
-        pip1_sign_b      <= 1'b0;
-        pip1_exp_a       <= {(pEXP_WIDTH){1'b0}};
-        pip1_exp_b       <= {(pEXP_WIDTH){1'b0}};
+        pip1_exp         <= {(pEXP_WIDTH){1'b0}} ;
+        pip1_shift       <= {(pEXP_WIDTH){1'b0}} ;
+        pip1_exp_compare <= 1'b0 ;
         pip1_v           <= 1'b0;
     end else begin
-        pip1_exp_compare <= exp_compare;
-        pip1_exp_diff_ab <= exp_diff_ab;
-        pip1_exp_diff_ba <= exp_diff_ba;
-
-        pip1_NaN         <= NaN ;
-        pip1_inf_a       <= inf_a ;
-        pip1_inf_b       <= inf_b ;
+        pip1_NaN         <= NaN    ;
+        pip1_inf_a       <= inf_a  ;
+        pip1_inf_b       <= inf_b  ; 
+        pip1_sign_a      <= sign_a ;
+        pip1_sign_b      <= sign_b ;
         pip1_frac_a      <= frac_a ;
         pip1_frac_b      <= frac_b ;
-        pip1_sign_a      <= sign_a;
-        pip1_sign_b      <= sign_b;
-        pip1_exp_a       <= exp_a ;
-        pip1_exp_b       <= exp_b ;
+        pip1_exp         <= pip1_exp_nxt  ;
+        pip1_shift       <= pip1_shift_nxt;
+        pip1_exp_compare <= exp_compare ;
         pip1_v           <= in_valid;
     end
 end
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-//                                EXP align                                                //
-/////////////////////////////////////////////////////////////////////////////////////////////
-///========================================================================================//
-// * To make sure add or sub can tolarant overflow or negative,and can be shifted.
-// * We expand the data width.
-// * frac_expand structure 
-//      2bits     53bits(contain hidden)     52bits
-//    |  00  |        FRACTION          |    0000..     |
-//
-//=========================================================================================//
-assign exp_diff       = (pip1_exp_compare)?   pip1_exp_diff_ab : pip1_exp_diff_ba;
-
-// * if subnormal case (exp ==0 ), the bias must be 1022 , so we shift 1 bits of fraction make sure the real value is right
-assign frac_a_expand  = (|pip1_exp_a)?  {2'b00 ,pip1_frac_a , {(pADDER_WIDTH-pFRAC_WIDTH-3){1'b0}}} : {1'b0 ,pip1_frac_a , {(pADDER_WIDTH-pFRAC_WIDTH-2){1'b0}}};
-assign frac_b_expand  = (|pip1_exp_b)?  {2'b00 ,pip1_frac_b , {(pADDER_WIDTH-pFRAC_WIDTH-3){1'b0}}} : {1'b0 ,pip1_frac_b , {(pADDER_WIDTH-pFRAC_WIDTH-2){1'b0}}};
-
-assign frac_a_shifted = (pip1_exp_compare)?              frac_a_expand  : (frac_a_expand >> exp_diff);
-assign frac_b_shifted = (pip1_exp_compare)? (frac_b_expand >> exp_diff) : frac_b_expand;
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-//                              OP analyze                                                  //
-//////////////////////////////////////////////////////////////////////////////////////////////
-localparam negA_negB    = 2'b11;
-localparam negA_posB    = 2'b10;
-localparam posA_negB    = 2'b01;
-localparam posA_posB    = 2'b00;
-
-localparam A_SUB_B      = 2'd1 ;
-localparam B_SUB_A      = 2'd2 ;
-localparam A_ADD_B      = 2'd3 ;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                          Align fraction before add & sub                                                            //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 assign sign_ab          = {pip1_sign_a , pip1_sign_b};
+assign frac_a_expand    = {pip1_frac_a , {(pFRAC_WIDTH+1){1'b0}}};
+assign frac_b_expand    = {pip1_frac_b , {(pFRAC_WIDTH+1){1'b0}}};
+assign frac_a_shifted   = (pip1_exp_compare == b_bigger)?  (frac_a_expand >> pip1_shift) : frac_a_expand ; 
+assign frac_b_shifted   = (pip1_exp_compare == a_bigger)?  (frac_b_expand >> pip1_shift) : frac_b_expand ;
 
+
+assign operand_1        = (op == B_SUB_A)?  frac_b_shifted : frac_a_shifted ;
+assign operand_2        = (op == B_SUB_A)?  frac_a_shifted : frac_b_shifted ;
+assign operand_1_sticky = |(operand_1[(pFRAC_WIDTH-2) : 0]);
+assign operand_2_sticky = |(operand_2[(pFRAC_WIDTH-2) : 0]);
+assign inf              = pip1_inf_a | pip1_inf_b ;
 
 always @(*) begin
     case(sign_ab)
-        negA_negB : op = A_ADD_B;
-        negA_posB : op = B_SUB_A;
-        posA_negB : op = A_SUB_B;
-        posA_posB : op = A_ADD_B;
-        default   : op = 2'd0;
+        posA_posB : op =  A_ADD_B ;
+        negA_negB : op =  A_ADD_B ;
+        negA_posB : op =  B_SUB_A ;
+        posA_negB : op =  A_SUB_B ;
     endcase
 end
 
-/////////////////////////////////////////////////////////////////////////////////////////////
-//                              PIPELINE stage2                                           //
-/////////////////////////////////////////////////////////////////////////////////////////////
-always @(posedge clk or negedge rst_n)begin
+always @(*) begin
+    case(sign_ab)
+        posA_posB : sign_predict =  postive ;
+        negA_negB : sign_predict =  negative ;
+        negA_posB : sign_predict =  (pip1_inf_a)? negative : postive ;
+        posA_negB : sign_predict =  (pip1_inf_b)? negative : postive ;
+    endcase
+end
+
+always @(*) begin
+    case(sign_ab)
+        posA_posB : pip2_op_nxt =  ADD ;
+        negA_negB : pip2_op_nxt =  ADD ;
+        negA_posB : pip2_op_nxt =  SUB ;
+        posA_negB : pip2_op_nxt =  SUB ;
+    endcase
+end
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                 PIPELINE stage 2                                                                     //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
-        pip2_op           <= 2'd0;
+        pip2_NaN         <= 1'b0 ;
+        pip2_inf         <= 1'b0 ;
+        pip2_sign        <= 1'b0 ;
+        pip2_op          <= 1'b0 ;
 
-        pip2_NaN          <= 1'b0 ;
-        pip2_inf_a        <= 1'b0 ;
-        pip2_inf_b        <= 1'b0 ;
-        pip2_sign_ab      <= 2'd0;
+        pip2_operand_1   <= {(pFRAC_WIDTH+1){1'b0}} ;
+        pip2_operand_2   <= {(pFRAC_WIDTH+1){1'b0}} ;
+        pip2_exp         <= {(pEXP_WIDTH){1'b0}} ;
+        
+        pip2_guard1      <= 1'b0 ;
+        pip2_round1      <= 1'b0 ;
+        pip2_sticky1     <= 1'b0 ;
 
-        pip2_frac_a       <= {(pADDER_WIDTH){1'b0}};
-        pip2_frac_b       <= {(pADDER_WIDTH){1'b0}};
-
-        pip2_exp          <= {(pEXP_WIDTH){1'b0}};
-        pip2_v            <= 1'b0;
+        pip2_guard2      <= 1'b0 ;
+        pip2_round2      <= 1'b0 ;
+        pip2_sticky2     <= 1'b0 ;
+        
+        pip2_v           <= 1'b0 ;
     end else begin
-        pip2_op           <= op;
-        pip2_sign_ab      <= sign_ab;
+        pip2_NaN         <= pip1_NaN  ;
+        pip2_inf         <= inf  ;
+        pip2_sign        <= sign_predict ;
+        pip2_op          <= pip2_op_nxt  ;
 
-        pip2_NaN          <= pip1_NaN   ;
-        pip2_inf_a        <= pip1_inf_a ;
-        pip2_inf_b        <= pip1_inf_b ;
-        pip2_frac_a       <= frac_a_shifted ;
-        pip2_frac_b       <= frac_b_shifted ;
+        pip2_operand_1   <= operand_1[(pFRAC_WIDTH*2+1):(pFRAC_WIDTH+1)] ;
+        pip2_operand_2   <= operand_2[(pFRAC_WIDTH*2+1):(pFRAC_WIDTH+1)] ;
+        
+        pip2_guard1      <= operand_1[pFRAC_WIDTH]   ;
+        pip2_round1      <= operand_1[pFRAC_WIDTH-1] ;
+        pip2_sticky1     <= operand_1_sticky         ;
 
-        pip2_exp          <= (pip1_exp_compare)? pip1_exp_a : pip1_exp_b ;
-        pip2_v            <= pip1_v;
+        pip2_guard2      <= operand_2[pFRAC_WIDTH]   ;
+        pip2_round2      <= operand_2[pFRAC_WIDTH-1] ;
+        pip2_sticky2     <= operand_2_sticky         ;
+
+        pip2_exp         <= pip1_exp  ;
+
+        pip2_v           <= pip1_v;
     end
 end
 
-////////////////////////////////////////////////////////////////////////////////
-//                              FRACTION ADD                                  //  
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                           fraction operation                                                                            //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+assign logic_one       = {{(pFRAC_WIDTH+5){1'b0}} , 1'b1}   ;
+assign operand1        = { 2'b00 , pip2_operand_1 , pip2_guard1 , pip2_round1 , pip2_sticky1};
+assign operand2        = { 2'b00 , pip2_operand_2 , pip2_guard2 , pip2_round2 , pip2_sticky2};
 
-    add_107  add107_01(
-        .in_A( pip2_frac_a  ),
-        .in_B( pip2_frac_b  ),
-        .result( frac_a_add_b )
-    );
+assign op1_sub_op2_inv = ~op1_sub_op2 ;
 
-    sub_107 sub_107_00(
-        .in_A( pip2_frac_a  ),
-        .in_B( pip2_frac_b  ),
-        .result( frac_a_sub_b )
-    );
+assign frac_result     = (pip2_op == ADD)?   op1_add_op2 : ((op1_sub_op2[pFRAC_WIDTH+5])?  op1_sub_op2_abs : op1_sub_op2) ;
+assign sign_result     = (pip2_inf )?        pip2_sign   : ((pip2_op == ADD)?   pip2_sign   : ( pip2_sign ^ op1_sub_op2[pFRAC_WIDTH+5] ));
 
-    sub_107 sub_107_01(
-        .in_A( pip2_frac_b  ),
-        .in_B( pip2_frac_a  ),
-        .result( frac_b_sub_a )
-    );
+assign adder_op1        = (pip2_op == ADD)?  operand1 : op1_sub_op2_inv ;
+assign adder_op2        = (pip2_op == ADD)?  operand2 : logic_one   ;
 
-// assign frac_a_add_b = pip2_frac_a + pip2_frac_b;
-// assign frac_a_sub_b = pip2_frac_a - pip2_frac_b;
-// assign frac_b_sub_a = pip2_frac_b - pip2_frac_a;
+assign op1_add_op2      = adder_out ;
+assign op1_sub_op2_abs  = adder_out ;
 
+add_58 add_58_00 (.in_A( adder_op1       ), .in_B( adder_op2  ), .result( adder_out       ));
+sub_58 sub_58_00 (.in_A( operand1        ), .in_B( operand2   ), .result( op1_sub_op2     ));
+// add_58 add_58_01 (.in_A( op1_sub_op2_inv ), .in_B( logic_one  ), .result( op1_sub_op2_abs ));
 
-always @(*)begin
-    case(pip2_op)
-            A_ADD_B : frac_result = frac_a_add_b;
-            A_SUB_B : frac_result = frac_a_sub_b;
-            B_SUB_A : frac_result = frac_b_sub_a;
-            default : frac_result = frac_a_add_b;
-    endcase
-end
-
-////////////////////////////////////////////////////////////////////////////////
-//                            Pipeline stage 3                                //
-////////////////////////////////////////////////////////////////////////////////
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                              PIPELINE stage 3                                                                          //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
         pip3_NaN         <= 1'b0 ;
-        pip3_inf_a       <= 1'b0 ;
-        pip3_inf_b       <= 1'b0 ;
-        pip3_frac_result <= {(pADDER_WIDTH){1'b0}};
-        pip3_exp         <= {(pEXP_WIDTH){1'b0}};
-        pip3_sign_ab     <= 2'd0;
-        pip3_v           <= 1'b0;
+        pip3_inf         <= 1'b0 ;
+        pip3_sign        <= 1'b0 ;
+        pip3_exp         <= {(pEXP_WIDTH){1'b0}} ;
+        pip3_frac        <= {(pFRAC_WIDTH+5){1'b0}};
+        pip3_v           <= 1'b0 ;
     end else begin
-        pip3_NaN         <= pip2_NaN   ;
-        pip3_inf_a       <= pip2_inf_a ;
-        pip3_inf_b       <= pip2_inf_b ;
-        pip3_frac_result <= frac_result;
-        pip3_exp         <= pip2_exp;
-        pip3_sign_ab     <= pip2_sign_ab;
+        pip3_NaN         <= pip2_NaN  ;
+        pip3_inf         <= pip2_inf  ;
+        pip3_sign        <= sign_result ;
+        pip3_exp         <= pip2_exp  ;
+        pip3_frac        <= frac_result[(pFRAC_WIDTH+4):0] ;
         pip3_v           <= pip2_v;
     end
 end
-/////////////////////////////////////////////////////////////////////////////////
-//                 first  normalization  and result_sign analyze               //
-/////////////////////////////////////////////////////////////////////////////////
 
-//==================================================================================================================//
-// * frac_result is  result of fraction operation 
-//
-// * frac_result Structure:
-//        1bit     1bit        53bits           49bits
-//      | sign | overflow | fraction add  | shifted fraction  |
-//
-// * First we transfer signed value into absolute value (frac_abs)
-// * And calculate the shift amount by LOD.
-// * Final we normalize the frac into following structure(frac_normal_0)
-//        2bit        53bits           49bits
-//      |  00  |   fraction(valid) |  G R S .. |
-//
-//  * And extract LSB 、guard_bit 、 round_bit 、sticky_bit from frac_normal_0.
-//  * Only transfer valid fraction part to next pipeline stage! 
-// 
-//  * If fraction is all zero , set exp=0 , frac=0
-//  * If exp value is smaller than number of zero in fromt of leading one ,set exp =0 and shift as exp value. 
-//  * Others shift to eliminate zero in front of leading one,and sub the exp value by shift amount.
-//==================================================================================================================//
-localparam  postive      = 1'b0;
-localparam  negative     = 1'b1;
-
-//---------------------------------------------------------- normalization ----------------------------------------------------------------------------------------------------------------------//
-assign frac_sign     = pip3_frac_result[pADDER_WIDTH-1];                                                                        // * pip3_frac_result is signed we need to collect its sign bit to calculate
-assign frac_abs      = (frac_sign)?  (((~ pip3_frac_result) + {{(pADDER_WIDTH-1){1'b0}} , 1'b1})) : (pip3_frac_result );          // * pip3_frac_result is signed we need to transfer it to absolute value !
-assign inf_case      = pip3_inf_a | pip3_inf_b ;
-
-// *assign frac_normal_0 = (frac_abs[(pADDER_WIDTH-1):0] << shift_amount) >>1 ;                                                       // * fisrt time normalize
-// *assign exp_normal_0  = (shift_amount <= maximum_shift)? (pip3_exp - shift_amount+1) : {(pEXP_WIDTH){1'b0}};                       // * first time normalize .If all zero ,replace exp = 0000(denormal type).
-assign maximum_shift = pADDER_WIDTH-1;                                                                                          
-// *assign shift_amount  = (shift >= pip3_exp)? (pip3_exp+1) : shift -1;
-
-assign frac_normal_0 =   (shift > 1)?       (frac_abs << shift_amount) : (frac_abs >> 1) ;
-
-assign exp_normal_0  =  (shift < pADDER_WIDTH)? ( (shift > 1)?    (pip3_exp - shift_amount)  : (pip3_exp + 1) ): {(pEXP_WIDTH){1'b0}}  ;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                               ROUNDING                                                                                  //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-assign shift_amount  = (shift_frac > pip3_exp)?       pip3_exp  : shift_frac ;
-assign shift_frac    = (shift > 1)?                 (shift - 2) : {(pEXP_WIDTH){1'b0}} ;
 
-// use -> wire [(pEXP_WIDTH-1) : 0] shift_frac;
-
-assign frac_abs_expand = {frac_abs , {(LOD_WIDTH-pADDER_WIDTH){1'b0}}};
-
-LOD_128 #(LOD_WIDTH , pEXP_WIDTH) compute_zero_num(.A(frac_abs_expand) , .position(shift));
-
-//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
-assign lsb           = frac_normal_0[(pADDER_WIDTH-pFRAC_WIDTH-3)];
-assign guard_bit     = frac_normal_0[(pADDER_WIDTH-pFRAC_WIDTH-4)];
-assign round_bit     = frac_normal_0[(pADDER_WIDTH-pFRAC_WIDTH-5)];
-assign sticky_bit    = | frac_normal_0[(pADDER_WIDTH-pFRAC_WIDTH-6) : 0];
-
-always @(*) begin
-    if(pip3_inf_a || pip3_inf_b)begin
-        result_sign = (pip3_inf_a)?  pip3_sign_ab[1] : pip3_sign_ab[0] ;  // * bit [1] as sign of A , bit [0] as sign of B
-    end else begin
-        case(pip3_sign_ab)
-            posA_negB : result_sign = (frac_sign)?  negative : postive;
-            posA_posB : result_sign = postive ;
-            negA_negB : result_sign = negative;
-            negA_posB : result_sign = (frac_sign)?  negative : postive;
-        endcase
-    end
-end
+assign logic_two    = { {(pEXP_WIDTH-2){1'b0}}  , 2'b10 } ;
 
 
-////////////////////////////////////////////////////////////////////////////////
-//                            Pipeline stage4                                 //
-////////////////////////////////////////////////////////////////////////////////
+assign exp_normal_0 = ( pip3_frac[pFRAC_WIDTH+4] )? ((frac_rounded[pFRAC_WIDTH+1])?  exp_add2 : exp_add1 ) : ((frac_rounded[pFRAC_WIDTH+1])? exp_add1 : ({1'b0 , pip3_exp }));
+assign lsb          = ( pip3_frac[pFRAC_WIDTH+4] )? pip3_frac[4]      : pip3_frac[3] ;
+assign guard_bit    = ( pip3_frac[pFRAC_WIDTH+4] )? pip3_frac[3]      : pip3_frac[2] ;
+assign round_bit    = ( pip3_frac[pFRAC_WIDTH+4] )? pip3_frac[2]      : pip3_frac[1] ;
+assign sticky_bit   = ( pip3_frac[pFRAC_WIDTH+4] )? |(pip3_frac[1:0]) : pip3_frac[0] ;
+assign frac         = ( pip3_frac[pFRAC_WIDTH+4] )? pip3_frac[(pFRAC_WIDTH+4):4] : pip3_frac[(pFRAC_WIDTH+3):3];
+assign frac_rounded = ( guard_bit && (round_bit | lsb | sticky_bit) )?  frac_add : {1'b0 , frac} ;
 
+add_11_overflow add_11_00( .in_A( pip3_exp ) , .in_B( logic_one[(pEXP_WIDTH-1):0] ) , .result( exp_add1  ));
+add_11_overflow add_11_01( .in_A( pip3_exp ) , .in_B( logic_two[(pEXP_WIDTH-1):0] ) , .result( exp_add2  ));
+
+add_53_overflow add_53_02( .in_A( frac )     , .in_B( logic_one[(pFRAC_WIDTH):0]  ) , .result( frac_add ));
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                              PIPELINE stage 4                                                                          //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
-        pip4_NaN         <= 1'b0;
-        pip4_inf         <= 1'b0;
-        pip4_lsb         <= 1'b0;
-        pip4_sticky      <= 1'b0;
-        pip4_guard       <= 1'b0;
-        pip4_round       <= 1'b0;
-    
-        pip4_exp         <= {(pEXP_WIDTH){1'b0}};
-        pip4_frac        <= {(pFRAC_WIDTH){1'b0}};
-        pip4_result_sign <= 1'b0;
-        pip4_v           <= 1'b0;
+        pip4_NaN         <= 1'b0 ;
+        pip4_inf         <= 1'b0 ;
+        pip4_sign        <= 1'b0 ;
+        pip4_exp         <= {(pEXP_WIDTH+1){1'b0}} ;
+        pip4_frac        <= {(pFRAC_WIDTH+1){1'b0}};
+        pip4_v           <= 1'b0 ;
     end else begin
-        pip4_NaN         <= pip3_NaN;
-        pip4_inf         <= inf_case;
-        pip4_lsb         <= lsb;
-        pip4_sticky      <= sticky_bit;
-        pip4_guard       <= guard_bit;
-        pip4_round       <= round_bit;
-
-        pip4_exp         <= exp_normal_0;
-        pip4_frac        <= frac_normal_0[(pADDER_WIDTH-4):(pADDER_WIDTH-pFRAC_WIDTH-3)];
-        pip4_result_sign <= result_sign;
+        pip4_NaN         <= pip3_NaN  ;
+        pip4_inf         <= pip3_inf  ;
+        pip4_sign        <= pip3_sign ;
+        pip4_exp         <= exp_normal_0  ;
+        pip4_frac        <= (frac_rounded[pFRAC_WIDTH+1])? frac_rounded[(pFRAC_WIDTH+1):1] : frac_rounded [pFRAC_WIDTH:0] ;
         pip4_v           <= pip3_v;
     end
 end
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                               Normalization                                                                             //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+localparam EXP_MAX      = 11'd2047 ;
+localparam EXP_MIN      = 11'd0    ;
+localparam FRAC_ZERO    = 52'd0    ;
+localparam FRAC_ONE     = 52'd1    ;
 
-/////////////////////////////////////////////////////////////////////////////////
-//                  rounding and second normalization                          //
-/////////////////////////////////////////////////////////////////////////////////
+assign frac_expand   = {pip4_frac , {(pLOD_WIDTH-pFRAC_WIDTH-1){1'b0}}};
 
-//=========================================================================================================//
-//
-// * Before rounding operation,we first expand 1bit of zero in front of fraction from last 
-// * pipeline stage.(to tolarant overflow while rounding)
-//  
-//  frac_normal_0_expand structure
-//    1bit         53bit
-//  |   0   | fraction(valid) |
-//
-// * Then we do nearest even rounding(with sticky).
-//   frac_rounded structure
-//      1bit         53bit
-//  | overflow? | fraction(valid) |
-//
-// * Final we normalize the fraction into 53bit.
-//=========================================================================================================//
+assign frac_shifted  =  pip4_frac << shift_amount;
 
-localparam  ROUNDING        = 1'b0;
-localparam  NO_ROUNDING     = 1'b1;
+assign shift_amount  = (shift > pip4_exp)?      pip4_exp : shift ;
+assign exp_normal_1  = ((shift > pip4_exp)||(~(|pip4_frac)))?  {(pEXP_WIDTH+1){1'b0}} : (pip4_exp - shift);  
 
-assign frac_normal_0_expand = {1'b0 , pip4_frac};
-assign frac_rounded         = (round_op == ROUNDING)?  (frac_normal_0_expand + {{(pFRAC_WIDTH){1'b0}} , 1'b1}) : frac_normal_0_expand ;
-
-
-assign frac_normal_1        = (pip4_NaN)? {{(pFRAC_WIDTH){1'b0}} , 1'b1} : ((pip4_inf)?  {(pFRAC_WIDTH+1){1'b0}} : ( (frac_rounded[pFRAC_WIDTH])?  ( frac_rounded >> 1) : frac_rounded ) );
-assign exp_normal_1         = (pip4_NaN)? {(pEXP_WIDTH){1'b1}}           : ((pip4_inf)?  {(pEXP_WIDTH){1'b1}}    : ( (frac_rounded[pFRAC_WIDTH])?  (pip4_exp + {{(pEXP_WIDTH-1){1'b0}} , 1'b1})  : pip4_exp));
-assign pip5_result_sign_nxt = (pip4_NaN)? 1'b0                           : pip4_result_sign;
+assign exp_final     = (pip4_inf || pip4_NaN)?  EXP_MAX :(( exp_normal_1[pEXP_WIDTH] )?  EXP_MAX  : exp_normal_1[(pEXP_WIDTH-1) : 0]) ;
 
 always @(*) begin
-    if(pip4_guard)begin
-        round_op = (! pip4_lsb)?  ((pip4_round | pip4_sticky )? ROUNDING : NO_ROUNDING ) : ROUNDING;
+    if(pip4_NaN)begin
+        frac_final = FRAC_ONE ;
+    end else if ( pip4_inf )begin
+        frac_final = FRAC_ZERO ;
+    end else if ( exp_normal_1[pEXP_WIDTH] )begin
+        frac_final = FRAC_ZERO ;
+    end else if ( &(exp_normal_1[(pEXP_WIDTH-1):0])  )begin
+        frac_final = FRAC_ZERO ;
+    end else if ( |(exp_normal_1[(pEXP_WIDTH)  :0]) )begin
+        frac_final = frac_shifted[(pFRAC_WIDTH-1) :0];
     end else begin
-        round_op = NO_ROUNDING;
+        frac_final = frac_shifted[(pFRAC_WIDTH)   :1];
     end
-end
+end            
 
 
-////////////////////////////////////////////////////////////////////////////////
-//                            Pipeline stage5                                 //
-////////////////////////////////////////////////////////////////////////////////
+LOD_64 LOD_02  ( .A(frac_expand) , .position(shift));
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                              PIPELINE stage 5                                                                          //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+wire sign_final ;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
-        pip5_result_sign <= 1'b0;
-        pip5_exp         <= {(pEXP_WIDTH){1'b0}};
+        pip5_sign        <= 1'b0 ;
+        pip5_exp         <= {(pEXP_WIDTH){1'b0}} ;
         pip5_frac        <= {(pFRAC_WIDTH){1'b0}};
-        pip5_v           <= 1'b0;
+        pip5_v           <= 1'b0 ;
     end else begin
-        pip5_result_sign <= pip5_result_sign_nxt ;
-        pip5_exp         <= exp_normal_1;
-        pip5_frac        <= frac_normal_1[(pFRAC_WIDTH-1): 0];
-        pip5_v           <= pip4_v;
+        pip5_sign        <= (pip4_NaN)? 1'b0 : pip4_sign  ;
+        pip5_exp         <= exp_final  ;
+        pip5_frac        <= frac_final ;
+        pip5_v           <= pip4_v     ;
     end
 end
 
-assign nonzero_case  = (| pip5_exp) | (| pip5_frac) ;
-assign result        = (| pip5_exp)? {( pip5_result_sign & nonzero_case ) , pip5_exp , pip5_frac} : {( pip5_result_sign & nonzero_case ) , pip5_exp , (pip5_frac>>1)};
-assign out_valid     = pip5_v;
-
+assign sign_final = ((~(| pip5_exp)) && (~(| pip5_frac)))?  1'b0  : pip5_sign ;
+assign out_valid  = pip5_v ;
+assign result     = { sign_final , pip5_exp , pip5_frac};
 
 endmodule
 

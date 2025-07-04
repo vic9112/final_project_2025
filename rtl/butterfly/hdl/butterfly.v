@@ -17,8 +17,8 @@ module butterfly
     input   wire [(pDATA_WIDTH-1):0] ai, // are(64bit)+aim(64bit)
     input   wire [(pDATA_WIDTH-1):0] bi, // bre(64bit)+bim(64bit)
     input   wire [(pDATA_WIDTH-1):0] gm, // gre(64bit)+gim(64bit)
-    output  reg  [(pDATA_WIDTH-1):0] ao,
-    output  reg  [(pDATA_WIDTH-1):0] bo
+    output  wire  [(pDATA_WIDTH-1):0] ao,
+    output  wire  [(pDATA_WIDTH-1):0] bo
 
 );
 //==================================================================================//
@@ -31,11 +31,12 @@ localparam iNTT_LATENCY    = 22;//?
 localparam FFT_LATENCY     = 28;
 localparam iFFT_LATENCY    = 28;//?
 
-
-localparam mode_NTT        = 2'b10;
-localparam mode_iNTT       = 2'b11;
 localparam mode_FFT        = 2'b00;
 localparam mode_iFFT       = 2'b01;
+localparam mode_NTT        = 2'b10;
+localparam mode_iNTT       = 2'b11;
+
+
 
 localparam FFT_WAIT  = 3'b000;
 localparam iFFT_WAIT = 3'b001;
@@ -46,6 +47,9 @@ localparam READY     = 3'b111;
 localparam pFP_WIDTH            = 64 ;
 localparam pNTT_WTDTH           = 16 ;
 localparam pEXP_WIDTH           = 11 ;
+//==================================================================================//
+localparam pEXP_DENOR           = 11'b000_0000_0000;
+localparam pEXP_INF             = 11'b111_1111_1111;
 //==================================================================================//
 reg  [2:0]                  state;
 reg  [2:0]                  state_next;
@@ -74,7 +78,8 @@ wire                        cmul_valid_i[0:1];
 wire                        cmul_valid_o[0:1];
 wire [(pDATA_WIDTH-1):0]    cmul_result[0:1];
 wire [(pDATA_WIDTH-1):0]    cmul_result_ifft[0:1];
-wire [(pEXP_WIDTH-1):0]     cmul_result_exp[0:1];
+wire [(pEXP_WIDTH-1):0]     cmul_result_exp_im[0:1];
+wire [(pEXP_WIDTH-1):0]     cmul_result_exp_re[0:1];
 wire                        mont_add_valid_o0[0:7];
 wire                        mont_add_valid_o1[0:7];
 wire [(pDATA_WIDTH-1):0]    mont_add_result;
@@ -83,6 +88,9 @@ reg  [(pNTT_WTDTH-1):0]     mont_add_intt[0:7];
 reg  [(pNTT_WTDTH-1):0]     mont_sub_intt[0:7];
 wire [(pDATA_WIDTH-1):0]    mont_add_intt_result;
 wire [(pDATA_WIDTH-1):0]    mont_sub_intt_result;
+reg  [(pDATA_WIDTH-1):0]    ao_buf[0:2];
+reg  [(pDATA_WIDTH-1):0]    bo_buf[0:2];
+reg                         o_vld_buf[0:2];
 //==================================================================================//
 
 
@@ -95,19 +103,19 @@ always @(*) begin
         case (state)
         READY: begin
             trans_en = 1'b0;
-            if (mode == mode_FFT) begin
+            if (mode_state == mode_FFT) begin
                 state_next = FFT_WAIT;
                 buf_en = 1'b1;
                 i_vld_en = 1'b0;
-            end else if (mode == mode_iFFT) begin
+            end else if (mode_state == mode_iFFT) begin
                 state_next = iFFT_WAIT;
                 buf_en = 1'b1;
                 i_vld_en = 1'b0;
-            end else if (mode == mode_NTT) begin
+            end else if (mode_state == mode_NTT) begin
                 state_next = NTT_WAIT;
                 buf_en = 1'b1;
                 i_vld_en = 1'b0;
-            end else if (mode == mode_iNTT) begin
+            end else if (mode_state == mode_iNTT) begin
                 state_next = iNTT_WAIT;
                 buf_en = 1'b1;
                 i_vld_en = 1'b0;
@@ -257,10 +265,12 @@ fp_add   fp_add_01( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_
 fp_add   fp_add_02( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[0][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[1] ));
 fp_add   fp_add_11( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_result_inv[(pFP_WIDTH-1):0] )                 , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH-1):0] )             , .out_valid( cmul_valid_o[0] ));
 fp_add   fp_add_12( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result_inv[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[1] ));
-assign cmul_result_exp[0] = cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-1-pEXP_WIDTH)] - 1'b1;
-assign cmul_result_exp[1] = cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-1-pEXP_WIDTH)] - 1'b1;
-assign  cmul_result_ifft[0] = {cmul_result[0][(pFP_WIDTH-1)], cmul_result_exp[0], cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):0]};
-assign  cmul_result_ifft[1] = {cmul_result[1][(pFP_WIDTH-1)], cmul_result_exp[1], cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):0]};
+assign cmul_result_exp_im[0] = (~(|cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
+assign cmul_result_exp_im[1] = (~(|cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] :cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
+assign cmul_result_exp_re[0] = (~(|cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)] - 1'b1;
+assign cmul_result_exp_re[1] = (~(|cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]) | (&cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]))? cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]:cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)] - 1'b1;
+assign cmul_result_ifft[0] = {cmul_result[0][(pFP_WIDTH*2-1)], cmul_result_exp_re[0], cmul_result[0][(pFP_WIDTH*2-pEXP_WIDTH-2):(pFP_WIDTH)], cmul_result[0][(pFP_WIDTH-1)], cmul_result_exp_im[0], cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):0]};
+assign cmul_result_ifft[1] = {cmul_result[1][(pFP_WIDTH*2-1)], cmul_result_exp_re[0], cmul_result[1][(pFP_WIDTH*2-pEXP_WIDTH-2):(pFP_WIDTH)], cmul_result[1][(pFP_WIDTH-1)], cmul_result_exp_im[1], cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):0]};
 
 mont_add mont_add_01(.in_A(mul_result[(pNTT_WTDTH-1):0])               , .in_B(a_result[(pNTT_WTDTH-1)  :0])             , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o0[0]));
 mont_add mont_add_02(.in_A(mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])  , .in_B(a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])  , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o0[1]));
@@ -306,38 +316,50 @@ mont_sub mont_sub_18(.in_A(a_result[(pNTT_WTDTH*8-1):(pNTT_WTDTH*7)]), .in_B(mul
 always @(*) begin
     case (mode_state) 
     mode_FFT: begin //div 2 in each stage
-        ao = cmul_result[0];
-        bo = cmul_result[1];
+        ao_buf[0] = cmul_result[0];
+        bo_buf[0] = cmul_result[1];
     end
     mode_iFFT: begin //execute in exponent module?
-        ao = cmul_result_ifft[0];
-        bo = cmul_result_ifft[1];
+        ao_buf[0] = cmul_result_ifft[0];
+        bo_buf[0] = cmul_result_ifft[1];
     end
     mode_NTT: begin
-        ao = mont_add_result;
-        bo = mont_sub_result;
+        ao_buf[0] = mont_add_result;
+        bo_buf[0] = mont_sub_result;
     end
     mode_iNTT: begin //div N in the last stage
-        ao = mont_add_result;
-        bo = mont_sub_result;
+        ao_buf[0] = mont_add_result;
+        bo_buf[0] = mont_sub_result;
     end
     endcase
+    o_vld_buf[0] = (mode_state[1] == 1'b0)? cmul_valid_o[0] & cmul_valid_o[1] : mont_add_valid_o0[0] ;
 end
+
+always @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
+    ao_buf[1] <= {(pDATA_WIDTH){1'b0}};
+    bo_buf[1] <= {(pDATA_WIDTH){1'b0}};
+    o_vld_buf[1] <= 1'b0;
+    ao_buf[2] <= {(pDATA_WIDTH){1'b0}};
+    bo_buf[2] <= {(pDATA_WIDTH){1'b0}};
+    o_vld_buf[2] <= 1'b0;
+  end else begin
+    ao_buf[1] <= ao_buf[0];
+    bo_buf[1] <= bo_buf[0];
+    o_vld_buf[1] <= o_vld_buf[0];
+    ao_buf[2] <= ao_buf[1];
+    bo_buf[2] <= bo_buf[1];
+    o_vld_buf[2] <= o_vld_buf[1];
+  end
+end
+assign ao = ao_buf[2];
+assign bo = bo_buf[2];
+assign o_vld = o_vld_buf[2];
+
 
 // assign ao = (mode_state[1] == 1'b0)? cmul_result[0] : mont_add_result;
 // assign bo = (mode_state[1] == 1'b0)? cmul_result[1] : mont_sub_result;
-assign o_vld = (mode_state[1] == 1'b0)? cmul_valid_o[0] & cmul_valid_o[1] : mont_add_valid_o0[0] ;
-    // complex mul & add & sub for FFT/iFFT
 
-    // Complex Multiplication:
-    // y_re = (a_re * b_re) - (a_im * b_im)
-    // y_im = (a_re * b_im) + (a_im * b_re)
-    // Rewrite as:
-    // y_re = a_re * (b_re - b_im) + b_im * (a_re - a_im)
-    // y_im = a_im * (b_re + b_im) + b_im * (a_re - a_im)
-    // It will reduce the mul usage from 4 to 3 since we reuse [b_im * (a_re - a_im)]
-
-    // montgomery mul & add & sub for NTT/iNTT
 
 endmodule
 
