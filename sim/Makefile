@@ -2,20 +2,13 @@ sim:
 	@vcs -R +v2k -full64 \
 	../tb/fiFFNTT_tb.v \
 	../rtl/bram2048x32.v \
-	../rtl/bram32.v \
-	../rtl/fadd64.v \
 	../rtl/fiFFNTT.v \
-	../rtl/fmul64.v \
-	../rtl/fsub64.v \
 	../rtl/kernel.v \
 	../rtl/kernel_FFT.v \
 	../rtl/kernel_NTT.v \
 	../rtl/kernel_merged.v \
 	../rtl/kernel_top.v \
 	../rtl/stage_top.v \
-	../rtl/uadd16.v \
-	../rtl/umul16.v \
-	../rtl/usub16.v \
 	../rtl/butterfly/hdl/wallace_131.v \
 	../rtl/butterfly/hdl/sub_107.v \
 	../rtl/butterfly/hdl/mul_64.v \
