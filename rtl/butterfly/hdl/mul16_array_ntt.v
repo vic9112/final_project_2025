@@ -234,39 +234,39 @@ assign in_b33 = (mode == INT_MUL)? in_buf[7]                             :in_B0[
 
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      in_buf[0] <= 0;
-      in_buf[1] <= 0;
-      in_buf[2] <= 0;
-      in_buf[3] <= 0;
-      in_buf[4] <= 0;
-      in_buf[5] <= 0;
-      in_buf[6] <= 0;
-      in_buf[7] <= 0;
-      o_valid_buf[0] <= 0;
-      o_valid_buf[1] <= 0;
-      o_valid_buf[2] <= 0;
-      o_valid_buf[3] <= 0;
-      o_valid_buf[4] <= 0;
-      o_valid_buf[5] <= 0;
-      o_valid_buf[6] <= 0;
-      o_valid_buf[7] <= 0;
+      in_buf[0] = 0;
+      in_buf[1] = 0;
+      in_buf[2] = 0;
+      in_buf[3] = 0;
+      in_buf[4] = 0;
+      in_buf[5] = 0;
+      in_buf[6] = 0;
+      in_buf[7] = 0;
+      o_valid_buf[0] = 0;
+      o_valid_buf[1] = 0;
+      o_valid_buf[2] = 0;
+      o_valid_buf[3] = 0;
+      o_valid_buf[4] = 0;
+      o_valid_buf[5] = 0;
+      o_valid_buf[6] = 0;
+      o_valid_buf[7] = 0;
     end else begin
-      in_buf[0] <= result_0[0][(pMUL_WIDTH-1):0];//Structure output: (0, 0)
-      in_buf[1] <= result_0[1][(pMUL_WIDTH-1):0];//Structure output: (1, 0)
-      in_buf[2] <= result_1[0][(pMUL_WIDTH-1):0];//Structure output: (0, 1)
-      in_buf[3] <= result_1[1][(pMUL_WIDTH-1):0];//Structure output: (1, 1)
-      in_buf[4] <= result_2[0][(pMUL_WIDTH-1):0];//Structure output: (0, 2)
-      in_buf[5] <= result_2[1][(pMUL_WIDTH-1):0];//Structure output: (1, 2)
-      in_buf[6] <= result_3[0][(pMUL_WIDTH-1):0];//Structure output: (0, 3)
-      in_buf[7] <= result_3[1][(pMUL_WIDTH-1):0];//Structure output: (1, 3)
-      o_valid_buf[0] <= o_valid[0] ;//Structure valid: (0, 0)
-      o_valid_buf[1] <= o_valid[4] ;//Structure valid: (0, 1)
-      o_valid_buf[2] <= o_valid[8] ;//Structure valid: (0, 2)
-      o_valid_buf[3] <= o_valid[12];//Structure valid: (0, 3)
-      o_valid_buf[4] <= o_valid[1] ;//Structure valid: (1, 0)
-      o_valid_buf[5] <= o_valid[5] ;//Structure valid: (1, 1)
-      o_valid_buf[6] <= o_valid[9] ;//Structure valid: (1, 2)
-      o_valid_buf[7] <= o_valid[13];//Structure valid: (1, 3)
+      in_buf[0] = result_0[0][(pMUL_WIDTH-1):0];//Structure output: (0, 0)
+      in_buf[1] = result_0[1][(pMUL_WIDTH-1):0];//Structure output: (1, 0)
+      in_buf[2] = result_1[0][(pMUL_WIDTH-1):0];//Structure output: (0, 1)
+      in_buf[3] = result_1[1][(pMUL_WIDTH-1):0];//Structure output: (1, 1)
+      in_buf[4] = result_2[0][(pMUL_WIDTH-1):0];//Structure output: (0, 2)
+      in_buf[5] = result_2[1][(pMUL_WIDTH-1):0];//Structure output: (1, 2)
+      in_buf[6] = result_3[0][(pMUL_WIDTH-1):0];//Structure output: (0, 3)
+      in_buf[7] = result_3[1][(pMUL_WIDTH-1):0];//Structure output: (1, 3)
+      o_valid_buf[0] = o_valid[0] ;//Structure valid: (0, 0)
+      o_valid_buf[1] = o_valid[4] ;//Structure valid: (0, 1)
+      o_valid_buf[2] = o_valid[8] ;//Structure valid: (0, 2)
+      o_valid_buf[3] = o_valid[12];//Structure valid: (0, 3)
+      o_valid_buf[4] = o_valid[1] ;//Structure valid: (1, 0)
+      o_valid_buf[5] = o_valid[5] ;//Structure valid: (1, 1)
+      o_valid_buf[6] = o_valid[9] ;//Structure valid: (1, 2)
+      o_valid_buf[7] = o_valid[13];//Structure valid: (1, 3)
     end
 end
 

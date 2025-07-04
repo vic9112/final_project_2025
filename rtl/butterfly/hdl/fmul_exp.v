@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//    `include "CLA_8.v"
-//    `include "add_11_overflow.v"
-//    `include "add_13_overflow.v"
+    // `include "CLA_8.v"
+    // `include "add_11_overflow.v"
+    // `include "add_13_overflow.v"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -82,10 +82,14 @@ module fmul_exp #(
     localparam LATENCY      = 7;    //* Adujust the Latency to align the mul operation timing
 
 //---------------------------------------------------------------------------------------------------------------------------//
-    localparam  INF_EXP     = 11'b111_1111_1111 ;      // * Denormal of infinite     while exponent = 111_1111_1111
-    localparam EXP_BIAS     = 12'd1023;                // * Bias of exponent by IEEE double precision floating point format.
-    localparam EXP_BIAS_sub = 13'b1_1100_0000_0001;    // * Use for substraction Bias.
-//===========================================================================================================================//
+    localparam  INF_EXP      = 11'b111_1111_1111 ;      // * Denormal of infinite     while exponent = 111_1111_1111
+    localparam EXP_BIAS      = 12'd1023;                // * Bias of exponent by IEEE double precision floating point format.
+    localparam EXP_BIAS_sub  = 13'b1_1100_0000_0001;    // * Use for substraction Bias(2*bias = 2046).
+    localparam EXP_BIAS_sub2 = 13'b1_1000_0000_0010;
+                                //  0 1000 0000 0000 2048
+                                //  0 0111 1111 1110 2046
+                                //  1 1000 0000 0010 -2046
+ //===========================================================================================================================//
 
 //----------------------- pipeline stage 1 ----------------------------------------------------------------------------------//
     reg                                     pip1_v;
@@ -204,7 +208,7 @@ assign exp_expand      = {1'b0 , pip2_exp}; // *sign extension of exp(positive)
 assign exp_real_value  =  exp_real[(pEXP_WIDTH+1): 0];
 
 
-add_13_overflow add_13_0( .in_A( exp_expand ) , .in_B( EXP_BIAS_sub ) , .result( exp_real ));
+add_13_overflow add_13_0( .in_A( exp_expand ) , .in_B( EXP_BIAS_sub2 ) , .result( exp_real ));
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
