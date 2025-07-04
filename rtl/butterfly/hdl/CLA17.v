@@ -87,14 +87,3 @@ assign stage1_result_fa = (stage1_result[1][(pCLA8_WIDTH)] == 1'b0)? stage1_in_f
 assign result = {stage1_result_fa, stage1_result[1][(pCLA8_WIDTH-1):0], stage1_result[0][(pCLA8_WIDTH-1):0]};
 
 endmodule //CLA17
-
-
-module FA  (
-    input  wire A,    
-    input  wire B,     
-    input  wire Cin,   
-    output wire Sum,  
-    output wire Cout   
-);
-    assign {Cout ,Sum } = A + B + Cin;
-endmodule

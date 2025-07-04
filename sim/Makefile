@@ -3,10 +3,8 @@ sim:
 	../tb/fiFFNTT_tb.v \
 	../rtl/bram2048x32.v \
 	../rtl/fiFFNTT.v \
-	../rtl/kernel.v \
 	../rtl/kernel_FFT.v \
 	../rtl/kernel_NTT.v \
-	../rtl/kernel_merged.v \
 	../rtl/kernel_top.v \
 	../rtl/stage_top.v \
 	../rtl/butterfly/hdl/wallace_131.v \
@@ -24,7 +22,6 @@ sim:
 	../rtl/butterfly/hdl/fp_add.v \
 	../rtl/butterfly/hdl/fmul_rounder.v \
 	../rtl/butterfly/hdl/fmul_exp.v \
-	../rtl/butterfly/hdl/FA.v \
 	../rtl/butterfly/hdl/CLA_8.v \
 	../rtl/butterfly/hdl/CLA33.v \
 	../rtl/butterfly/hdl/CLA17.v \
@@ -35,16 +32,8 @@ sim:
 	../rtl/butterfly/hdl/add_13_overflow.v \
 	../rtl/butterfly/hdl/add_11_overflow.v \
 	../rtl/butterfly/hdl/add_107.v \
-	../rtl/divN/hdl/mul_64.v \
-	../rtl/divN/hdl/mul_16.v \
 	../rtl/divN/hdl/mul16_array_intt.v \
-	../rtl/divN/hdl/mul16_array.v \
-	../rtl/divN/hdl/HA.v \
-	../rtl/divN/hdl/FA.v \
 	../rtl/divN/hdl/divN.v \
-	../rtl/divN/hdl/CLA_8.v \
-	../rtl/divN/hdl/CLA17.v \
-	../rtl/divN/hdl/CLA33.v \
 	-debug_acc +nospecify
 
 clean:
