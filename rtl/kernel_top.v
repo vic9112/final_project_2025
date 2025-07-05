@@ -306,7 +306,7 @@ module kernel_top
 // =============== BPE Instance =============== //
     butterfly BPE1 (
         .clk   (clk),
-        .rstn  (rstn),
+        .rst_n  (rstn),
         .mode  (mode_state),
         .i_vld (BPE1_i_vld),
         .i_rdy (BPE1_i_rdy),
@@ -321,7 +321,7 @@ module kernel_top
 
     butterfly BPE2 (
         .clk   (clk),
-        .rstn  (rstn),
+        .rst_n  (rstn),
         .mode  (mode_state),
         .i_vld (BPE2_i_vld),
         .i_rdy (BPE2_i_rdy),
@@ -336,7 +336,7 @@ module kernel_top
 
     butterfly BPE3 (
         .clk   (clk),
-        .rstn  (rstn),
+        .rst_n  (rstn),
         .mode  (mode_state),
         .i_vld (BPE3_i_vld),
         .i_rdy (BPE3_i_rdy),
@@ -351,7 +351,7 @@ module kernel_top
 
     butterfly BPE4 (
         .clk   (clk),
-        .rstn  (rstn),
+        .rst_n  (rstn),
         .mode  (mode_state),
         .i_vld (BPE4_i_vld),
         .i_rdy (BPE4_i_rdy),
@@ -366,7 +366,7 @@ module kernel_top
 
     butterfly BPE5 (
         .clk   (clk),
-        .rstn  (rstn),
+        .rst_n  (rstn),
         .mode  (mode_state),
         .i_vld (BPE5_i_vld),
         .i_rdy (BPE5_i_rdy),
