@@ -26,7 +26,6 @@ sim:
 	../rtl/butterfly/hdl/CLA33.v \
 	../rtl/butterfly/hdl/CLA17.v \
 	../rtl/butterfly/hdl/butterfly.v \
-	../rtl/butterfly/hdl/add_54.v \
 	../rtl/butterfly/hdl/add_53_overflow.v \
 	../rtl/butterfly/hdl/add_53.v \
 	../rtl/butterfly/hdl/add_13_overflow.v \
