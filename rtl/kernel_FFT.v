@@ -1,5 +1,6 @@
 module kernel_FFT #(
-    parameter pDATA_WIDTH = 128
+    parameter pDATA_WIDTH = 128,
+    parameter MUL_DELAY = 28
 )
 (
     input wire clk,
@@ -87,6 +88,71 @@ module kernel_FFT #(
     input  wire [(pDATA_WIDTH - 1):0] sram_dout_32,
     output wire [12:0] sram_addr_32
 );
+// Parameters for FSM 
+localparam IDLE_4th = 0;     // 000000
+localparam WAIT_COEF_4th = 1;
+localparam FILL0_0_4th = 2;  // 000001
+localparam FILL0_1_4th = 3;  // 000010
+localparam CALC0_0_4th = 4;  // 000011
+localparam CALC0_1_4th = 5;  // 000100
+localparam FILL1_0_4th = 6;  // 000101
+localparam FILL1_1_4th = 7;  // 000110
+localparam CALC1_0_4th = 8;  // 000111
+localparam CALC1_1_4th = 9;  // 001000
+localparam FILL2_0_4th = 10;  // 001001
+localparam FILL2_1_4th = 11; // 001010
+localparam CALC2_0_4th = 12; // 001011
+localparam CALC2_1_4th = 13; // 001100
+localparam FILL3_0_4th = 14; // 001101
+localparam FILL3_1_4th = 15; // 001110
+localparam CALC3_0_4th = 16; // 001111
+localparam CALC3_1_4th = 17; // 010000
+localparam BPE_O_0_4th = 18; // 010001
+localparam BPE_O_1_4th = 19; // 010010
+localparam BPE_I_0_4th = 20; // 010011
+localparam BPE_I_1_4th = 21; // 010100
+localparam BPE_O_2_4th = 22; // 010101
+localparam BPE_O_3_4th = 23; // 010110
+localparam BPE_I_2_4th = 24; // 010111
+localparam BPE_I_3_4th = 25; // 011000
+localparam BPE_O_4_4th = 26; // 011001
+localparam BPE_O_5_4th = 27; // 011010
+localparam BPE_I_4_4th = 28; // 011011
+localparam BPE_I_5_4th = 29; // 011100
+localparam BPE_O_6_4th = 30; // 011101
+localparam BPE_O_7_4th = 31; // 011110
+localparam BPE_I_6_4th = 32; // 011111
+localparam BPE_I_7_4th = 33; // 100000
+localparam TRAN_0_4th = 34; // 100001
+localparam TRAN_1_4th = 35; // 100010
+localparam TRAN_2_4th = 36; // 100011
+localparam TRAN_3_4th = 37; // 100100
+localparam TRAN_4_4th = 38; // 100101
+localparam TRAN_5_4th = 39; // 100110
+localparam TRAN_6_4th = 40; // 100111
+localparam TRAN_7_4th = 41; // 101000
+localparam TRAN_8_4th = 42; // 101001
+localparam TRAN_9_4th = 43; // 101010
+localparam TRAN_10_4th = 44; // 101011
+localparam TRAN_11_4th = 45; // 101100
+localparam TRAN_12_4th = 46; // 101101
+localparam TRAN_13_4th = 47; // 101110
+localparam TRAN_14_4th = 48; // 101111
+localparam TRAN_15_4th = 49; // 110000
+localparam FINISH_4th = 50;  // 100001
+// parameters for BPE5
+localparam DATA_LENGTH = 512;
+localparam IDLE_5th = 0;
+localparam BPE_I0_5th = 1;
+localparam BPE_I1_5th = 2;
+localparam BPE_I2_5th = 3;
+localparam BPE_I3_5th = 4;
+localparam BPE_O0_5th = 5;
+localparam BPE_O1_5th = 6;
+localparam BPE_O2_5th = 7;
+localparam BPE_O3_5th = 8;
+localparam FINISH_5th = 9;
+localparam WAIT_COEF_5th = 10;
 
 integer i, j, k;
 reg phase;
@@ -94,13 +160,14 @@ wire phase_next;
 
 always @(posedge clk_2x or negedge rstn) begin
   if (~rstn) begin
-    phase <= 0;
+    phase <= 1;
   end else begin
     phase <= phase_next;
   end
 end
 
 assign phase_next = ~phase;
+
 
 // ============================= BPE1 ============================== //
 localparam IDLE = 4'b0000;
@@ -323,58 +390,6 @@ reg [1:0] state_i_3rd_next;
 
 
 // =============================BPE 4=========================== //
-// Parameters for FSM 
-localparam IDLE_4th = 0;     // 000000
-localparam WAIT_COEF_4th = 1;
-localparam FILL0_0_4th = 2;  // 000001
-localparam FILL0_1_4th = 3;  // 000010
-localparam CALC0_0_4th = 4;  // 000011
-localparam CALC0_1_4th = 5;  // 000100
-localparam FILL1_0_4th = 6;  // 000101
-localparam FILL1_1_4th = 7;  // 000110
-localparam CALC1_0_4th = 8;  // 000111
-localparam CALC1_1_4th = 9;  // 001000
-localparam FILL2_0_4th = 10;  // 001001
-localparam FILL2_1_4th = 11; // 001010
-localparam CALC2_0_4th = 12; // 001011
-localparam CALC2_1_4th = 13; // 001100
-localparam FILL3_0_4th = 14; // 001101
-localparam FILL3_1_4th = 15; // 001110
-localparam CALC3_0_4th = 16; // 001111
-localparam CALC3_1_4th = 17; // 010000
-localparam BPE_O_0_4th = 18; // 010001
-localparam BPE_O_1_4th = 19; // 010010
-localparam BPE_I_0_4th = 20; // 010011
-localparam BPE_I_1_4th = 21; // 010100
-localparam BPE_O_2_4th = 22; // 010101
-localparam BPE_O_3_4th = 23; // 010110
-localparam BPE_I_2_4th = 24; // 010111
-localparam BPE_I_3_4th = 25; // 011000
-localparam BPE_O_4_4th = 26; // 011001
-localparam BPE_O_5_4th = 27; // 011010
-localparam BPE_I_4_4th = 28; // 011011
-localparam BPE_I_5_4th = 29; // 011100
-localparam BPE_O_6_4th = 30; // 011101
-localparam BPE_O_7_4th = 31; // 011110
-localparam BPE_I_6_4th = 32; // 011111
-localparam BPE_I_7_4th = 33; // 100000
-localparam TRAN_0_4th = 34; // 100001
-localparam TRAN_1_4th = 35; // 100010
-localparam TRAN_2_4th = 36; // 100011
-localparam TRAN_3_4th = 37; // 100100
-localparam TRAN_4_4th = 38; // 100101
-localparam TRAN_5_4th = 39; // 100110
-localparam TRAN_6_4th = 40; // 100111
-localparam TRAN_7_4th = 41; // 101000
-localparam TRAN_8_4th = 42; // 101001
-localparam TRAN_9_4th = 43; // 101010
-localparam TRAN_10_4th = 44; // 101011
-localparam TRAN_11_4th = 45; // 101100
-localparam TRAN_12_4th = 46; // 101101
-localparam TRAN_13_4th = 47; // 101110
-localparam TRAN_14_4th = 48; // 101111
-localparam TRAN_15_4th = 49; // 110000
-localparam FINISH_4th = 50;  // 100001
 
 wire ld_rdy_4th;
 
@@ -404,29 +419,22 @@ wire [pDATA_WIDTH-1:0] COE2_0_4th_tmp, COE2_1_4th_tmp, COE2_2_4th_tmp;
 wire [pDATA_WIDTH-1:0] COE3_0_4th_tmp, COE3_1_4th_tmp, COE3_2_4th_tmp;
 
 // FIFOs for 4th BPE
-reg [3:0] data_reg_4th_ram0[0:pDATA_WIDTH-1];
-reg [3:0] data_reg_4th_ram0_next[0:pDATA_WIDTH-1];
-reg [1:0] data_reg_4th_ram1[0:pDATA_WIDTH-1];
-reg [1:0] data_reg_4th_ram1_next[0:pDATA_WIDTH-1];
-reg [1:0] data_reg_4th_ram2[0:pDATA_WIDTH-1];
-reg [1:0] data_reg_4th_ram2_next[0:pDATA_WIDTH-1];
+// reg [3:0] data_reg_4th_ram0[0:pDATA_WIDTH-1];
+// reg [3:0] data_reg_4th_ram0_next[0:pDATA_WIDTH-1];
+// reg [1:0] data_reg_4th_ram1[0:pDATA_WIDTH-1];
+// reg [1:0] data_reg_4th_ram1_next[0:pDATA_WIDTH-1];
+// reg [1:0] data_reg_4th_ram2[0:pDATA_WIDTH-1];
+// reg [1:0] data_reg_4th_ram2_next[0:pDATA_WIDTH-1];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram0     [3:0];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram0_next[3:0];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram1     [1:0];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram1_next[1:0];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram2     [1:0];
+reg [0:pDATA_WIDTH-1] data_reg_4th_ram2_next[1:0];
 
 reg [(pDATA_WIDTH-1):0] data_789;
 // ==============================BPE 5=========================== //
 
-// parameters for BPE5
-localparam DATA_LENGTH = 512;
-localparam IDLE_5th = 0;
-localparam BPE_I0_5th = 1;
-localparam BPE_I1_5th = 2;
-localparam BPE_I2_5th = 3;
-localparam BPE_I3_5th = 4;
-localparam BPE_O0_5th = 5;
-localparam BPE_O1_5th = 6;
-localparam BPE_O2_5th = 7;
-localparam BPE_O3_5th = 8;
-localparam FINISH_5th = 9;
-localparam WAIT_COEF_5th = 10;
 //
 wire [(pDATA_WIDTH-1):0] ld_dat_5th;
 // BPE5 output interface
@@ -459,10 +467,10 @@ wire[3:0] bpe_out_cnt_5th_next;
 
 // Data register for 5th BPE
 reg [pDATA_WIDTH-1:0] data_reg_5th_ram0, data_reg_5th_ram0_next;
-reg [pDATA_WIDTH-1:0] delay_aout_5th [3:0];
-reg [pDATA_WIDTH-1:0] delay_aout_5th_next [3:0];
-reg [pDATA_WIDTH-1:0] delay_bout_5th_next [3:0];
-reg [pDATA_WIDTH-1:0] delay_bout_5th [3:0];
+reg [pDATA_WIDTH-1:0] delay_aout_5th [1:0];
+reg [pDATA_WIDTH-1:0] delay_aout_5th_next [1:0];
+reg [pDATA_WIDTH-1:0] delay_bout_5th_next [1:0];
+reg [pDATA_WIDTH-1:0] delay_bout_5th [1:0];
 
 // Coefficient for 5th BPE
 reg [pDATA_WIDTH-1:0] COEF0_0_5th, COEF0_1_5th, COEF0_2_5th, COEF0_3_5th;
@@ -805,7 +813,7 @@ always @(*) begin
                                                           {13'b0, 4'b0010, counter_1st_adv[8:0]};  
     end
     SAVE: begin // 8
-      sram_addr_one_cycle = {4'b0010, counter_1st_delay[8:0], 4'b0011, counter_1st_delay[8:0]};
+      sram_addr_one_cycle = {4'b0011, counter_1st_delay[8:0], 4'b0010, counter_1st_delay[8:0]};
     end
     TRANSFER: begin
       sram_addr_one_cycle = (counter_1st[1:0] == 2'b00) ? {bpe2_output_addr[12:0], bpe2_input_addr[12:0]} :
@@ -2671,6 +2679,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // ==================== Output Interface for 5th BPE ====================//
     // // BPE5 output interface
     // reg BPE5_i_vld_r, BPE5_o_rdy_r; 
+    reg BPE5_act_r;
 
     assign BPE5_ain = data_reg_5th_ram0;
     assign BPE5_bin = ld_dat_5th;
@@ -2678,7 +2687,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign BPE5_i_vld = BPE5_i_vld_r;
     assign BPE5_o_rdy = BPE5_o_rdy_r;
     assign coef_rdy[4] = 1;
-    assign bpe_act[4] = BPE5_act;
+    assign bpe_act[4] = BPE5_act_r;
     // ==================== State Machine for 5th BPE ====================//
     // localparam DATA_LENGTH = 1024;
 
@@ -2708,7 +2717,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(*)begin// =================================================================================================加入coef done?=========================================================
       case(state_5th)
-        IDLE_5th:        state_5th_next = ss_vld_5th ? WAIT_COEF_5th : IDLE_5th;
+        IDLE_5th:        state_5th_next = WAIT_COEF_5th;
         WAIT_COEF_5th:   state_5th_next = coef_done_5th ? BPE_I0_5th : WAIT_COEF_5th;
         BPE_I0_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I1_5th : BPE_I0_5th;
         BPE_I1_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I2_5th : BPE_I1_5th;
@@ -2794,8 +2803,8 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         sm_vld_5th = 0;
         BPE5_dout = 0;
         if(state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) begin
-          sm_vld_5th = 1; 
-          BPE5_dout = ~out_cnt_5th[0] ? delay_aout_5th[3] : data_reg_5th_ram0;
+          sm_vld_5th = 1;
+          BPE5_dout = ~out_cnt_5th[0] ? delay_aout_5th[1] : data_reg_5th_ram0;
         end
     end
     // bpe_in_vld and bpe_out_rdy
@@ -2807,10 +2816,18 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // bpe activation
     always@(*) begin
         BPE5_act = 0;
-        if(state_5th == IDLE_5th && ss_vld_5th) begin
+        if(state_5th == IDLE_5th) begin
           BPE5_act = 1;
         end else begin
           BPE5_act = 0;
+        end
+    end
+
+    always@(posedge clk or negedge rstn) begin
+      if(~rstn) begin
+        BPE5_act_r <=0;
+      end else begin
+        BPE5_act_r <= BPE5_act;
         end
     end
 
@@ -2848,7 +2865,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign in_cnt_5th_next = (ss_vld_5th && ss_rdy_5th) ? in_cnt_5th + 1 : in_cnt_5th;
     assign out_cnt_5th_next = (sm_vld_5th && sm_rdy_5th) ? out_cnt_5th + 1 : out_cnt_5th;
     assign bpe_out_cnt_5th_next = (BPE5_o_vld && BPE5_o_rdy) ? bpe_out_cnt_5th + 1 : bpe_out_cnt_5th;
-    assign coef_cnt_5th_next = (coef_vld[4] && coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th;
+    assign coef_cnt_5th_next = (state_5th == FINISH_5th) ? 0 : ((coef_vld[4] && coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th);
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
@@ -2877,12 +2894,19 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
       if(BPE5_o_vld && BPE5_o_rdy) begin
         delay_aout_5th_next[0] = BPE5_aout;
         delay_bout_5th_next[0] = BPE5_bout;
-        for (i = 1; i < 4; i = i + 1) begin
+        for (i = 1; i < 2; i = i + 1) begin
+          delay_aout_5th_next[i] = delay_aout_5th[i-1];
+          delay_bout_5th_next[i] = delay_bout_5th[i-1];
+        end
+      end else if(out_cnt_5th[0+:5] == MUL_DELAY)begin
+          delay_aout_5th_next[0] = 0;
+          delay_bout_5th_next[0] = 0;
+        for (i = 1; i < 2; i = i + 1) begin
           delay_aout_5th_next[i] = delay_aout_5th[i-1];
           delay_bout_5th_next[i] = delay_bout_5th[i-1];
         end
       end else begin
-        for (i = 0; i < 4; i = i + 1) begin
+          for(i = 0; i < 2; i = i + 1) begin
           delay_aout_5th_next[i] = delay_aout_5th[i];
           delay_bout_5th_next[i] = delay_bout_5th[i];
         end
@@ -2890,12 +2914,12 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     end
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
-        for (i = 0; i < 4; i = i + 1) begin
+        for (i = 0; i < 2; i = i + 1) begin
           delay_aout_5th[i] <= 0;
           delay_bout_5th[i] <= 0;
         end
       end else begin
-        for (i = 0; i < 4; i = i + 1) begin
+        for (i = 0; i < 2; i = i + 1) begin
           delay_aout_5th[i] <= delay_aout_5th_next[i];
           delay_bout_5th[i] <= delay_bout_5th_next[i];
         end
@@ -2908,10 +2932,10 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE_I1_5th: data_reg_5th_ram0_next = (~in_cnt_5th[0]) ? ld_dat_5th : data_reg_5th_ram0; 
         BPE_I2_5th: data_reg_5th_ram0_next = (~in_cnt_5th[0]) ? ld_dat_5th : data_reg_5th_ram0;
         BPE_I3_5th: data_reg_5th_ram0_next = (~in_cnt_5th[0]) ? ld_dat_5th : data_reg_5th_ram0;
-        BPE_O0_5th: data_reg_5th_ram0_next = (~bpe_out_cnt_5th[0]) ? delay_bout_5th[3] : data_reg_5th_ram0;
-        BPE_O1_5th: data_reg_5th_ram0_next = (~bpe_out_cnt_5th[0]) ? delay_bout_5th[3] : data_reg_5th_ram0;
-        BPE_O2_5th: data_reg_5th_ram0_next = (~bpe_out_cnt_5th[0]) ? delay_bout_5th[3] : data_reg_5th_ram0;
-        BPE_O3_5th: data_reg_5th_ram0_next = (~bpe_out_cnt_5th[0]) ? delay_bout_5th[3] : data_reg_5th_ram0;
+        BPE_O0_5th: data_reg_5th_ram0_next = delay_bout_5th[1];
+        BPE_O1_5th: data_reg_5th_ram0_next = delay_bout_5th[1];
+        BPE_O2_5th: data_reg_5th_ram0_next = delay_bout_5th[1];
+        BPE_O3_5th: data_reg_5th_ram0_next = delay_bout_5th[1];
         default: data_reg_5th_ram0_next = data_reg_5th_ram0;
       endcase
     end
@@ -3009,82 +3033,339 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
           end
         end
     end
-
-    always@(*)begin // output buffer for 128 bit BW
-      for (i = 0; i < 32; i = i + 1) output_buffer_w[i] = output_buffer[i];
-      case(output_buf_in_cnt_r[0+:5]) // valid pulled down when output finished
-        5'd0: output_buffer_w[0] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd0) ? output_buffer[0]>>1 : output_buffer[0]);
-        5'd1: output_buffer_w[1] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd1) ? output_buffer[1]>>1 : output_buffer[1]);
-        5'd2: output_buffer_w[2] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd2) ? output_buffer[2]>>1 : output_buffer[2]);
-        5'd3: output_buffer_w[3] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd3) ? output_buffer[3]>>1 : output_buffer[3]);
-        5'd4: output_buffer_w[4] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd4) ? output_buffer[4]>>1 : output_buffer[4]);
-        5'd5: output_buffer_w[5] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd5) ? output_buffer[5]>>1 : output_buffer[5]);
-        5'd6: output_buffer_w[6] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd6) ? output_buffer[6]>>1 : output_buffer[6]);
-        5'd7: output_buffer_w[7] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd7) ? output_buffer[7]>>1 : output_buffer[7]);
-        5'd8: output_buffer_w[8] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd8) ? output_buffer[8]>>1 : output_buffer[8]);
-        5'd9: output_buffer_w[9] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd9) ? output_buffer[9]>>1 : output_buffer[9]);
-        5'd10: output_buffer_w[10] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd10) ? output_buffer[10]>>1 : output_buffer[10]);
-        5'd11: output_buffer_w[11] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd11) ? output_buffer[11]>>1 : output_buffer[11]);
-        5'd12: output_buffer_w[12] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd12) ? output_buffer[12]>>1 : output_buffer[12]);
-        5'd13: output_buffer_w[13] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd13) ? output_buffer[13]>>1 : output_buffer[13]);
-        5'd14: output_buffer_w[14] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd14) ? output_buffer[14]>>1 : output_buffer[14]);
-        5'd15: output_buffer_w[15] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd15) ? output_buffer[15]>>1 : output_buffer[15]);
-        5'd16: output_buffer_w[16] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd16) ? output_buffer[16]>>1 : output_buffer[16]);
-        5'd17: output_buffer_w[17] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd17) ? output_buffer[17]>>1 : output_buffer[17]);
-        5'd18: output_buffer_w[18] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd18) ? output_buffer[18]>>1 : output_buffer[18]);
-        5'd19: output_buffer_w[19] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd19) ? output_buffer[19]>>1 : output_buffer[19]);
-        5'd20: output_buffer_w[20] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd20) ? output_buffer[20]>>1 : output_buffer[20]);
-        5'd21: output_buffer_w[21] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd21) ? output_buffer[21]>>1 : output_buffer[21]);
-        5'd22: output_buffer_w[22] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd22) ? output_buffer[22]>>1 : output_buffer[22]);
-        5'd23: output_buffer_w[23] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd23) ? output_buffer[23]>>1 : output_buffer[23]);
-        5'd24: output_buffer_w[24] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd24) ? output_buffer[24]>>1 : output_buffer[24]);
-        5'd25: output_buffer_w[25] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd25) ? output_buffer[25]>>1 : output_buffer[25]);
-        5'd26: output_buffer_w[26] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd26) ? output_buffer[26]>>1 : output_buffer[26]);
-        5'd27: output_buffer_w[27] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd27) ? output_buffer[27]>>1 : output_buffer[27]);
-        5'd28: output_buffer_w[28] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd28) ? output_buffer[28]>>1 : output_buffer[28]);
-        5'd29: output_buffer_w[29] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd29) ? output_buffer[29]>>1 : output_buffer[29]);
-        5'd30: output_buffer_w[30] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd30) ? output_buffer[30]>>1 : output_buffer[30]);
-        5'd31: output_buffer_w[31] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : 
-                                     ((kern_out_cnt_r[0+:5] == 5'd31) ? output_buffer[31]>>1 : output_buffer[31]);
-                                     
-        default: begin
-          for (i = 0; i < 32; i = i + 1) begin
-            output_buffer_w[i] = output_buffer[i];
-          end
-        end
-      endcase
+    // ====================================================================================== output buffer ============================================================================================
+    
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 0)begin
+        output_buffer_w[0] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd0)) begin
+        output_buffer_w[0] = output_buffer[0] >> 1;
+      end else begin
+        output_buffer_w[0] = output_buffer[0];
+      end
     end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 1)begin
+        output_buffer_w[1] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd1)) begin
+        output_buffer_w[1] = output_buffer[1] >> 1;
+      end else begin
+        output_buffer_w[1] = output_buffer[1];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 2)begin
+        output_buffer_w[2] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd2)) begin
+        output_buffer_w[2] = output_buffer[2] >> 1;
+      end else begin
+        output_buffer_w[2] = output_buffer[2];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 3)begin
+        output_buffer_w[3] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd3)) begin
+        output_buffer_w[3] = output_buffer[3] >> 1;
+      end else begin
+        output_buffer_w[3] = output_buffer[3];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 4)begin
+        output_buffer_w[4] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd4)) begin
+        output_buffer_w[4] = output_buffer[4] >> 1;
+      end else begin
+        output_buffer_w[4] = output_buffer[4];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 5)begin
+        output_buffer_w[5] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd5)) begin
+        output_buffer_w[5] = output_buffer[5] >> 1;
+      end else begin
+        output_buffer_w[5] = output_buffer[5];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 6)begin
+        output_buffer_w[6] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd6)) begin
+        output_buffer_w[6] = output_buffer[6] >> 1;
+      end else begin
+        output_buffer_w[6] = output_buffer[6];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 7)begin
+        output_buffer_w[7] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd7)) begin
+        output_buffer_w[7] = output_buffer[7] >> 1;
+      end else begin
+        output_buffer_w[7] = output_buffer[7];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 8)begin
+        output_buffer_w[8] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd8)) begin
+        output_buffer_w[8] = output_buffer[8] >> 1;
+      end else begin
+        output_buffer_w[8] = output_buffer[8];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 9)begin
+        output_buffer_w[9] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd9)) begin
+        output_buffer_w[9] = output_buffer[9] >> 1;
+      end else begin
+        output_buffer_w[9] = output_buffer[9];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 10)begin
+        output_buffer_w[10] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd10)) begin
+        output_buffer_w[10] = output_buffer[10] >> 1;
+      end else begin
+        output_buffer_w[10] = output_buffer[10];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 11)begin
+        output_buffer_w[11] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd11)) begin
+        output_buffer_w[11] = output_buffer[11] >> 1;
+      end else begin
+        output_buffer_w[11] = output_buffer[11];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 12)begin
+        output_buffer_w[12] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd12)) begin
+        output_buffer_w[12] = output_buffer[12] >> 1;
+      end else begin
+        output_buffer_w[12] = output_buffer[12];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 13)begin
+        output_buffer_w[13] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd13)) begin
+        output_buffer_w[13] = output_buffer[13] >> 1;
+      end else begin
+        output_buffer_w[13] = output_buffer[13];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 14)begin
+        output_buffer_w[14] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd14)) begin
+        output_buffer_w[14] = output_buffer[14] >> 1;
+      end else begin
+        output_buffer_w[14] = output_buffer[14];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 15)begin
+        output_buffer_w[15] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd15)) begin
+        output_buffer_w[15] = output_buffer[15] >> 1;
+      end else begin
+        output_buffer_w[15] = output_buffer[15];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 16)begin
+        output_buffer_w[16] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd16)) begin
+        output_buffer_w[16] = output_buffer[16] >> 1;
+      end else begin
+        output_buffer_w[16] = output_buffer[16];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 17)begin
+        output_buffer_w[17] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd17)) begin
+        output_buffer_w[17] = output_buffer[17] >> 1;
+      end else begin
+        output_buffer_w[17] = output_buffer[17];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 18)begin
+        output_buffer_w[18] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd18)) begin
+        output_buffer_w[18] = output_buffer[18] >> 1;
+      end else begin
+        output_buffer_w[18] = output_buffer[18];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 19)begin
+        output_buffer_w[19] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd19)) begin
+        output_buffer_w[19] = output_buffer[19] >> 1;
+      end else begin
+        output_buffer_w[19] = output_buffer[19];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 20)begin
+        output_buffer_w[20] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd20)) begin
+        output_buffer_w[20] = output_buffer[20] >> 1;
+      end else begin
+        output_buffer_w[20] = output_buffer[20];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 21)begin
+        output_buffer_w[21] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd21)) begin
+        output_buffer_w[21] = output_buffer[21] >> 1;
+      end else begin
+        output_buffer_w[21] = output_buffer[21];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 22)begin
+        output_buffer_w[22] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd22)) begin
+        output_buffer_w[22] = output_buffer[22] >> 1;
+      end else begin
+        output_buffer_w[22] = output_buffer[22];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 23)begin
+        output_buffer_w[23] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd23)) begin
+        output_buffer_w[23] = output_buffer[23] >> 1;
+      end else begin
+        output_buffer_w[23] = output_buffer[23];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 24)begin
+        output_buffer_w[24] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd24)) begin
+        output_buffer_w[24] = output_buffer[24] >> 1;
+      end else begin
+        output_buffer_w[24] = output_buffer[24];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 25)begin
+        output_buffer_w[25] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd25)) begin
+        output_buffer_w[25] = output_buffer[25] >> 1;
+      end else begin
+        output_buffer_w[25] = output_buffer[25];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 26)begin
+        output_buffer_w[26] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd26)) begin
+        output_buffer_w[26] = output_buffer[26] >> 1;
+      end else begin
+        output_buffer_w[26] = output_buffer[26];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 27)begin
+        output_buffer_w[27] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd27)) begin
+        output_buffer_w[27] = output_buffer[27] >> 1;
+      end else begin
+        output_buffer_w[27] = output_buffer[27];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 28)begin
+        output_buffer_w[28] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd28)) begin
+        output_buffer_w[28] = output_buffer[28] >> 1;
+      end else begin
+        output_buffer_w[28] = output_buffer[28];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 29)begin
+        output_buffer_w[29] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd29)) begin
+        output_buffer_w[29] = output_buffer[29] >> 1;
+      end else begin
+        output_buffer_w[29] = output_buffer[29];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 30)begin
+        output_buffer_w[30] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd30)) begin
+        output_buffer_w[30] = output_buffer[30] >> 1;
+      end else begin
+        output_buffer_w[30] = output_buffer[30];
+      end
+    end
+    always@(*)begin
+      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 31)begin
+        output_buffer_w[31] = {1'b1, BPE5_dout};
+      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd31)) begin
+        output_buffer_w[31] = output_buffer[31] >> 1;
+      end else begin
+        output_buffer_w[31] = output_buffer[31];
+      end
+    end
+    // always@(*)begin // output buffer for 128 bit BW
+    //   for (i = 0; i < 32; i = i + 1) output_buffer_w[i] = output_buffer[i];
+    //   case(output_buf_in_cnt_r[0+:5]) // valid pulled down when output finished
+    //     5'd0: output_buffer_w[0]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd0))  ? output_buffer[0]>>1  : output_buffer[0]);
+    //     5'd1: output_buffer_w[1]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd1))  ? output_buffer[1]>>1  : output_buffer[1]);
+    //     5'd2: output_buffer_w[2]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd2))  ? output_buffer[2]>>1  : output_buffer[2]);
+    //     5'd3: output_buffer_w[3]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd3))  ? output_buffer[3]>>1  : output_buffer[3]);
+    //     5'd4: output_buffer_w[4]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd4))  ? output_buffer[4]>>1  : output_buffer[4]);
+    //     5'd5: output_buffer_w[5]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd5))  ? output_buffer[5]>>1  : output_buffer[5]);
+    //     5'd6: output_buffer_w[6]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd6))  ? output_buffer[6]>>1  : output_buffer[6]);
+    //     5'd7: output_buffer_w[7]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd7))  ? output_buffer[7]>>1  : output_buffer[7]);
+    //     5'd8: output_buffer_w[8]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd8))  ? output_buffer[8]>>1  : output_buffer[8]);
+    //     5'd9: output_buffer_w[9]   = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd9))  ? output_buffer[9]>>1  : output_buffer[9]);
+    //     5'd10: output_buffer_w[10] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd10)) ? output_buffer[10]>>1 : output_buffer[10]);
+    //     5'd11: output_buffer_w[11] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd11)) ? output_buffer[11]>>1 : output_buffer[11]);
+    //     5'd12: output_buffer_w[12] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd12)) ? output_buffer[12]>>1 : output_buffer[12]);
+    //     5'd13: output_buffer_w[13] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd13)) ? output_buffer[13]>>1 : output_buffer[13]);
+    //     5'd14: output_buffer_w[14] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd14)) ? output_buffer[14]>>1 : output_buffer[14]);
+    //     5'd15: output_buffer_w[15] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd15)) ? output_buffer[15]>>1 : output_buffer[15]);
+    //     5'd16: output_buffer_w[16] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd16)) ? output_buffer[16]>>1 : output_buffer[16]);
+    //     5'd17: output_buffer_w[17] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd17)) ? output_buffer[17]>>1 : output_buffer[17]);
+    //     5'd18: output_buffer_w[18] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd18)) ? output_buffer[18]>>1 : output_buffer[18]);
+    //     5'd19: output_buffer_w[19] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd19)) ? output_buffer[19]>>1 : output_buffer[19]);
+    //     5'd20: output_buffer_w[20] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd20)) ? output_buffer[20]>>1 : output_buffer[20]);
+    //     5'd21: output_buffer_w[21] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd21)) ? output_buffer[21]>>1 : output_buffer[21]);
+    //     5'd22: output_buffer_w[22] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd22)) ? output_buffer[22]>>1 : output_buffer[22]);
+    //     5'd23: output_buffer_w[23] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd23)) ? output_buffer[23]>>1 : output_buffer[23]);
+    //     5'd24: output_buffer_w[24] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd24)) ? output_buffer[24]>>1 : output_buffer[24]);
+    //     5'd25: output_buffer_w[25] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd25)) ? output_buffer[25]>>1 : output_buffer[25]);
+    //     5'd26: output_buffer_w[26] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd26)) ? output_buffer[26]>>1 : output_buffer[26]);
+    //     5'd27: output_buffer_w[27] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd27)) ? output_buffer[27]>>1 : output_buffer[27]);
+    //     5'd28: output_buffer_w[28] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd28)) ? output_buffer[28]>>1 : output_buffer[28]);
+    //     5'd29: output_buffer_w[29] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd29)) ? output_buffer[29]>>1 : output_buffer[29]);
+    //     5'd30: output_buffer_w[30] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd30)) ? output_buffer[30]>>1 : output_buffer[30]);
+    //     5'd31: output_buffer_w[31] = (sm_vld_5th & sm_rdy_5th) ? {1'b1, BPE5_dout} : ((sw_vld && sw_rdy & (kern_out_cnt_r[0+:5] == 5'd31)) ? output_buffer[31]>>1 : output_buffer[31]);
+                                     
+    //     default: begin
+    //       for (i = 0; i < 32; i = i + 1) begin
+    //         output_buffer_w[i] = output_buffer[i];
+    //       end
+    //     end
+    //   endcase
+    // end
 
     assign output_buf_in_cnt_w = sw_lst ? 0 : ((sm_vld_5th & sm_rdy_5th) ? output_buf_in_cnt_r + 1 : output_buf_in_cnt_r);
     // assign out_byte_cnt_w = (sw_vld & sw_rdy) ? out_byte_cnt_r + 1 : out_byte_cnt_r;

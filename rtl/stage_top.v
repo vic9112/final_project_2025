@@ -246,7 +246,7 @@ module stage_top
   wire  [11:0]              a_mux4_k2;
   // BPE5
   reg   [11:0]              stage9_cnt_k2;
-  reg   [ 3:0]              step_cnt5_k2;
+  reg   [ 4:0]              step_cnt5_k2;
   wire  [11:0]              a_mux5_k2;
   // MUX
   reg   [ 2:0]              bpe_mux_k2;
@@ -273,7 +273,7 @@ module stage_top
   wire  [11:0]              a_mux4_k3;
   // BPE5
   reg   [11:0]              stage9_cnt_k3;
-  reg   [ 3:0]              step_cnt5_k3;
+  reg   [ 4:0]              step_cnt5_k3;
   wire  [11:0]              a_mux5_k3;
   // MUX
   reg   [ 2:0]              bpe_mux_k3;
@@ -300,7 +300,7 @@ module stage_top
   wire  [11:0]              a_mux4_k4;
   // BPE5
   reg   [11:0]              stage9_cnt_k4;
-  reg   [ 3:0]              step_cnt5_k4;
+  reg   [ 4:0]              step_cnt5_k4;
   wire  [11:0]              a_mux5_k4;
   // MUX
   reg   [ 2:0]              bpe_mux_k4;
@@ -378,6 +378,27 @@ module stage_top
     end
   end
   
+  /*----------------------------------------------------------------
+                           
+  -----------------------------------------------------------------*/
+
+  reg     coef_fft_done;
+
+  always @ (posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      coef_fft_done <= 0;
+    end else begin
+      if (ss_rdy && ss_vld && meta_counter == 12'h0 && destination == 8'b00010100) begin
+        coef_fft_done <= 1;
+      end else if (ss_rdy && ss_vld && meta_counter != 12'h0 && destination == 8'b00010100) begin
+        coef_fft_done <= 0;
+      end else begin
+        coef_fft_done <= coef_fft_done;
+      end
+    end
+  end
+
+
   /*----------------------------------------------------------------
                             decode meta data
   -----------------------------------------------------------------*/
@@ -1427,20 +1448,20 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   // BPE 5 //
   ///////////
   wire k2_bpe5_en;
-  assign k2_bpe5_en = (isempty) ? k2_bpe_act[4] : pop && fetching_kernal_next == 10;
+  assign k2_bpe5_en = (isempty) ? k2_bpe_act[4] : pop && (fetching_kernal_next == 10);
 
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
-      step_cnt5_k2 <= 4'hF;
+      step_cnt5_k2 <= 5'h1F;
     end else if (k2_coef_rdy && k2_coef_en5) begin
       if (k2_sw_lst) begin
-        step_cnt5_k2 <= 4'hF;
-      end else if (step_cnt5_k2 == 4'hF && k2_bpe5_en) begin
-        step_cnt5_k2 <= 4'h0;
-      end else if (step_cnt5_k2 != 4'hF && step_cnt5_k2 != 4'd3) begin
+        step_cnt5_k2 <= 5'h1F;
+      end else if (step_cnt5_k2 == 5'h1F && k2_bpe5_en) begin
+        step_cnt5_k2 <= 5'h0;
+      end else if (step_cnt5_k2 != 5'h1F && step_cnt5_k2 != 5'd15) begin
         step_cnt5_k2 <= step_cnt5_k2 + 1;
-      end else if (step_cnt5_k2 == 4'd3) begin
-        step_cnt5_k2 <= 4'hF;
+      end else if (step_cnt5_k2 == 5'd15) begin
+        step_cnt5_k2 <= 5'h1F;
       end else begin
         step_cnt5_k2 <= step_cnt5_k2;
       end
@@ -1455,7 +1476,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k2_coef_rdy && k2_coef_en5) begin
       if (k2_sw_lst) begin
         stage9_cnt_k2 <= 12'h0;
-      end else if (step_cnt5_k2 != 4'hF) begin
+      end else if (step_cnt5_k2 != 5'h1F) begin
           stage9_cnt_k2 <= stage9_cnt_k2 + 1;
       end else begin
         stage9_cnt_k2 <= stage9_cnt_k2;
@@ -1465,9 +1486,8 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
 
-  assign a_mux5_k2 = ( step_cnt5_k2 != 4'hF) ? stage9_cnt_k2 : 0;
-
-  assign k10_pop = (step_cnt5_k2 == 4'd3);
+  assign a_mux5_k2 = ( step_cnt5_k2 != 5'h1F) ? stage9_cnt_k2 : 0;
+  assign k10_pop = (step_cnt5_k2 == 5'd15);
 
   ///////////////////////////////////////////////
   //                  KERNAL 3                 //
@@ -1766,19 +1786,20 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   // BPE 5 //
   ///////////
   wire k3_bpe5_en;
-  assign k3_bpe5_en = (isempty) ? k3_bpe_act[4] : pop && fetching_kernal_next == 15;
+  assign k3_bpe5_en = (isempty) ? k3_bpe_act[4] : pop && (fetching_kernal_next == 15);
+
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
-      step_cnt5_k3 <= 4'hF;
+      step_cnt5_k3 <= 5'h1F;
     end else if (k3_coef_rdy && k3_coef_en5) begin
       if (k3_sw_lst) begin
-        step_cnt5_k3 <= 4'hF;
-      end else if (step_cnt5_k3 == 4'hF && k3_bpe5_en) begin
-        step_cnt5_k3 <= 4'h0;
-      end else if (step_cnt5_k3 != 4'hF && step_cnt5_k3 != 4'd3) begin
+        step_cnt5_k3 <= 5'h1F;
+      end else if (step_cnt5_k3 == 5'h1F && k3_bpe5_en) begin
+        step_cnt5_k3 <= 5'h0;
+      end else if (step_cnt5_k3 != 5'h1F && step_cnt5_k3 != 5'd15) begin
         step_cnt5_k3 <= step_cnt5_k3 + 1;
-      end else if (step_cnt5_k3 == 4'd3) begin
-        step_cnt5_k3 <= 4'hF;
+      end else if (step_cnt5_k3 == 5'd15) begin
+        step_cnt5_k3 <= 5'h1F;
       end else begin
         step_cnt5_k3 <= step_cnt5_k3;
       end
@@ -1793,7 +1814,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k3_coef_rdy && k3_coef_en5) begin
       if (k3_sw_lst) begin
         stage9_cnt_k3 <= 12'h0;
-      end else if (step_cnt5_k3 != 4'hF) begin
+      end else if (step_cnt5_k3 != 5'h1F) begin
           stage9_cnt_k3 <= stage9_cnt_k3 + 1;
       end else begin
         stage9_cnt_k3 <= stage9_cnt_k3;
@@ -1803,9 +1824,8 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
 
-  assign a_mux5_k3 = ( step_cnt5_k3 != 4'hF) ? stage9_cnt_k3 : 0;
-
-  assign k15_pop = (step_cnt5_k3 == 4'd3);
+  assign a_mux5_k3 = ( step_cnt5_k3 != 5'h1F) ? stage9_cnt_k3 : 0;
+  assign k15_pop = (step_cnt5_k3 == 5'd15);
 
   ///////////////////////////////////////////////
   //                  KERNAL 4                 //
@@ -2104,19 +2124,20 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   // BPE 5 //
   ///////////
   wire k4_bpe5_en;
-  assign k4_bpe5_en = (isempty) ? k4_bpe_act[4] : pop && fetching_kernal_next == 20;
+  assign k4_bpe5_en = (isempty) ? k4_bpe_act[4] : pop && (fetching_kernal_next == 20);
+
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
-      step_cnt5_k4 <= 4'hF;
+      step_cnt5_k4 <= 5'h1F;
     end else if (k4_coef_rdy && k4_coef_en5) begin
       if (k4_sw_lst) begin
-        step_cnt5_k4 <= 4'hF;
-      end else if (step_cnt5_k4 == 4'hF && k4_bpe5_en) begin
-        step_cnt5_k4 <= 4'h0;
-      end else if (step_cnt5_k4 != 4'hF && step_cnt5_k4 != 4'd3) begin
+        step_cnt5_k4 <= 5'h1F;
+      end else if (step_cnt5_k4 == 5'h1F && k4_bpe5_en) begin
+        step_cnt5_k4 <= 5'h0;
+      end else if (step_cnt5_k4 != 5'h1F && step_cnt5_k4 != 5'd15) begin
         step_cnt5_k4 <= step_cnt5_k4 + 1;
-      end else if (step_cnt5_k4 == 4'd3) begin
-        step_cnt5_k4 <= 4'hF;
+      end else if (step_cnt5_k4 == 5'd15) begin
+        step_cnt5_k4 <= 5'h1F;
       end else begin
         step_cnt5_k4 <= step_cnt5_k4;
       end
@@ -2131,7 +2152,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k4_coef_rdy && k4_coef_en5) begin
       if (k4_sw_lst) begin
         stage9_cnt_k4 <= 12'h0;
-      end else if (step_cnt5_k4 != 4'hF) begin
+      end else if (step_cnt5_k4 != 5'h1F) begin
           stage9_cnt_k4 <= stage9_cnt_k4 + 1;
       end else begin
         stage9_cnt_k4 <= stage9_cnt_k4;
@@ -2141,9 +2162,9 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
 
-  assign a_mux5_k4 = ( step_cnt5_k4 != 4'hF) ? stage9_cnt_k4 : 0;
+  assign a_mux5_k4 = ( step_cnt5_k4 != 5'h1F) ? stage9_cnt_k4 : 0;
+  assign k20_pop = (step_cnt5_k4 == 5'd15);
 
-  assign k20_pop = (step_cnt5_k4 == 4'd3);
 
   ////////////////////////////////////
   //      address mux together      //
@@ -2231,49 +2252,50 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
       k4_coef_vld_r[3] <= 0;
       k4_coef_vld_r[4] <= 0;
     end else begin
-      k1_coef_vld_r[0] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  1) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-      k1_coef_vld_r[1] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  2) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-      k1_coef_vld_r[2] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  3) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-      k1_coef_vld_r[3] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  4) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-      k1_coef_vld_r[4] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  5) : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
-      k2_coef_vld_r[0] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  6) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-      k2_coef_vld_r[1] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  7) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-      k2_coef_vld_r[2] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  8) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-      k2_coef_vld_r[3] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  9) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-      k2_coef_vld_r[4] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 10) : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
-      k3_coef_vld_r[0] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 11) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-      k3_coef_vld_r[1] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 12) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-      k3_coef_vld_r[2] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 13) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-      k3_coef_vld_r[3] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 14) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-      k3_coef_vld_r[4] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 15) : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
-      k4_coef_vld_r[0] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 16) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
-      k4_coef_vld_r[1] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 17) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
-      k4_coef_vld_r[2] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 18) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
-      k4_coef_vld_r[3] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 19) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
-      k4_coef_vld_r[4] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 20) : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+      k1_coef_vld_r[0] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  1) : 0;
+      k1_coef_vld_r[1] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  2) : 0;
+      k1_coef_vld_r[2] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  3) : 0;
+      k1_coef_vld_r[3] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  4) : 0;
+      k1_coef_vld_r[4] <= (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? (coef_vld_mux ==  5) : 0;
+      k2_coef_vld_r[0] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  6) : 0;
+      k2_coef_vld_r[1] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  7) : 0;
+      k2_coef_vld_r[2] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  8) : 0;
+      k2_coef_vld_r[3] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux ==  9) : 0;
+      k2_coef_vld_r[4] <= (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? (coef_vld_mux == 10) : 0;
+      k3_coef_vld_r[0] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 11) : 0;
+      k3_coef_vld_r[1] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 12) : 0;
+      k3_coef_vld_r[2] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 13) : 0;
+      k3_coef_vld_r[3] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 14) : 0;
+      k3_coef_vld_r[4] <= (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? (coef_vld_mux == 15) : 0;
+      k4_coef_vld_r[0] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 16) : 0;
+      k4_coef_vld_r[1] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 17) : 0;
+      k4_coef_vld_r[2] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 18) : 0;
+      k4_coef_vld_r[3] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 19) : 0;
+      k4_coef_vld_r[4] <= (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? (coef_vld_mux == 20) : 0;
     end
   end
 
-  assign k1_coef_vld[0] = k1_coef_vld_r[0];
-  assign k1_coef_vld[1] = k1_coef_vld_r[1];
-  assign k1_coef_vld[2] = k1_coef_vld_r[2];
-  assign k1_coef_vld[3] = k1_coef_vld_r[3];
-  assign k1_coef_vld[4] = k1_coef_vld_r[4];
-  assign k2_coef_vld[0] = k2_coef_vld_r[0];
-  assign k2_coef_vld[1] = k2_coef_vld_r[1];
-  assign k2_coef_vld[2] = k2_coef_vld_r[2];
-  assign k2_coef_vld[3] = k2_coef_vld_r[3];
-  assign k2_coef_vld[4] = k2_coef_vld_r[4];
-  assign k3_coef_vld[0] = k3_coef_vld_r[0];
-  assign k3_coef_vld[1] = k3_coef_vld_r[1];
-  assign k3_coef_vld[2] = k3_coef_vld_r[2];
-  assign k3_coef_vld[3] = k3_coef_vld_r[3];
-  assign k3_coef_vld[4] = k3_coef_vld_r[4];
-  assign k4_coef_vld[0] = k4_coef_vld_r[0];
-  assign k4_coef_vld[1] = k4_coef_vld_r[1];
-  assign k4_coef_vld[2] = k4_coef_vld_r[2];
-  assign k4_coef_vld[3] = k4_coef_vld_r[3];
-  assign k4_coef_vld[4] = k4_coef_vld_r[4];
+  assign k1_coef_vld[0] = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? k1_coef_vld_r[0] : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld[1] = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? k1_coef_vld_r[1] : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld[2] = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? k1_coef_vld_r[2] : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld[3] = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? k1_coef_vld_r[3] : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k1_coef_vld[4] = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? k1_coef_vld_r[4] : (k1_mode_r == 2'b10 || k1_mode_r == 2'b11) ? (destination == 8'b00000100 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld[0] = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? k2_coef_vld_r[0] : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld[1] = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? k2_coef_vld_r[1] : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld[2] = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? k2_coef_vld_r[2] : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld[3] = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? k2_coef_vld_r[3] : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k2_coef_vld[4] = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? k2_coef_vld_r[4] : (k2_mode_r == 2'b10 || k2_mode_r == 2'b11) ? (destination == 8'b00000101 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld[0] = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? k3_coef_vld_r[0] : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld[1] = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? k3_coef_vld_r[1] : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld[2] = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? k3_coef_vld_r[2] : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld[3] = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? k3_coef_vld_r[3] : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k3_coef_vld[4] = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? k3_coef_vld_r[4] : (k3_mode_r == 2'b10 || k3_mode_r == 2'b11) ? (destination == 8'b00000110 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld[0] = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? k4_coef_vld_r[0] : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld[1] = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? k4_coef_vld_r[1] : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld[2] = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? k4_coef_vld_r[2] : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld[3] = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? k4_coef_vld_r[3] : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+  assign k4_coef_vld[4] = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? k4_coef_vld_r[4] : (k4_mode_r == 2'b10 || k4_mode_r == 2'b11) ? (destination == 8'b00000111 && meta_counter - 1 < 65) : 0;
+
 
 
   /*----------------------------------------------------------------
@@ -2637,4 +2659,3 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   );
 
 endmodule
-
