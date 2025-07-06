@@ -60,8 +60,8 @@ module fiFFNTT
     // local parameter
     localparam PULL_DN = 0; // pull down
     localparam PULL_UP = 1; 
-    localparam AP_STAT = 32'h00; // 0x00
-    localparam COEF_STAT = 32'h10; // 0x10
+    localparam AP_STAT = 32'h3000_0000; // 0x00
+    localparam COEF_STAT = 32'h3000_0010; // 0x10
     // =============== IOP =============== //
     wire clk_k1, clk_k2, clk_k3, clk_k4;
     wire [7:0] k1_mode;    
