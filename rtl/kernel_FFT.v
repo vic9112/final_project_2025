@@ -436,6 +436,7 @@ reg [(pDATA_WIDTH-1):0] data_789;
 // ==============================BPE 5=========================== //
 
 //
+reg decoded, decoded_r;
 wire [(pDATA_WIDTH-1):0] ld_dat_5th;
 // BPE5 output interface
 reg BPE5_i_vld_r, BPE5_o_rdy_r; 
@@ -523,7 +524,7 @@ always @(posedge clk or negedge rstn) begin
   end
 end
 
-assign coef_rdy[2:0] = 1;
+assign coef_rdy[2:0] = 3'b111;
 assign coef_count_next = (coef_vld[0]) ? coef_count + 1 : coef_count;
 assign coef_reg_0_next = (coef_vld[0]) & (coef_count[1:0] == 2'b00) ? coef_dat : coef_reg_0;
 assign coef_reg_1_next = (coef_vld[0]) & (coef_count[1:0] == 2'b01) ? coef_dat : coef_reg_1;
@@ -2679,15 +2680,13 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     // ==================== Output Interface for 5th BPE ====================//
     // // BPE5 output interface
     // reg BPE5_i_vld_r, BPE5_o_rdy_r; 
-    reg BPE5_act_r;
-
     assign BPE5_ain = data_reg_5th_ram0;
     assign BPE5_bin = ld_dat_5th;
     assign BPE5_coef = bpe5_coef;
     assign BPE5_i_vld = BPE5_i_vld_r;
     assign BPE5_o_rdy = BPE5_o_rdy_r;
     assign coef_rdy[4] = 1;
-    assign bpe_act[4] = BPE5_act_r;
+    assign bpe_act[4] = BPE5_act;
     // ==================== State Machine for 5th BPE ====================//
     // localparam DATA_LENGTH = 1024;
 
@@ -2709,6 +2708,20 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(posedge clk or negedge rstn) begin
       if (~rstn) begin
+        decoded_r <= 0;
+      end else begin
+        decoded_r <= decoded;
+      end
+    end
+
+    always@(*) begin
+      if(sw_lst) decoded = 0;
+      else if(decoded | decode) decoded = 1;
+      else decoded = 0;
+    end
+
+    always@(posedge clk or negedge rstn) begin
+      if (~rstn) begin
         state_5th <= IDLE_5th;
       end else begin
         state_5th <= state_5th_next;
@@ -2717,7 +2730,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(*)begin// =================================================================================================加入coef done?=========================================================
       case(state_5th)
-        IDLE_5th:        state_5th_next = WAIT_COEF_5th;
+        IDLE_5th:        state_5th_next = decoded_r ? WAIT_COEF_5th : IDLE_5th;
         WAIT_COEF_5th:   state_5th_next = coef_done_5th ? BPE_I0_5th : WAIT_COEF_5th;
         BPE_I0_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I1_5th : BPE_I0_5th;
         BPE_I1_5th:      state_5th_next = & in_cnt_5th[2:0] ? BPE_I2_5th : BPE_I1_5th;
@@ -2814,22 +2827,18 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
         BPE5_o_rdy_r = 1;
     end
     // bpe activation
+    // always@(*) begin
+    //     BPE5_act = 0;
+    //     if(state_5th == IDLE_5th) begin
+    //       BPE5_act = 1;
+    //     end else begin
+    //       BPE5_act = 0;
+    //     end
+    // end
     always@(*) begin
-        BPE5_act = 0;
-        if(state_5th == IDLE_5th) begin
-          BPE5_act = 1;
-        end else begin
-          BPE5_act = 0;
-        end
+      BPE5_act = (state_5th == IDLE_5th && state_5th_next == WAIT_COEF_5th);
     end
 
-    always@(posedge clk or negedge rstn) begin
-      if(~rstn) begin
-        BPE5_act_r <=0;
-      end else begin
-        BPE5_act_r <= BPE5_act;
-        end
-    end
 
     always@(*) begin
       case(in_cnt_5th[1:0])
@@ -2901,15 +2910,15 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
       end else if(out_cnt_5th[0+:5] == MUL_DELAY)begin
           delay_aout_5th_next[0] = 0;
           delay_bout_5th_next[0] = 0;
-        for (i = 1; i < 2; i = i + 1) begin
-          delay_aout_5th_next[i] = delay_aout_5th[i-1];
-          delay_bout_5th_next[i] = delay_bout_5th[i-1];
-        end
-      end else begin
+          for (i = 1; i < 2; i = i + 1) begin
+            delay_aout_5th_next[i] = delay_aout_5th[i-1];
+            delay_bout_5th_next[i] = delay_bout_5th[i-1];
+          end
+        end else begin
           for(i = 0; i < 2; i = i + 1) begin
-          delay_aout_5th_next[i] = delay_aout_5th[i];
-          delay_bout_5th_next[i] = delay_bout_5th[i];
-        end
+            delay_aout_5th_next[i] = delay_aout_5th[i];
+            delay_bout_5th_next[i] = delay_bout_5th[i];
+          end
       end
     end
     always@(posedge clk or negedge rstn) begin

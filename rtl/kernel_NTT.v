@@ -306,7 +306,8 @@ module kernel_NTT
     reg s10_BPE4_i_vld;
 
 // =============coef=================//
-    reg [127:0] W0, W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W13, W14, W15, W16, W17, W18, W19, W20, W21, W22, W23, W24, W25, W26, W27, W28, W29, W30, W31;
+    wire [127:0] W0; // W0 = {w63, w62, w61, ..., w1, w0};
+    reg [127:0] W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W13, W14, W15, W16, W17, W18, W19, W20, W21, W22, W23, W24, W25, W26, W27, W28, W29, W30, W31;
     reg [127:0] W32, W33, W34, W35, W36, W37, W38, W39, W40, W41, W42, W43, W44, W45, W46, W47, W48, W49, W50, W51, W52, W53, W54, W55, W56, W57, W58, W59, W60, W61, W62, W63;
 
 //======================================== general declarations ======================================== // 
@@ -361,7 +362,6 @@ module kernel_NTT
     assign BPE2_o_rdy = 1;
     assign BPE3_o_rdy = 1;
     assign BPE4_o_rdy = 1;
-
     
 //==================clk_2x, two phase=======================//
     reg phase; 
@@ -386,13 +386,13 @@ module kernel_NTT
 
     assign next_coef_idx = (coef_vld && coef_rdy) ? ((coef_idx == 6'd63) ? coef_idx : coef_idx + 1) : coef_idx;
 
-    always @* begin
-        W0 = (coef_vld && coef_rdy && next_coef_idx == 0) ? coef_dat : W0;
-    end
+    
+    assign W0 = (coef_idx == 0) ? coef_dat : W0;
+    
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
-            W0 <= 0;  W1 <= 0;  W2 <= 0;  W3 <= 0;  W4 <= 0;  W5 <= 0;  W6 <= 0;  W7 <= 0;
+            W1 <= 0;  W2 <= 0;  W3 <= 0;  W4 <= 0;  W5 <= 0;  W6 <= 0;  W7 <= 0;
             W8 <= 0;  W9 <= 0;  W10 <= 0; W11 <= 0; W12 <= 0; W13 <= 0; W14 <= 0; W15 <= 0;
             W16 <= 0; W17 <= 0; W18 <= 0; W19 <= 0; W20 <= 0; W21 <= 0; W22 <= 0; W23 <= 0;
             W24 <= 0; W25 <= 0; W26 <= 0; W27 <= 0; W28 <= 0; W29 <= 0; W30 <= 0; W31 <= 0;
@@ -401,71 +401,75 @@ module kernel_NTT
             W48 <= 0; W49 <= 0; W50 <= 0; W51 <= 0; W52 <= 0; W53 <= 0; W54 <= 0; W55 <= 0;
             W56 <= 0; W57 <= 0; W58 <= 0; W59 <= 0; W60 <= 0; W61 <= 0; W62 <= 0; W63 <= 0;
         end else begin
-            W1 <=  (coef_vld && coef_rdy && coef_idx == 0) ? coef_dat : W1;
-            W2 <=  (coef_vld && coef_rdy && coef_idx == 1) ? coef_dat : W2;
-            W3 <=  (coef_vld && coef_rdy && coef_idx == 2) ? coef_dat : W3;
-            W4 <=  (coef_vld && coef_rdy && coef_idx == 3) ? coef_dat : W4;
-            W5 <=  (coef_vld && coef_rdy && coef_idx == 4) ? coef_dat : W5;
-            W6 <=  (coef_vld && coef_rdy && coef_idx == 5) ? coef_dat : W6;
-            W7 <=  (coef_vld && coef_rdy && coef_idx == 6) ? coef_dat : W7;
-            W8 <=  (coef_vld && coef_rdy && coef_idx == 7) ? coef_dat : W8;
-            W9 <=  (coef_vld && coef_rdy && coef_idx == 8) ? coef_dat : W9;
-            W10 <= (coef_vld && coef_rdy && coef_idx == 9) ? coef_dat : W10;
-            W11 <= (coef_vld && coef_rdy && coef_idx == 10) ? coef_dat : W11;
-            W12 <= (coef_vld && coef_rdy && coef_idx == 11) ? coef_dat : W12;
-            W13 <= (coef_vld && coef_rdy && coef_idx == 12) ? coef_dat : W13;
-            W14 <= (coef_vld && coef_rdy && coef_idx == 13) ? coef_dat : W14;
-            W15 <= (coef_vld && coef_rdy && coef_idx == 14) ? coef_dat : W15;
-            W16 <= (coef_vld && coef_rdy && coef_idx == 15) ? coef_dat : W16;
-            W17 <= (coef_vld && coef_rdy && coef_idx == 16) ? coef_dat : W17;
-            W18 <= (coef_vld && coef_rdy && coef_idx == 17) ? coef_dat : W18;
-            W19 <= (coef_vld && coef_rdy && coef_idx == 18) ? coef_dat : W19;
-            W20 <= (coef_vld && coef_rdy && coef_idx == 19) ? coef_dat : W20;
-            W21 <= (coef_vld && coef_rdy && coef_idx == 20) ? coef_dat : W21;
-            W22 <= (coef_vld && coef_rdy && coef_idx == 21) ? coef_dat : W22;
-            W23 <= (coef_vld && coef_rdy && coef_idx == 22) ? coef_dat : W23;
-            W24 <= (coef_vld && coef_rdy && coef_idx == 23) ? coef_dat : W24;
-            W25 <= (coef_vld && coef_rdy && coef_idx == 24) ? coef_dat : W25;
-            W26 <= (coef_vld && coef_rdy && coef_idx == 25) ? coef_dat : W26;
-            W27 <= (coef_vld && coef_rdy && coef_idx == 26) ? coef_dat : W27;
-            W28 <= (coef_vld && coef_rdy && coef_idx == 27) ? coef_dat : W28;
-            W29 <= (coef_vld && coef_rdy && coef_idx == 28) ? coef_dat : W29;
-            W30 <= (coef_vld && coef_rdy && coef_idx == 29) ? coef_dat : W30;
-            W31 <= (coef_vld && coef_rdy && coef_idx == 30) ? coef_dat : W31;
-            W32 <= (coef_vld && coef_rdy && coef_idx == 31) ? coef_dat : W32;
-            W33 <= (coef_vld && coef_rdy && coef_idx == 32) ? coef_dat : W33;
-            W34 <= (coef_vld && coef_rdy && coef_idx == 33) ? coef_dat : W34;
-            W35 <= (coef_vld && coef_rdy && coef_idx == 34) ? coef_dat : W35;
-            W36 <= (coef_vld && coef_rdy && coef_idx == 35) ? coef_dat : W36;
-            W37 <= (coef_vld && coef_rdy && coef_idx == 36) ? coef_dat : W37;
-            W38 <= (coef_vld && coef_rdy && coef_idx == 37) ? coef_dat : W38;
-            W39 <= (coef_vld && coef_rdy && coef_idx == 38) ? coef_dat : W39;
-            W40 <= (coef_vld && coef_rdy && coef_idx == 39) ? coef_dat : W40;
-            W41 <= (coef_vld && coef_rdy && coef_idx == 40) ? coef_dat : W41;
-            W42 <= (coef_vld && coef_rdy && coef_idx == 41) ? coef_dat : W42;
-            W43 <= (coef_vld && coef_rdy && coef_idx == 42) ? coef_dat : W43;
-            W44 <= (coef_vld && coef_rdy && coef_idx == 43) ? coef_dat : W44;
-            W45 <= (coef_vld && coef_rdy && coef_idx == 44) ? coef_dat : W45;
-            W46 <= (coef_vld && coef_rdy && coef_idx == 45) ? coef_dat : W46;
-            W47 <= (coef_vld && coef_rdy && coef_idx == 46) ? coef_dat : W47;
-            W48 <= (coef_vld && coef_rdy && coef_idx == 47) ? coef_dat : W48;
-            W49 <= (coef_vld && coef_rdy && coef_idx == 48) ? coef_dat : W49;
-            W50 <= (coef_vld && coef_rdy && coef_idx == 49) ? coef_dat : W50;
-            W51 <= (coef_vld && coef_rdy && coef_idx == 50) ? coef_dat : W51;
-            W52 <= (coef_vld && coef_rdy && coef_idx == 51) ? coef_dat : W52;
-            W53 <= (coef_vld && coef_rdy && coef_idx == 52) ? coef_dat : W53;
-            W54 <= (coef_vld && coef_rdy && coef_idx == 53) ? coef_dat : W54;
-            W55 <= (coef_vld && coef_rdy && coef_idx == 54) ? coef_dat : W55;
-            W56 <= (coef_vld && coef_rdy && coef_idx == 55) ? coef_dat : W56;
-            W57 <= (coef_vld && coef_rdy && coef_idx == 56) ? coef_dat : W57;
-            W58 <= (coef_vld && coef_rdy && coef_idx == 57) ? coef_dat : W58;
-            W59 <= (coef_vld && coef_rdy && coef_idx == 58) ? coef_dat : W59;
-            W60 <= (coef_vld && coef_rdy && coef_idx == 59) ? coef_dat : W60;
-            W61 <= (coef_vld && coef_rdy && coef_idx == 60) ? coef_dat : W61;
-            W62 <= (coef_vld && coef_rdy && coef_idx == 61) ? coef_dat : W62;
-            W63 <= (coef_vld && coef_rdy && coef_idx == 62) ? coef_dat : W63;
+            W1 <=  (coef_vld && coef_rdy && coef_idx ==  1) ? coef_dat : W1;
+            W2 <=  (coef_vld && coef_rdy && coef_idx ==  2) ? coef_dat : W2;
+            W3 <=  (coef_vld && coef_rdy && coef_idx ==  3) ? coef_dat : W3;
+            W4 <=  (coef_vld && coef_rdy && coef_idx ==  4) ? coef_dat : W4;
+            W5 <=  (coef_vld && coef_rdy && coef_idx ==  5) ? coef_dat : W5;
+            W6 <=  (coef_vld && coef_rdy && coef_idx ==  6) ? coef_dat : W6;
+            W7 <=  (coef_vld && coef_rdy && coef_idx ==  7) ? coef_dat : W7;
+            W8 <=  (coef_vld && coef_rdy && coef_idx ==  8) ? coef_dat : W8;
+            W9 <=  (coef_vld && coef_rdy && coef_idx ==  9) ? coef_dat : W9;
+            W10 <= (coef_vld && coef_rdy && coef_idx == 10) ? coef_dat : W10;
+            W11 <= (coef_vld && coef_rdy && coef_idx == 11) ? coef_dat : W11;
+            W12 <= (coef_vld && coef_rdy && coef_idx == 12) ? coef_dat : W12;
+            W13 <= (coef_vld && coef_rdy && coef_idx == 13) ? coef_dat : W13;
+            W14 <= (coef_vld && coef_rdy && coef_idx == 14) ? coef_dat : W14;
+            W15 <= (coef_vld && coef_rdy && coef_idx == 15) ? coef_dat : W15;
+            W16 <= (coef_vld && coef_rdy && coef_idx == 16) ? coef_dat : W16;
+            W17 <= (coef_vld && coef_rdy && coef_idx == 17) ? coef_dat : W17;
+            W18 <= (coef_vld && coef_rdy && coef_idx == 18) ? coef_dat : W18;
+            W19 <= (coef_vld && coef_rdy && coef_idx == 19) ? coef_dat : W19;
+            W20 <= (coef_vld && coef_rdy && coef_idx == 20) ? coef_dat : W20;
+            W21 <= (coef_vld && coef_rdy && coef_idx == 21) ? coef_dat : W21;
+            W22 <= (coef_vld && coef_rdy && coef_idx == 22) ? coef_dat : W22;
+            W23 <= (coef_vld && coef_rdy && coef_idx == 23) ? coef_dat : W23;
+            W24 <= (coef_vld && coef_rdy && coef_idx == 24) ? coef_dat : W24;
+            W25 <= (coef_vld && coef_rdy && coef_idx == 25) ? coef_dat : W25;
+            W26 <= (coef_vld && coef_rdy && coef_idx == 26) ? coef_dat : W26;
+            W27 <= (coef_vld && coef_rdy && coef_idx == 27) ? coef_dat : W27;
+            W28 <= (coef_vld && coef_rdy && coef_idx == 28) ? coef_dat : W28;
+            W29 <= (coef_vld && coef_rdy && coef_idx == 29) ? coef_dat : W29;
+            W30 <= (coef_vld && coef_rdy && coef_idx == 30) ? coef_dat : W30;
+            W31 <= (coef_vld && coef_rdy && coef_idx == 31) ? coef_dat : W31;
+            W32 <= (coef_vld && coef_rdy && coef_idx == 32) ? coef_dat : W32;
+            W33 <= (coef_vld && coef_rdy && coef_idx == 33) ? coef_dat : W33;
+            W34 <= (coef_vld && coef_rdy && coef_idx == 34) ? coef_dat : W34;
+            W35 <= (coef_vld && coef_rdy && coef_idx == 35) ? coef_dat : W35;
+            W36 <= (coef_vld && coef_rdy && coef_idx == 36) ? coef_dat : W36;
+            W37 <= (coef_vld && coef_rdy && coef_idx == 37) ? coef_dat : W37;
+            W38 <= (coef_vld && coef_rdy && coef_idx == 38) ? coef_dat : W38;
+            W39 <= (coef_vld && coef_rdy && coef_idx == 39) ? coef_dat : W39;
+            W40 <= (coef_vld && coef_rdy && coef_idx == 40) ? coef_dat : W40;
+            W41 <= (coef_vld && coef_rdy && coef_idx == 41) ? coef_dat : W41;
+            W42 <= (coef_vld && coef_rdy && coef_idx == 42) ? coef_dat : W42;
+            W43 <= (coef_vld && coef_rdy && coef_idx == 43) ? coef_dat : W43;
+            W44 <= (coef_vld && coef_rdy && coef_idx == 44) ? coef_dat : W44;
+            W45 <= (coef_vld && coef_rdy && coef_idx == 45) ? coef_dat : W45;
+            W46 <= (coef_vld && coef_rdy && coef_idx == 46) ? coef_dat : W46;
+            W47 <= (coef_vld && coef_rdy && coef_idx == 47) ? coef_dat : W47;
+            W48 <= (coef_vld && coef_rdy && coef_idx == 48) ? coef_dat : W48;
+            W49 <= (coef_vld && coef_rdy && coef_idx == 49) ? coef_dat : W49;
+            W50 <= (coef_vld && coef_rdy && coef_idx == 50) ? coef_dat : W50;
+            W51 <= (coef_vld && coef_rdy && coef_idx == 51) ? coef_dat : W51;
+            W52 <= (coef_vld && coef_rdy && coef_idx == 52) ? coef_dat : W52;
+            W53 <= (coef_vld && coef_rdy && coef_idx == 53) ? coef_dat : W53;
+            W54 <= (coef_vld && coef_rdy && coef_idx == 54) ? coef_dat : W54;
+            W55 <= (coef_vld && coef_rdy && coef_idx == 55) ? coef_dat : W55;
+            W56 <= (coef_vld && coef_rdy && coef_idx == 56) ? coef_dat : W56;
+            W57 <= (coef_vld && coef_rdy && coef_idx == 57) ? coef_dat : W57;
+            W58 <= (coef_vld && coef_rdy && coef_idx == 58) ? coef_dat : W58;
+            W59 <= (coef_vld && coef_rdy && coef_idx == 59) ? coef_dat : W59;
+            W60 <= (coef_vld && coef_rdy && coef_idx == 60) ? coef_dat : W60;
+            W61 <= (coef_vld && coef_rdy && coef_idx == 61) ? coef_dat : W61;
+            W62 <= (coef_vld && coef_rdy && coef_idx == 62) ? coef_dat : W62;
+            W63 <= (coef_vld && coef_rdy && coef_idx == 63) ? coef_dat : W63;
         end
     end                           
+
+
+
+    
 
 //====================================== butterfly stage 1 ======================================// 
 //============= stage 1 =============// 
@@ -1804,9 +1808,11 @@ end
 // Read: sram 128*128 (NTT)                         // 
 // Write:                                           // 
 //=================== stream out ===================// 
-    localparam FETCH = 1'b0;
-    localparam WAIT_OUT = 1'b1;
-    reg sm_state, next_sm_state;
+    localparam FETCH = 2'b00;
+    localparam WAIT_OUT = 2'b01;
+    localparam WAIT_LAST = 2'b10;
+    localparam DONE = 2'b11;
+    reg [1:0] sm_state, next_sm_state;
     reg next_sm_o_en, next_sw_vld;
     reg [6:0] sm_o_sram_addr_128_tmp;
     reg [6:0] next_sm_o_sram_addr_128_tmp;
@@ -1815,7 +1821,7 @@ end
         case(sm_state)
             FETCH: begin
                 next_sm_o_en = 0;
-                next_sm_state = WAIT_OUT;
+                next_sm_state = (sw_lst) ? WAIT_LAST :WAIT_OUT ;
                 next_sw_vld = 1;
                 next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
             end
@@ -1831,6 +1837,25 @@ end
                     next_sw_vld = 1;
                     next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
                 end
+            end
+            WAIT_LAST: begin
+                if(sw_rdy) begin
+                    next_sm_o_en = 0;
+                    next_sm_state = DONE;
+                    next_sw_vld = 0;
+                    next_sm_o_sram_addr_128_tmp = 0;
+                end else begin
+                    next_sm_o_en = 0;
+                    next_sm_state = WAIT_LAST;
+                    next_sw_vld = 1;
+                    next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
+                end
+            end
+            DONE: begin
+                next_sm_o_en = 0;
+                next_sm_state = DONE;
+                next_sw_vld = 0;
+                next_sm_o_sram_addr_128_tmp = 0;
             end
             default: begin
                 next_sm_o_en = 0;
@@ -1849,15 +1874,14 @@ end
             sm_o_sram_addr_128_tmp <= 0;
             sw_dat <= 0;
         end else begin
-            sm_o_sram_en_128 <= (stage == OUT) ? next_sm_o_en : sm_o_sram_en_128;
-            sm_state <= (stage == OUT) ? next_sm_state : sm_state;
-            sw_vld <= (stage == OUT) ? next_sw_vld : sw_vld;
-            sm_o_sram_addr_128_tmp <= (stage == OUT) ? next_sm_o_sram_addr_128_tmp : sm_o_sram_addr_128_tmp;
-            sw_dat <= (sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
+            sm_o_sram_en_128 <= (stage == OUT || stage == IDLE) ? next_sm_o_en : sm_o_sram_en_128;
+            sm_state <= (stage == OUT || stage == IDLE) ? next_sm_state : sm_state;
+            sw_vld <= (stage == OUT || stage == IDLE) ? next_sw_vld : sw_vld;
+            sm_o_sram_addr_128_tmp <= (stage == OUT || stage == IDLE) ? next_sm_o_sram_addr_128_tmp : sm_o_sram_addr_128_tmp;
+            sw_dat <= ((stage == OUT || stage == IDLE) && sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
         end
     end 
 
-    // assign sw_dat = (sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
     assign sm_o_sram_addr_128 = sm_o_sram_addr_128_tmp * 4;
     assign sw_lst = (sm_o_sram_addr_128_tmp == 127);
 //====================================== sram signal controller ======================================// 
@@ -2212,12 +2236,11 @@ end
             stage <= next_stage;
         end
     end
-
+    
     reg [4:0] o;
     always @ (posedge clk) begin
         o <= 0;
     end
-
     assign bpe_act = o;
 
 endmodule

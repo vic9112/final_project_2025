@@ -41,7 +41,7 @@ module kernel_top
     localparam MODE_INTT = 2'b11;
 
 // =============== mode selection =============== //
-    reg [7:0] mode_state;
+    wire [7:0] mode_state;
     wire use_ntt, use_fft;
 
 // ================= BPE Wires ================= //   
@@ -125,12 +125,13 @@ module kernel_top
 
 // =============== I/O Between FFT / NTT =============== //
     wire ld_rdy_ntt, coef_rdy_ntt, sw_vld_ntt, sw_lst_ntt;
-    wire ld_rdy_fft, coef_rdy_fft, sw_vld_fft, sw_lst_fft;
+    wire ld_rdy_fft, sw_vld_fft, sw_lst_fft;
+    wire [4:0] coef_rdy_fft;
     wire [(pDATA_WIDTH-1):0] sw_dat_ntt, sw_dat_fft;
     wire [4:0] bpe_act_ntt, bpe_act_fft;
 
 // =============== kernel mode control=============== //
-    
+    /*
     always @(posedge clk or negedge rstn) begin
         if (~rstn) begin
             mode_state <= 0;
@@ -138,6 +139,8 @@ module kernel_top
             mode_state <= (decode) ? mode : mode_state;
         end
     end
+    */
+    assign mode_state = mode;
 
     assign use_ntt = (mode_state[1:0] == MODE_NTT) || (mode_state[1:0] == MODE_INTT);
     assign use_fft = (mode_state[1:0] == MODE_FFT) || (mode_state[1:0]== MODE_IFFT);
@@ -154,7 +157,7 @@ module kernel_top
         .sw_vld   (sw_vld_ntt),
         .sw_rdy   (sw_rdy),
         .sw_dat   (sw_dat_ntt),
-        .coef_vld (coef_vld & use_ntt),
+        .coef_vld (coef_vld[0] & use_ntt),
         .coef_rdy (coef_rdy_ntt),
         .coef_dat (coef_dat),
         .bpe_act  (bpe_act_ntt),
@@ -412,7 +415,7 @@ module kernel_top
 
 // =============== mux =============== //
     assign ld_rdy   = use_ntt ? ld_rdy_ntt   : use_fft ? ld_rdy_fft   : 1'b0;
-    assign coef_rdy = use_ntt ? coef_rdy_ntt : use_fft ? coef_rdy_fft : 1'b0;
+    assign coef_rdy = use_ntt ? {5{coef_rdy_ntt}} : use_fft ? coef_rdy_fft : 1'b0;
     assign sw_vld   = use_ntt ? sw_vld_ntt   : use_fft ? sw_vld_fft   : 1'b0;
     assign sw_dat   = use_ntt ? sw_dat_ntt   : use_fft ? sw_dat_fft   : {pDATA_WIDTH{1'b0}};
     assign sw_lst   = use_ntt ? sw_lst_ntt   : use_fft ? sw_lst_fft   : 1'b0;
