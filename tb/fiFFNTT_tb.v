@@ -3,7 +3,7 @@
 module fiFFNTT_tb;
 
   // Parameters & Constants
-  localparam CLK_PERIOD    = 10;             // 100 MHz clock
+  localparam CLK_PERIOD    = 12;             // 100 MHz clock
   localparam ADDR_WIDTH    = 32;
   localparam DATA_WIDTH    = 32;
   localparam NUM_KER       = 4;
