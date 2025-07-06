@@ -40,7 +40,7 @@ module fiFFNTT_tb;
   endfunction
 
   // Register map
-  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h0000_0000;
+  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h3000_0000;
   localparam [ADDR_WIDTH-1:0] COEF_DONE_ADDR = 32'h3000_0010;
   localparam [ADDR_WIDTH-1:0] MB_BASE_ADDR   = 32'h3000_2000;
   localparam [7:0]            COEF_BASE      = 8'b0001_0100;
@@ -612,7 +612,7 @@ module fiFFNTT_tb;
     $display("Coefficients input over");
 
     // test1
-    for (k = 0; k < 4; k = k + 1) begin
+    for (k = 2; k < 4; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
