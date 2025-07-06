@@ -486,8 +486,8 @@ reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF
 
 //==============================OUTPUT BUFFER=========================== //
 // output buffer for 5th BPE
-reg [pDATA_WIDTH:0] output_buffer_w[0:31];
-reg [pDATA_WIDTH:0] output_buffer[0:31]; //
+reg [pDATA_WIDTH:0] output_buffer_w[0:255];
+reg [pDATA_WIDTH:0] output_buffer[0:255]; //
 reg [$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_r; 
 wire[$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
 //reg [pDATA_WIDTH-1:0] BPE5_dout;
@@ -3033,305 +3033,26 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     always@(posedge clk or negedge rstn) begin
         if (~rstn) begin
-          for (i = 0; i < 32; i = i + 1) begin
+          for (i = 0; i < 256; i = i + 1) begin//
             output_buffer[i] <= 0;
           end
         end else begin
-          for (i = 0; i < 32; i = i + 1) begin
+          for (i = 0; i < 256; i = i + 1) begin//
             output_buffer[i] <= output_buffer_w[i];
           end
         end
     end
     // ====================================================================================== output buffer ============================================================================================
+    integer idx;
+    always@(*)begin
+      for (idx = 0; idx < 256; idx = idx + 1)begin//
+        if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:8] == idx) output_buffer_w[idx] = {1'b1, BPE5_dout};//
+        else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:8] == idx)) output_buffer_w[idx] = output_buffer[idx] >> 1;//
+        else output_buffer_w[idx] = output_buffer[idx];
+      end
+    end
+      
     
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 0)begin
-        output_buffer_w[0] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd0)) begin
-        output_buffer_w[0] = output_buffer[0] >> 1;
-      end else begin
-        output_buffer_w[0] = output_buffer[0];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 1)begin
-        output_buffer_w[1] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd1)) begin
-        output_buffer_w[1] = output_buffer[1] >> 1;
-      end else begin
-        output_buffer_w[1] = output_buffer[1];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 2)begin
-        output_buffer_w[2] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd2)) begin
-        output_buffer_w[2] = output_buffer[2] >> 1;
-      end else begin
-        output_buffer_w[2] = output_buffer[2];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 3)begin
-        output_buffer_w[3] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd3)) begin
-        output_buffer_w[3] = output_buffer[3] >> 1;
-      end else begin
-        output_buffer_w[3] = output_buffer[3];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 4)begin
-        output_buffer_w[4] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd4)) begin
-        output_buffer_w[4] = output_buffer[4] >> 1;
-      end else begin
-        output_buffer_w[4] = output_buffer[4];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 5)begin
-        output_buffer_w[5] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd5)) begin
-        output_buffer_w[5] = output_buffer[5] >> 1;
-      end else begin
-        output_buffer_w[5] = output_buffer[5];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 6)begin
-        output_buffer_w[6] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd6)) begin
-        output_buffer_w[6] = output_buffer[6] >> 1;
-      end else begin
-        output_buffer_w[6] = output_buffer[6];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 7)begin
-        output_buffer_w[7] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd7)) begin
-        output_buffer_w[7] = output_buffer[7] >> 1;
-      end else begin
-        output_buffer_w[7] = output_buffer[7];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 8)begin
-        output_buffer_w[8] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd8)) begin
-        output_buffer_w[8] = output_buffer[8] >> 1;
-      end else begin
-        output_buffer_w[8] = output_buffer[8];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 9)begin
-        output_buffer_w[9] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd9)) begin
-        output_buffer_w[9] = output_buffer[9] >> 1;
-      end else begin
-        output_buffer_w[9] = output_buffer[9];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 10)begin
-        output_buffer_w[10] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd10)) begin
-        output_buffer_w[10] = output_buffer[10] >> 1;
-      end else begin
-        output_buffer_w[10] = output_buffer[10];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 11)begin
-        output_buffer_w[11] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd11)) begin
-        output_buffer_w[11] = output_buffer[11] >> 1;
-      end else begin
-        output_buffer_w[11] = output_buffer[11];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 12)begin
-        output_buffer_w[12] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd12)) begin
-        output_buffer_w[12] = output_buffer[12] >> 1;
-      end else begin
-        output_buffer_w[12] = output_buffer[12];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 13)begin
-        output_buffer_w[13] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd13)) begin
-        output_buffer_w[13] = output_buffer[13] >> 1;
-      end else begin
-        output_buffer_w[13] = output_buffer[13];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 14)begin
-        output_buffer_w[14] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd14)) begin
-        output_buffer_w[14] = output_buffer[14] >> 1;
-      end else begin
-        output_buffer_w[14] = output_buffer[14];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 15)begin
-        output_buffer_w[15] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd15)) begin
-        output_buffer_w[15] = output_buffer[15] >> 1;
-      end else begin
-        output_buffer_w[15] = output_buffer[15];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 16)begin
-        output_buffer_w[16] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd16)) begin
-        output_buffer_w[16] = output_buffer[16] >> 1;
-      end else begin
-        output_buffer_w[16] = output_buffer[16];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 17)begin
-        output_buffer_w[17] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd17)) begin
-        output_buffer_w[17] = output_buffer[17] >> 1;
-      end else begin
-        output_buffer_w[17] = output_buffer[17];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 18)begin
-        output_buffer_w[18] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd18)) begin
-        output_buffer_w[18] = output_buffer[18] >> 1;
-      end else begin
-        output_buffer_w[18] = output_buffer[18];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 19)begin
-        output_buffer_w[19] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd19)) begin
-        output_buffer_w[19] = output_buffer[19] >> 1;
-      end else begin
-        output_buffer_w[19] = output_buffer[19];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 20)begin
-        output_buffer_w[20] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd20)) begin
-        output_buffer_w[20] = output_buffer[20] >> 1;
-      end else begin
-        output_buffer_w[20] = output_buffer[20];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 21)begin
-        output_buffer_w[21] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd21)) begin
-        output_buffer_w[21] = output_buffer[21] >> 1;
-      end else begin
-        output_buffer_w[21] = output_buffer[21];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 22)begin
-        output_buffer_w[22] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd22)) begin
-        output_buffer_w[22] = output_buffer[22] >> 1;
-      end else begin
-        output_buffer_w[22] = output_buffer[22];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 23)begin
-        output_buffer_w[23] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd23)) begin
-        output_buffer_w[23] = output_buffer[23] >> 1;
-      end else begin
-        output_buffer_w[23] = output_buffer[23];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 24)begin
-        output_buffer_w[24] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd24)) begin
-        output_buffer_w[24] = output_buffer[24] >> 1;
-      end else begin
-        output_buffer_w[24] = output_buffer[24];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 25)begin
-        output_buffer_w[25] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd25)) begin
-        output_buffer_w[25] = output_buffer[25] >> 1;
-      end else begin
-        output_buffer_w[25] = output_buffer[25];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 26)begin
-        output_buffer_w[26] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd26)) begin
-        output_buffer_w[26] = output_buffer[26] >> 1;
-      end else begin
-        output_buffer_w[26] = output_buffer[26];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 27)begin
-        output_buffer_w[27] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd27)) begin
-        output_buffer_w[27] = output_buffer[27] >> 1;
-      end else begin
-        output_buffer_w[27] = output_buffer[27];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 28)begin
-        output_buffer_w[28] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd28)) begin
-        output_buffer_w[28] = output_buffer[28] >> 1;
-      end else begin
-        output_buffer_w[28] = output_buffer[28];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 29)begin
-        output_buffer_w[29] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd29)) begin
-        output_buffer_w[29] = output_buffer[29] >> 1;
-      end else begin
-        output_buffer_w[29] = output_buffer[29];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 30)begin
-        output_buffer_w[30] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd30)) begin
-        output_buffer_w[30] = output_buffer[30] >> 1;
-      end else begin
-        output_buffer_w[30] = output_buffer[30];
-      end
-    end
-    always@(*)begin
-      if(sm_vld_5th & sm_rdy_5th & output_buf_in_cnt_r[0+:5] == 31)begin
-        output_buffer_w[31] = {1'b1, BPE5_dout};
-      end else if(sw_vld && sw_rdy && (kern_out_cnt_r[0+:5] == 5'd31)) begin
-        output_buffer_w[31] = output_buffer[31] >> 1;
-      end else begin
-        output_buffer_w[31] = output_buffer[31];
-      end
-    end
     // always@(*)begin // output buffer for 128 bit BW
     //   for (i = 0; i < 32; i = i + 1) output_buffer_w[i] = output_buffer[i];
     //   case(output_buf_in_cnt_r[0+:5]) // valid pulled down when output finished
@@ -3379,10 +3100,10 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign output_buf_in_cnt_w = sw_lst ? 0 : ((sm_vld_5th & sm_rdy_5th) ? output_buf_in_cnt_r + 1 : output_buf_in_cnt_r);
     // assign out_byte_cnt_w = (sw_vld & sw_rdy) ? out_byte_cnt_r + 1 : out_byte_cnt_r;
     assign kern_out_cnt_w = (sw_vld & sw_rdy) ? kern_out_cnt_r + 1 : kern_out_cnt_r;           
-    assign sw_vld = output_buffer[kern_out_cnt_r[0+:5]][pDATA_WIDTH];
-    // assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:5]][pDATA_WIDTH]; // ready to receive data when empty
+    assign sw_vld = output_buffer[kern_out_cnt_r[0+:8]][pDATA_WIDTH];
+    // assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:8]][pDATA_WIDTH]; // ready to receive data when empty
     assign sw_lst = & kern_out_cnt_r;
-    assign sw_dat = output_buffer[kern_out_cnt_r[0+:5]][0+:pDATA_WIDTH]; // 128 bit data
+    assign sw_dat = output_buffer[kern_out_cnt_r[0+:8]][0+:pDATA_WIDTH]; // 128 bit data
 
     reg o, q;
     always @ (posedge clk) o<=0;
