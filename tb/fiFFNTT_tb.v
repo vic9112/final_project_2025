@@ -612,7 +612,7 @@ module fiFFNTT_tb;
     $display("Coefficients input over");
 
     // test1
-    for (k = 2; k < 4; k = k + 1) begin
+    for (k = 0; k < 4; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
@@ -622,7 +622,7 @@ module fiFFNTT_tb;
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
 
-      stream_meta(KERNEL_BASE, MODE_BASE + k, get_LEN(k));
+      stream_meta(KERNEL_BASE + k, MODE_BASE + k, get_LEN(k));
       fork
         // DMA in
         ss_stream_in(get_LEN(k), k);
@@ -644,24 +644,32 @@ module fiFFNTT_tb;
     for (i = 0; i < 2048; i = i + 1) begin
       if (out_FFT[i] != golden_FFT[i]) begin
         $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+      end else begin
+        $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
       end
     end
 
     for (i = 0; i < 2048; i = i + 1) begin
       if (out_iFFT[i] != golden_iFFT[i]) begin
         $display("iFFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
+      end else begin
+        $display("iFFT match idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
       end
     end
 
     for (i = 0; i < 1024; i = i + 1) begin
       if (out_NTT[i] != golden_NTT[i]) begin
         $display("NTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
+      end else begin
+        $display("NTT match idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
       end
     end
 
     for (i = 0; i < 1024; i = i + 1) begin
       if (out_iNTT[i] != golden_iNTT[i]) begin
         $display("iNTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
+      end else begin
+        $display("iNTT match idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
       end
     end
 

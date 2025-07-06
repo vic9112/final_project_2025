@@ -2480,14 +2480,14 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
         endcase
       end else begin                  // NTT or iNTT
         case (sm_cnt)
-          3'b000: sm_dat_r[15:0] = sm_buffer[15:0];
-          3'b001: sm_dat_r[15:0] = sm_buffer[31:16];
-          3'b010: sm_dat_r[15:0] = sm_buffer[47:32];
-          3'b011: sm_dat_r[15:0] = sm_buffer[63:48];
-          3'b100: sm_dat_r[15:0] = sm_buffer[79:64];
-          3'b101: sm_dat_r[15:0] = sm_buffer[95:80];
-          3'b110: sm_dat_r[15:0] = sm_buffer[111:96];
-          3'b111: sm_dat_r[15:0] = sm_buffer[127:112];
+          3'b000: sm_dat_r = {16'd0, sm_buffer[15:0]   };
+          3'b001: sm_dat_r = {16'd0, sm_buffer[31:16]  };
+          3'b010: sm_dat_r = {16'd0, sm_buffer[47:32]  };
+          3'b011: sm_dat_r = {16'd0, sm_buffer[63:48]  };
+          3'b100: sm_dat_r = {16'd0, sm_buffer[79:64]  };
+          3'b101: sm_dat_r = {16'd0, sm_buffer[95:80]  };
+          3'b110: sm_dat_r = {16'd0, sm_buffer[111:96] };
+          3'b111: sm_dat_r = {16'd0, sm_buffer[127:112]};
           default: sm_dat_r = 32'hFFFFFFFF;
         endcase
       end
