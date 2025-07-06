@@ -30,10 +30,10 @@ module fiFFNTT_tb;
     input integer idx;
     begin
       case(idx)
-        0: get_COEF_LEN = 512;
-        1: get_COEF_LEN = 512;
-        2: get_COEF_LEN = 1024;
-        3: get_COEF_LEN = 1024;
+        0: get_COEF_LEN = 1024;
+        1: get_COEF_LEN = 1024;
+        2: get_COEF_LEN = 512;
+        3: get_COEF_LEN = 512;
         default: get_COEF_LEN = 0;
       endcase
     end
@@ -53,9 +53,9 @@ module fiFFNTT_tb;
   localparam [DATA_WIDTH-1:0] PAT_KER_BUSY = 32'h5A5A5A5A;
 
   // Clock & Reset
-  reg clk = 0;
+  reg clk = 1;
   reg rstn = 0;
-  reg clk_2x = 0;
+  reg clk_2x = 1;
   always #(CLK_PERIOD/2) clk = ~clk;
   always #(CLK_PERIOD/4) clk_2x = ~clk_2x;  // 2x freq clock
   initial begin 
@@ -95,16 +95,16 @@ module fiFFNTT_tb;
   reg [DATA_WIDTH-1:0] golden_mem [0:NUM_KER-1][0:2047];
 
   reg [DATA_WIDTH-1:0] coef_mem_FFT    [0:1023];
-  reg [15:0] coef_mem_NTT              [0:511];
-  reg [15:0] coef_mem_iNTT             [0:511];
+  reg [31:0] coef_mem_NTT              [0:511];
+  reg [31:0] coef_mem_iNTT             [0:511];
   reg [DATA_WIDTH-1:0] in_mem_FFT      [0:2047];
   reg [DATA_WIDTH-1:0] in_mem_iFFT     [0:2047];
-  reg [15:0] in_mem_NTT                [0:1023];
-  reg [15:0] in_mem_iNTT               [0:1023];
+  reg [31:0] in_mem_NTT                [0:1023];
+  reg [31:0] in_mem_iNTT               [0:1023];
   reg [DATA_WIDTH-1:0] golden_mem_FFT  [0:2047];
   reg [DATA_WIDTH-1:0] golden_mem_iFFT [0:2047];
-  reg [15:0] golden_mem_NTT            [0:1023];
-  reg [15:0] golden_mem_iNTT           [0:1023];
+  reg [31:0] golden_mem_NTT            [0:1023];
+  reg [31:0] golden_mem_iNTT           [0:1023];
 
   reg [DATA_WIDTH-1:0] coef_FFT    [0:1023];
   reg [DATA_WIDTH-1:0] coef_NTT    [0:511];
@@ -186,7 +186,7 @@ module fiFFNTT_tb;
   );
 
     //Prevent hang
-    integer timeout = (10000);
+    integer timeout = (50000);
     initial begin
         while(timeout > 0) begin
             @(posedge clk);
@@ -552,22 +552,22 @@ module fiFFNTT_tb;
     $readmemh("addr0_511_128b_bitreverse.hex", in_iFFT);
     $readmemh("addr0_1023_32b.hex", in_mem_NTT);
     $readmemh("addr0_1023_32b_bitreverse.hex", in_mem_iNTT);
-    //$readmemh("fft_golden_a.dat", golden_mem0);
-    //$readmemh("iFFT_out.hex", golden_mem1);
-    //$readmemh("NTT_out.hex", golden_mem2);
-    //$readmemh("iNTT_out.hex", golden_mem3);
+    $readmemh("addr0_511_128b.hex", golden_mem_FFT);
+    $readmemh("addr0_511_128b.hex", golden_mem_iFFT);
+    $readmemh("addr0_1023_32b.hex", golden_mem_NTT);
+    $readmemh("addr0_1023_32b.hex", golden_mem_iNTT);
 
     for (k = 0; k < 512; k = k + 1) begin
-      coef_NTT[k] = {16'b0, coef_mem_NTT[k]};
-      coef_iNTT[k] = {16'b0, coef_mem_iNTT[k]};
+      coef_NTT[k] = {coef_mem_NTT[k]};
+      coef_iNTT[k] = {coef_mem_iNTT[k]};
     end
 
     for (k = 0; k < 1024; k = k + 1) begin
       coef_FFT[k] = coef_mem_FFT[k];
-      in_NTT[k] = {16'b0, in_mem_NTT[k]};
-      in_iNTT[k] = {16'b0, in_mem_iNTT[k]};
-      golden_NTT[k] = {16'b0, golden_mem_NTT[k]};
-      golden_iNTT[k] = {16'b0, golden_mem_iNTT[k]};
+      in_NTT[k] = {in_mem_NTT[k]};
+      in_iNTT[k] = {in_mem_iNTT[k]};
+      golden_NTT[k] = {golden_mem_NTT[k]};
+      golden_iNTT[k] = {golden_mem_iNTT[k]};
     end
 
     for (k = 0; k < 2048; k = k + 1) begin
@@ -601,8 +601,8 @@ module fiFFNTT_tb;
     end
 
     // coef in
-    for (k = 1; k < 4; k = k + 1) begin
-      stream_meta(COEF_BASE + k, 8'b0001_0100, get_COEF_LEN(k));
+    for (k = 0; k < 4; k = k + 1) begin
+      stream_meta(COEF_BASE + k, 8'b0001_0100 + k, get_COEF_LEN(k));
       ss_stream_coef(get_COEF_LEN(k), k);
       @(posedge clk);
     end
@@ -630,8 +630,7 @@ module fiFFNTT_tb;
         // FW thread
         begin
           start_time = $time;
-          sm_stream_meta(length, mode);
-          sm_stream_out(length, mode);
+          sm_stream_out(get_LEN(k), k);
           wait_ap_done(k);
           end_time = $time;
           latency = end_time - start_time;
@@ -694,4 +693,3 @@ module fiFFNTT_tb;
   //$finish;
   
 endmodule
-
