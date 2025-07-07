@@ -1700,7 +1700,7 @@ always @(*) begin
       state_3rd_next = (counter_3rd == 153) ? RECEIVE_CAL_OUTPUT : RECEIVE_CAL3;
     end
     RECEIVE_CAL_OUTPUT: begin
-      state_3rd_next = (counter_3rd == 156) ? SAVE : RECEIVE_CAL_OUTPUT;
+      state_3rd_next = (counter_3rd == 157) ? SAVE : RECEIVE_CAL_OUTPUT;
     end 
     SAVE: begin
       state_3rd_next = (counter_3rd == 184) ? TRANSFER : SAVE;
