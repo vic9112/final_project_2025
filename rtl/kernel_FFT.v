@@ -463,6 +463,8 @@ reg [$clog2(DATA_LENGTH)-1:0] in_cnt_5th, out_cnt_5th;
 wire[$clog2(DATA_LENGTH)-1:0] in_cnt_5th_next, out_cnt_5th_next;
 reg [4:0] coef_cnt_5th; 
 wire[4:0] coef_cnt_5th_next;
+reg [3:0] bpe_in_cnt_5th; // 4 bits to support 16 outputs
+wire[3:0] bpe_in_cnt_5th_next;
 reg [3:0] bpe_out_cnt_5th; // 4 bits to support 16 outputs
 wire[3:0] bpe_out_cnt_5th_next;
 
@@ -2841,7 +2843,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
 
     always@(*) begin
-      case(in_cnt_5th[1:0])
+      case(bpe_in_cnt_5th[1:0])
         2'b00: bpe5_coef = (state_5th == BPE_I0_5th) ? COEF0_0_5th :
                            (state_5th == BPE_I1_5th) ? COEF1_0_5th :
                            (state_5th == BPE_I2_5th) ? COEF2_0_5th : 
@@ -2873,6 +2875,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
 
     assign in_cnt_5th_next = (ss_vld_5th && ss_rdy_5th) ? in_cnt_5th + 1 : in_cnt_5th;
     assign out_cnt_5th_next = (sm_vld_5th && sm_rdy_5th) ? out_cnt_5th + 1 : out_cnt_5th;
+    assign bpe_in_cnt_5th_next = (BPE5_i_vld && BPE5_i_rdy) ? bpe_in_cnt_5th + 1 : bpe_in_cnt_5th;
     assign bpe_out_cnt_5th_next = (BPE5_o_vld && BPE5_o_rdy) ? bpe_out_cnt_5th + 1 : bpe_out_cnt_5th;
     assign coef_cnt_5th_next = (state_5th == FINISH_5th) ? 0 : ((coef_vld[4] && coef_5th_rdy) ? coef_cnt_5th + 1 : coef_cnt_5th);
 
@@ -2880,11 +2883,13 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
       if (~rstn) begin
         in_cnt_5th <= 0;
         out_cnt_5th <= 0;
+        bpe_in_cnt_5th <= 0;
         bpe_out_cnt_5th <= 0;
         coef_cnt_5th <= 0;
       end else begin
         in_cnt_5th <= in_cnt_5th_next;
         out_cnt_5th <= out_cnt_5th_next;
+        bpe_in_cnt_5th <= bpe_in_cnt_5th_next;
         bpe_out_cnt_5th <= bpe_out_cnt_5th_next;
         coef_cnt_5th <= coef_cnt_5th_next;
       end
