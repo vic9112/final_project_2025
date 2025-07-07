@@ -79,6 +79,8 @@ module fiFFNTT
     wire [7:0] k4_mode;
     wire decode4;
     wire k4_sw_lst;
+
+    wire rst_mode;
     
     // =============== Kernel interface =============== //
     // Kernel 1
@@ -528,7 +530,9 @@ module fiFFNTT
 
       .k4_mode     (k4_mode),
       .decode4     (decode4),
-      .k4_sw_lst   (k4_sw_lst) 
+      .k4_sw_lst   (k4_sw_lst),
+
+      .rst_mode   (rst_mode) // new signal to control reset mode
     );
 
 
@@ -541,6 +545,7 @@ module fiFFNTT
       .clk        (clk_k1),
       .clk_2x     (clk_2x),
       .rstn       (rstn),
+      .rst_mode   (rst_mode),
 
       .ld_vld     (k1_load_vld),
       .ld_rdy     (k1_load_rdy),
@@ -567,6 +572,7 @@ module fiFFNTT
         .clk        (clk_k2),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k2_load_vld),
         .ld_rdy     (k2_load_rdy),
@@ -593,6 +599,7 @@ module fiFFNTT
         .clk        (clk_k3),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k3_load_vld),
         .ld_rdy     (k3_load_rdy),
@@ -619,6 +626,7 @@ module fiFFNTT
         .clk        (clk_k4),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k4_load_vld),
         .ld_rdy     (k4_load_rdy),

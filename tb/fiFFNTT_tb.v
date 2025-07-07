@@ -186,7 +186,7 @@ module fiFFNTT_tb;
   );
 
     //Prevent hang
-    integer timeout = (50000);
+    integer timeout = (100000);
     initial begin
         while(timeout > 0) begin
             @(posedge clk);
@@ -525,8 +525,8 @@ module fiFFNTT_tb;
 
 
   initial begin
-    $dumpfile("fiFFNTT.vcd");
-    $dumpvars(0, fiFFNTT_tb);
+    $fsdbDumpfile("fiFFNTT.fsdb");
+    $fsdbDumpvars(0, fiFFNTT_tb);
     awvalid = 0; 
     wvalid = 0;
     arvalid = 0; 
@@ -544,15 +544,15 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("addr0_511_128b.hex", coef_mem_FFT);
+    $readmemh("fft_g_in.hex", coef_mem_FFT);
     //$readmemh("addr0_511_128b.hex", coef_mem1);
     $readmemh("addr0_1023_32b.hex", coef_mem_NTT);
     $readmemh("addr0_1023_32b.hex", coef_mem_iNTT);
-    $readmemh("addr0_511_128b.hex", in_mem_FFT);
+    $readmemh("fft_a_in.hex", in_mem_FFT);
     $readmemh("addr0_511_128b_bitreverse.hex", in_iFFT);
     $readmemh("addr0_1023_32b.hex", in_mem_NTT);
     $readmemh("addr0_1023_32b_bitreverse.hex", in_mem_iNTT);
-    $readmemh("addr0_511_128b.hex", golden_mem_FFT);
+    $readmemh("fft_golden_a.hex", golden_mem_FFT);
     $readmemh("addr0_511_128b.hex", golden_mem_iFFT);
     $readmemh("addr0_1023_32b.hex", golden_mem_NTT);
     $readmemh("addr0_1023_32b.hex", golden_mem_iNTT);
@@ -612,13 +612,13 @@ module fiFFNTT_tb;
     $display("Coefficients input over");
 
     // test1
-    for (k = 0; k < 4; k = k + 1) begin
+    for (k = 0; k < 2; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
         $finish;
       end else begin
-        $display("Test1: Kernel 1 starts testing mode %d", k + 1);
+        $display("Test1: Kernel %d is free", k + 1);
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
 

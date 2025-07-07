@@ -13,6 +13,7 @@ module kernel_top
     input  wire                     clk,
     input  wire                     clk_2x,     // for dataRAM (double-speed)
     input  wire                     rstn,
+    input  wire                     rst_mode,
 
     input  wire                     ld_vld,
     output                          ld_rdy,
@@ -310,8 +311,8 @@ module kernel_top
     butterfly BPE1 (
         .clk   (clk),
         .rst_n  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE1_i_vld),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE1_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE1_i_rdy),
         .o_vld (BPE1_o_vld),
         .o_rdy (BPE1_o_rdy),
@@ -325,8 +326,8 @@ module kernel_top
     butterfly BPE2 (
         .clk   (clk),
         .rst_n  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE2_i_vld),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE2_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE2_i_rdy),
         .o_vld (BPE2_o_vld),
         .o_rdy (BPE2_o_rdy),
@@ -340,8 +341,8 @@ module kernel_top
     butterfly BPE3 (
         .clk   (clk),
         .rst_n  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE3_i_vld),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE3_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE3_i_rdy),
         .o_vld (BPE3_o_vld),
         .o_rdy (BPE3_o_rdy),
@@ -355,8 +356,8 @@ module kernel_top
     butterfly BPE4 (
         .clk   (clk),
         .rst_n  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE4_i_vld),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE4_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE4_i_rdy),
         .o_vld (BPE4_o_vld),
         .o_rdy (BPE4_o_rdy),
@@ -370,8 +371,8 @@ module kernel_top
     butterfly BPE5 (
         .clk   (clk),
         .rst_n  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE5_i_vld),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE5_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE5_i_rdy),
         .o_vld (BPE5_o_vld),
         .o_rdy (BPE5_o_rdy),

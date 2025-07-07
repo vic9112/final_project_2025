@@ -2824,7 +2824,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     always@(*) begin
         BPE5_i_vld_r = (state_5th == BPE_I0_5th || state_5th == BPE_I1_5th || state_5th == BPE_I2_5th || state_5th == BPE_I3_5th) & in_cnt_5th[0] ;
         // BPE5_o_rdy <= (state_5th == BPE_O0_5th || state_5th == BPE_O1_5th || state_5th == BPE_O2_5th || state_5th == BPE_O3_5th) & (~bpe_out_cnt_5th[0]);
-        BPE5_o_rdy_r = 1;
+        BPE5_o_rdy_r = (state_5th_next != IDLE_5th);
     end
     // bpe activation
     // always@(*) begin

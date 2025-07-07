@@ -94,7 +94,8 @@ module stage_top
   output  wire               [4:0] k4_coef_vld,
   input   wire               [4:0] k4_coef_rdy,
   output  wire [(pDATA_WIDTH-1):0] k4_coef_dat,
-  input   wire               [4:0] k4_bpe_act
+  input   wire               [4:0] k4_bpe_act,
+  output  wire                     rst_mode
 );
 
 // parameter for destination
@@ -338,6 +339,7 @@ module stage_top
   assign clk4 = clk;
   assign ss_rdy = l;
 
+  assign rst_mode = (meta_counter == 30);
 
   /*----------------------------------------------------------------
                               data length
@@ -2472,10 +2474,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     always@* begin       
       if (FIFO_out[2] == 0) begin     // FFT or iFFT
         case (sm_cnt)
-          3'b000: sm_dat_r = sm_buffer[31:0];
-          3'b001: sm_dat_r = sm_buffer[63:32];
-          3'b010: sm_dat_r = sm_buffer[95:64];
-          3'b011: sm_dat_r = sm_buffer[127:96];
+        3'b000: sm_dat_r = sm_buffer[127:96];
+        3'b001: sm_dat_r = sm_buffer[95:64];
+        3'b010: sm_dat_r = sm_buffer[63:32];
+        3'b011: sm_dat_r = sm_buffer[31:0];
           default: sm_dat_r = 32'hFFFFFFFF;
         endcase
       end else begin                  // NTT or iNTT
