@@ -1,5 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // `include "CLA_8.v"
+    // `include "add_13.v"
     // `include "add_11_overflow.v"
     // `include "add_13_overflow.v"
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +48,7 @@
 //===================================================================================================================================================================================
 //  * FLOW 
 //  *   step1 . add exponent A and B 、 check whether there is infinite number.
-//  *   step2 . subtract the bias of IEEE 754 double precision floating pint(1023) to get the real value of result exponent(siggned)
+//  *   step2 . subtract the bias of IEEE 754 double precision floating pint(1023) to get the result exponent(siggned)
 //  *   step3 . use group of pipline stage to make sure the timing  
 //    
 //              pip_stage1                                               pip_stage2                                                              pip_stage3-->7
@@ -83,12 +84,15 @@ module fmul_exp #(
 
 //---------------------------------------------------------------------------------------------------------------------------//
     localparam  INF_EXP      = 11'b111_1111_1111 ;      // * Denormal of infinite     while exponent = 111_1111_1111
-    localparam EXP_BIAS      = 12'd1023;                // * Bias of exponent by IEEE double precision floating point format.
+    localparam EXP_BIAS      = 13'd1023;                // * Bias of exponent by IEEE double precision floating point format.
     localparam EXP_BIAS_sub  = 13'b1_1100_0000_0001;    // * Use for substraction Bias(2*bias = 2046).
     localparam EXP_BIAS_sub2 = 13'b1_1000_0000_0010;
-                                //  0 1000 0000 0000 2048
-                                //  0 0111 1111 1110 2046
-                                //  1 1000 0000 0010 -2046
+//      * Table of 13bits Signed value (binary <=> decimal )
+//          0_0011_1111_1111 <=>  1023
+//          1_1100_0000_0001 <=> -1023
+//          0_1000_0000_0000 <=>  2048
+//          0_0111_1111_1110 <=>  2046
+//          1_1000_0000_0010 <=> -2046
  //===========================================================================================================================//
 
 //----------------------- pipeline stage 1 ----------------------------------------------------------------------------------//
@@ -111,7 +115,7 @@ module fmul_exp #(
     wire[(pEXP_WIDTH):0]                    exp_add;
     wire[(pEXP_WIDTH):0]                    exp_result;
 //----------------------- EXP normalize ---------------------------------------------------------------------------------------//
-    wire[(pEXP_WIDTH+2):0]                  exp_real;
+    wire[(pEXP_WIDTH+1):0]                  exp_real;
     wire[(pEXP_WIDTH+1):0]                  exp_expand;
     wire[(pEXP_WIDTH+1):0]                  exp_real_value;
 
@@ -133,12 +137,10 @@ module fmul_exp #(
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
         pip1_v         <= 1'b0;
-//        pip1_zero_case <= 1'b0;
         pip1_exp_a     <= {(pEXP_WIDTH){1'b0}};
         pip1_exp_b     <= {(pEXP_WIDTH){1'b0}};
     end else begin
         pip1_v         <= in_valid;
-//        pip1_zero_case <= zero_case;
         pip1_exp_a     <= exp_A;
         pip1_exp_b     <= exp_B;
     end
@@ -166,14 +168,12 @@ add_11_overflow add_11_0( .in_A( pip1_exp_a ) , .in_B( pip1_exp_b ) , .result( e
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
         pip2_v          <= 1'b0;
-//        pip2_zero_case  <= 1'b0;
         pip2_inf        <= 1'b0;
         pip2_exp        <= {(pEXP_WIDTH+1){1'b0}};
         pip2_sub_norm   <= 2'd0 ;
     end else begin
         pip2_v          <= pip1_v;
         pip2_inf        <= (inf_a | inf_b);
-//        pip2_zero_case  <= pip1_zero_case;
         pip2_exp        <= exp_add[(pEXP_WIDTH):0];
         pip2_sub_norm   <= subnorm_add ;
     end
@@ -183,10 +183,10 @@ end
 //                                        EXP normalize                                           //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//----------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------------------------------
 // * can't directly add the exp result , weknow that real value of exponent is exp - bias
-// * so we need to sub the bias hehre.
-//
+// * As IEEE 754 format , the normal bias is -1023 , and after the two exp added , it has 2*(-1023) bias , so we substract  (-1023) after added
+//   to make the result become the IEEE 754 type exponent3
 // * step1. sign extension exp_expand   
 //                   sign   exp_value
 //    exp_expand > |  0  |   12bit    |    
@@ -202,13 +202,13 @@ end
 //                           sign    value
 //     exp_real_value  >   | 1bit |  12bit   |
 //
-//--------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------------------------------
 
 assign exp_expand      = {1'b0 , pip2_exp}; // *sign extension of exp(positive)
 assign exp_real_value  =  exp_real[(pEXP_WIDTH+1): 0];
 
 
-add_13_overflow add_13_0( .in_A( exp_expand ) , .in_B( EXP_BIAS_sub2 ) , .result( exp_real ));
+add_13 add_13_0( .in_A( exp_expand ) , .in_B( EXP_BIAS_sub ) , .result( exp_real ));
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -24,7 +24,7 @@ module butterfly
 //==================================================================================//
 
 localparam NTT_MUL_LATENCY = 17;
-localparam FFT_MUL_LATENCY = 20;
+localparam FFT_MUL_LATENCY = 21;
 
 localparam NTT_LATENCY     = 22;
 localparam iNTT_LATENCY    = 22;//?
@@ -352,9 +352,9 @@ always @(posedge clk or negedge rst_n) begin
     o_vld_buf[2] <= o_vld_buf[1];
   end
 end
-assign ao = ao_buf[2];
-assign bo = bo_buf[2];
-assign o_vld = o_vld_buf[2];
+assign ao = ao_buf[1];
+assign bo = bo_buf[1];
+assign o_vld = o_vld_buf[1];
 
 
 // assign ao = (mode_state[1] == 1'b0)? cmul_result[0] : mont_add_result;
