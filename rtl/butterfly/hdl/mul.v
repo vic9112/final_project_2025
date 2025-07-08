@@ -84,7 +84,7 @@ localparam FP_ADD_LATENCY       = 5 ;  // * Latency of fp_add
 localparam MUL16_ARRAY_LATENCY  = 4 ;  // * Latency of mul_16 array
 localparam WALLACE_LATENCY      = 3 ;  // * Latency of wallace tree
 localparam EXP_OP_LATENCY       = 7 ;
-localparam ROUNDER_LATENCY      = 3 ;  // * Latency of rounder
+localparam ROUNDER_LATENCY      = 4 ;  // * Latency of rounder
 localparam MOD_LATENCY          = 9 ;  // * Latency of mod operation(NTT)
 localparam CLA_ADD_LATENCY       = 2 ;  // * Latency of CLA
 //--------------------------------------------------------------------------------------------------------------------//
