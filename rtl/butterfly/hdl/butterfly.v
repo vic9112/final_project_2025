@@ -75,7 +75,7 @@ wire [(pFP_WIDTH-1):0]      mul_result_im_inv;
 wire [(pDATA_WIDTH-1):0]    mul_result_inv;
 wire                        mul_out_valid[0:1];
 wire                        cmul_valid_i[0:1];
-wire                        cmul_valid_o[0:1];
+wire                        cmul_valid_o[0:3];
 wire [(pDATA_WIDTH-1):0]    cmul_result[0:1];
 wire [(pDATA_WIDTH-1):0]    cmul_result_ifft[0:1];
 wire [(pEXP_WIDTH-1):0]     cmul_result_exp_im[0:1];
@@ -263,8 +263,8 @@ assign a_result = (mode_state[1] == 1'b0)? a_reg[(FFT_MUL_LATENCY-1)]:a_reg[(NTT
 
 fp_add   fp_add_01( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_result[(pFP_WIDTH-1)  :0] )               , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[0][(pFP_WIDTH-1):0] )             , .out_valid( cmul_valid_o[0] ));
 fp_add   fp_add_02( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[0][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[1] ));
-fp_add   fp_add_11( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_result_inv[(pFP_WIDTH-1):0] )                 , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH-1):0] )             , .out_valid( cmul_valid_o[0] ));
-fp_add   fp_add_12( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result_inv[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[1] ));
+fp_add   fp_add_11( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_result_inv[(pFP_WIDTH-1):0] )                 , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH-1):0] )             , .out_valid( cmul_valid_o[2] ));
+fp_add   fp_add_12( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result_inv[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[3] ));
 assign cmul_result_exp_im[0] = (~(|cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
 assign cmul_result_exp_im[1] = (~(|cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] :cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
 assign cmul_result_exp_re[0] = (~(|cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)] - 1'b1;
