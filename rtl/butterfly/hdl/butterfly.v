@@ -47,6 +47,7 @@ localparam READY     = 3'b111;
 localparam pFP_WIDTH            = 64 ;
 localparam pNTT_WTDTH           = 16 ;
 localparam pEXP_WIDTH           = 11 ;
+localparam pFRAC_WIDTH          = 52 ;
 //==================================================================================//
 localparam pEXP_DENOR           = 11'b000_0000_0000;
 localparam pEXP_INF             = 11'b111_1111_1111;
@@ -92,8 +93,8 @@ reg  [(pDATA_WIDTH-1):0]    ao_buf[0:2];
 reg  [(pDATA_WIDTH-1):0]    bo_buf[0:2];
 reg                         o_vld_buf[0:2];
 //==================================================================================//
-
-
+wire [(pFRAC_WIDTH-1):0]   cmul_result_frac_re[0:1];
+wire [(pFRAC_WIDTH-1):0]   cmul_result_frac_im[0:1];
 //==================================================================================//
 //state control
 //i_rdy controller
@@ -265,12 +266,21 @@ fp_add   fp_add_01( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_
 fp_add   fp_add_02( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[0][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[1] ));
 fp_add   fp_add_11( .in_A( a_result[(pFP_WIDTH-1):0] )             , .in_B( mul_result_inv[(pFP_WIDTH-1):0] )                 , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH-1):0] )             , .out_valid( cmul_valid_o[2] ));
 fp_add   fp_add_12( .in_A( a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .in_B( mul_result_inv[(pFP_WIDTH*2-1):(pFP_WIDTH)] )     , .clk( clk ) , .rst_n( rst_n )  , .in_valid( mul_out_valid[0] )  , .result( cmul_result[1][(pFP_WIDTH*2-1):(pFP_WIDTH)] ) , .out_valid( cmul_valid_o[3] ));
+
 assign cmul_result_exp_im[0] = (~(|cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
 assign cmul_result_exp_im[1] = (~(|cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]) | (&cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)]))? cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] :cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)] - 1'b1;
 assign cmul_result_exp_re[0] = (~(|cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]) | (&cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]))? cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]:cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)] - 1'b1;
 assign cmul_result_exp_re[1] = (~(|cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]) | (&cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]))? cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)]:cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)] - 1'b1;
-assign cmul_result_ifft[0] = {cmul_result[0][(pFP_WIDTH*2-1)], cmul_result_exp_re[0], cmul_result[0][(pFP_WIDTH*2-pEXP_WIDTH-2):(pFP_WIDTH)], cmul_result[0][(pFP_WIDTH-1)], cmul_result_exp_im[0], cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):0]};
-    assign cmul_result_ifft[1] = {cmul_result[1][(pFP_WIDTH*2-1)], cmul_result_exp_re[1], cmul_result[1][(pFP_WIDTH*2-pEXP_WIDTH-2):(pFP_WIDTH)], cmul_result[1][(pFP_WIDTH-1)], cmul_result_exp_im[1], cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):0]};
+
+assign cmul_result_frac_im[0] = (|cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)])?     ((|cmul_result[0][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH)])?  cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):0] : {1'b1 , cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):1]} ) : {1'b0 , cmul_result[0][(pFP_WIDTH-pEXP_WIDTH-2):1]} ;
+assign cmul_result_frac_im[1] = (|cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH-1)])?     ((|cmul_result[1][(pFP_WIDTH-2):(pFP_WIDTH-pEXP_WIDTH)])?  cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):0] : {1'b1 , cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):1]} ) : {1'b0 , cmul_result[1][(pFP_WIDTH-pEXP_WIDTH-2):1]} ;
+////////////////////////////////////////////////
+assign cmul_result_frac_re[0] = (|cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)])? ((|cmul_result[0][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH)])?  cmul_result[0][(pFP_WIDTH*2-pEXP_WIDTH-2): pFP_WIDTH] : {1'b1 , cmul_result[0][(pFP_WIDTH*2-pEXP_WIDTH-2): (pFP_WIDTH+1) ]}) : {1'b0 , cmul_result[0][(pFP_WIDTH*2-pEXP_WIDTH-2): (pFP_WIDTH+1) ]};
+assign cmul_result_frac_re[1] = (|cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH-1)])? ((|cmul_result[1][(pFP_WIDTH*2-2):(pFP_WIDTH*2-pEXP_WIDTH)])?  cmul_result[1][(pFP_WIDTH*2-pEXP_WIDTH-2): pFP_WIDTH] : {1'b1 , cmul_result[1][(pFP_WIDTH*2-pEXP_WIDTH-2): (pFP_WIDTH+1) ]}) : {1'b0 , cmul_result[1][(pFP_WIDTH*2-pEXP_WIDTH-2): (pFP_WIDTH+1) ]};
+
+assign cmul_result_ifft[0] = {cmul_result[0][(pFP_WIDTH*2-1)], cmul_result_exp_re[0], cmul_result_frac_re[0] , cmul_result[0][(pFP_WIDTH-1)], cmul_result_exp_im[0], cmul_result_frac_im[0]};
+
+assign cmul_result_ifft[1] = {cmul_result[1][(pFP_WIDTH*2-1)], cmul_result_exp_re[1], cmul_result_frac_re[1] , cmul_result[1][(pFP_WIDTH-1)], cmul_result_exp_im[1], cmul_result_frac_im[1]};
 
 mont_add mont_add_01(.in_A(mul_result[(pNTT_WTDTH-1):0])               , .in_B(a_result[(pNTT_WTDTH-1)  :0])             , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o0[0]));
 mont_add mont_add_02(.in_A(mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])  , .in_B(a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])  , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o0[1]));
