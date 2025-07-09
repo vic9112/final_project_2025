@@ -338,7 +338,7 @@ assign shift_expand      = { 1'b0      , shift    } ;    // * add sign bit
 
 assign shift_amount      = ( exp_sub[pEXP_WIDTH+1] )? pip2_exp : shift      ;
 
-assign exp_normalized_1  = ( exp_sub[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}} : exp_sub[(pEXP_WIDTH) : 0] ;
+assign exp_normalized_1  = (|pip2_frac)? (( exp_sub[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}} : exp_sub[(pEXP_WIDTH) : 0]) : {(pEXP_WIDTH+1){1'b0}} ;
 assign frac_normalized_1 = pip2_frac << shift_amount ;
 
 LOD_64 LOD_00    ( .A( frac_expand   ) ,  .position( shift ));
