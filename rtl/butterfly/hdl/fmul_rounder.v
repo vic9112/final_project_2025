@@ -28,7 +28,8 @@
 // 2025.6.16  hsuan_jung,lo       3.0       modify the data process , we include subnormal case 
 // 2025.6.18  hsuan_jung,lo       4.0       modfiy the rounding process to improve the precision
 // 2025.7.2   hsuan_jung,lo       5.0       modify the operator alogrithm to follow IEEE 754 format
-// 2025.7.6   hsuan_jung,lo       6.0       re-allocate the pipeline stage to improve the timming                                                                                                       
+// 2025.7.6   hsuan_jung,lo       6.0       re-allocate the pipeline stage to improve the timming   
+// 2025.7.9   hsuan_jung,lo       7.0       solve error of zero case in fmul
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //================================================================================================================================================================================//
