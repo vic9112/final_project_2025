@@ -11,7 +11,7 @@ module stage_top
 
   //input   wire               [1:0] in1_sw,  // not used for now
   output   wire             [31:0] ap_ctrl,
-  output   wire             [31:0] coef_ctrl,
+  //output   wire             [31:0] coef_ctrl,
   input   wire                     ap_read,
   // SS/SM interface:
   // FFT/iFFT SS: concat 4 32-bit data to 128-bit
@@ -378,27 +378,6 @@ module stage_top
       end
     end
   end
-  
-  /*----------------------------------------------------------------
-                           
-  -----------------------------------------------------------------*/
-
-  reg     coef_fft_done;
-
-  always @ (posedge clk or negedge rstn) begin
-    if (!rstn) begin
-      coef_fft_done <= 0;
-    end else begin
-      if (ss_rdy && ss_vld && meta_counter == 12'h0 && destination == 8'b00010100) begin
-        coef_fft_done <= 1;
-      end else if (ss_rdy && ss_vld && meta_counter != 12'h0 && destination == 8'b00010100) begin
-        coef_fft_done <= 0;
-      end else begin
-        coef_fft_done <= coef_fft_done;
-      end
-    end
-  end
-
 
   /*----------------------------------------------------------------
                             decode meta data
@@ -827,10 +806,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k1 <= 4'hF;
+    end else if (k1_sw_lst) begin
+      step_cnt1_k1 <= 4'hF;
     end else if (k1_coef_rdy[0] && k1_coef_en1) begin
-      if (k1_sw_lst) begin
-        step_cnt1_k1 <= 4'hF;
-      end else if (step_cnt1_k1 == 4'hF && k1_bpe1_en) begin
+      if (step_cnt1_k1 == 4'hF && k1_bpe1_en) begin
         step_cnt1_k1 <= 4'h0;
       end else if (step_cnt1_k1 != 4'hF && step_cnt1_k1 != 4'h2) begin
         step_cnt1_k1 <= step_cnt1_k1 + 1;
@@ -847,10 +826,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage1_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[0] && k1_coef_en1 && step_cnt1_k1 != 4'h2) begin
-      if (k1_sw_lst) begin
-        stage1_cnt_k1 <= 12'hFFF;
-      end else if (k1_bpe1_en) begin
+      if (k1_bpe1_en) begin
         if (stage1_cnt_k1 == 12'hFFF) begin
           stage1_cnt_k1 <= 0;
         end else begin
@@ -867,10 +846,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage2_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[0] && k1_coef_en1) begin
-      if (k1_sw_lst) begin
-        stage2_cnt_k1 <= 12'hFFF;
-      end else if (step_cnt1_k1 == 0 || step_cnt1_k1 == 1) begin
+    if (step_cnt1_k1 == 0 || step_cnt1_k1 == 1) begin
         if (stage2_cnt_k1 == 12'hFFF) begin
           stage2_cnt_k1 <= 0;
         end else begin
@@ -899,10 +878,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k1 <= 4'hF;
+    end else if (k1_sw_lst) begin
+      step_cnt2_k1 <= 4'hF;
     end else if (k1_coef_rdy[1] && k1_coef_en2) begin
-      if (k1_sw_lst) begin
-        step_cnt2_k1 <= 4'hF;
-      end else if (step_cnt2_k1 == 4'hF && k1_bpe2_en) begin
+      if (step_cnt2_k1 == 4'hF && k1_bpe2_en) begin
         step_cnt2_k1 <= 4'h0;
       end else if (step_cnt2_k1 != 4'hF && step_cnt2_k1 != 4'h2) begin
         step_cnt2_k1 <= step_cnt2_k1 + 1;
@@ -919,10 +898,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage3_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[1] && k1_coef_en2 && step_cnt2_k1 != 4'h2) begin
-      if (k1_sw_lst) begin
-        stage3_cnt_k1 <= 12'hFFF;
-      end else if (k1_bpe2_en) begin
+      if (k1_bpe2_en) begin
         if (stage3_cnt_k1 == 12'hFFF) begin
           stage3_cnt_k1 <= 0;
         end else begin
@@ -939,10 +918,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage4_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[1] && k1_coef_en2) begin
-      if (k1_sw_lst) begin
-        stage4_cnt_k1 <= 12'hFFF;
-      end else if (step_cnt2_k1 == 0 || step_cnt2_k1 == 1) begin
+      if (step_cnt2_k1 == 0 || step_cnt2_k1 == 1) begin
         if (stage4_cnt_k1 == 12'hFFF) begin
           stage4_cnt_k1 <= 0;
         end else begin
@@ -970,10 +949,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k1 <= 4'hF;
+    end else if (k1_sw_lst) begin
+      step_cnt3_k1 <= 4'hF;
     end else if (k1_coef_rdy[2] && k1_coef_en3) begin
-      if (k1_sw_lst) begin
-        step_cnt3_k1 <= 4'hF;
-      end else if (step_cnt3_k1 == 4'hF && k1_bpe3_en) begin
+      if (step_cnt3_k1 == 4'hF && k1_bpe3_en) begin
         step_cnt3_k1 <= 4'h0;
       end else if (step_cnt3_k1 != 4'hF && step_cnt3_k1 != 4'h2) begin
         step_cnt3_k1 <= step_cnt3_k1 + 1;
@@ -990,10 +969,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage5_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[2] && k1_coef_en3 && step_cnt3_k1 != 4'h2) begin
-      if (k1_sw_lst) begin
-        stage5_cnt_k1 <= 12'hFFF;
-      end else if (k1_bpe3_en) begin
+      if (k1_bpe3_en) begin
         if (stage5_cnt_k1 == 12'hFFF) begin
           stage5_cnt_k1 <= 0;
         end else begin
@@ -1010,10 +989,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage6_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[2] && k1_coef_en3) begin
-      if (k1_sw_lst) begin
-        stage6_cnt_k1 <= 12'hFFF;
-      end else if (step_cnt3_k1 == 0 || step_cnt3_k1 == 1) begin
+      if (step_cnt3_k1 == 0 || step_cnt3_k1 == 1) begin
         if (stage6_cnt_k1 == 12'hFFF) begin
           stage6_cnt_k1 <= 0;
         end else begin
@@ -1042,10 +1021,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k1 <= 4'hF;
+    end else if (k1_sw_lst) begin
+      step_cnt4_k1 <= 4'hF;
     end else if (k1_coef_rdy[3] && k1_coef_en4) begin
-      if (k1_sw_lst) begin
-        step_cnt4_k1 <= 4'hF;
-      end else if (step_cnt4_k1 == 4'hF && k1_bpe4_en) begin
+      if (step_cnt4_k1 == 4'hF && k1_bpe4_en) begin
         step_cnt4_k1 <= 4'h0;
       end else if (step_cnt4_k1 != 4'hF && step_cnt4_k1 != 4'd11) begin
         step_cnt4_k1 <= step_cnt4_k1 + 1;
@@ -1062,10 +1041,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage7_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[3] && k1_coef_en4 && step_cnt4_k1 != 4'd11) begin
-      if (k1_sw_lst) begin
-        stage7_cnt_k1 <= 12'hFFF;
-      end else if (k1_bpe4_en || step_cnt4_k1 == 2 || step_cnt4_k1 == 5 || step_cnt4_k1 == 8) begin
+      if (k1_bpe4_en || step_cnt4_k1 == 2 || step_cnt4_k1 == 5 || step_cnt4_k1 == 8) begin
         if (stage7_cnt_k1 == 12'hFFF) begin
           stage7_cnt_k1 <= 0;
         end else begin
@@ -1082,10 +1061,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k1 <= 12'hFFF;
+    end else if (k1_sw_lst) begin
+      stage8_cnt_k1 <= 12'hFFF;
     end else if (k1_coef_rdy[3] && k1_coef_en4) begin
-      if (k1_sw_lst) begin
-        stage8_cnt_k1 <= 12'hFFF;
-      end else if (step_cnt4_k1 == 0 || step_cnt4_k1 == 1 || step_cnt4_k1 == 3 || step_cnt4_k1 == 4 
+      if (step_cnt4_k1 == 0 || step_cnt4_k1 == 1 || step_cnt4_k1 == 3 || step_cnt4_k1 == 4 
                 || step_cnt4_k1 == 6 || step_cnt4_k1 == 7 || step_cnt4_k1 == 9 || step_cnt4_k1 == 10) begin
         if (stage8_cnt_k1 == 12'hFFF) begin
           stage8_cnt_k1 <= 0;
@@ -1117,10 +1096,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k1 <= 5'h1F;
+    end else if (k1_sw_lst) begin
+      step_cnt5_k1 <= 5'h1F;
     end else if (k1_coef_rdy[4] && k1_coef_en5) begin
-      if (k1_sw_lst) begin
-        step_cnt5_k1 <= 5'h1F;
-      end else if (step_cnt5_k1 == 5'h1F && k1_bpe5_en) begin
+      if (step_cnt5_k1 == 5'h1F && k1_bpe5_en) begin
         step_cnt5_k1 <= 5'h0;
       end else if (step_cnt5_k1 != 5'h1F && step_cnt5_k1 != 5'd15) begin
         step_cnt5_k1 <= step_cnt5_k1 + 1;
@@ -1137,10 +1116,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k1 <= 12'h0;
+    end else if (k1_sw_lst) begin
+      stage9_cnt_k1 <= 12'h0;
     end else if (k1_coef_rdy[4] && k1_coef_en5) begin
-      if (k1_sw_lst) begin
-        stage9_cnt_k1 <= 12'h0;
-      end else if (step_cnt5_k1 != 5'h1F) begin
+      if (step_cnt5_k1 != 5'h1F) begin
           stage9_cnt_k1 <= stage9_cnt_k1 + 1;
       end else begin
         stage9_cnt_k1 <= stage9_cnt_k1;
@@ -1166,10 +1145,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k2 <= 4'hF;
+    end else if (k2_sw_lst) begin
+      step_cnt1_k2 <= 4'hF;
     end else if (k2_coef_rdy[0] && k2_coef_en1) begin
-      if (k2_sw_lst) begin
-        step_cnt1_k2 <= 4'hF;
-      end else if (step_cnt1_k2 == 4'hF && k2_bpe1_en) begin
+      if (step_cnt1_k2 == 4'hF && k2_bpe1_en) begin
         step_cnt1_k2 <= 4'h0;
       end else if (step_cnt1_k2 != 4'hF && step_cnt1_k2 != 4'h2) begin
         step_cnt1_k2 <= step_cnt1_k2 + 1;
@@ -1186,10 +1165,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage1_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[0] && k2_coef_en1 && step_cnt1_k2 != 4'h2) begin
-      if (k2_sw_lst) begin
-        stage1_cnt_k2 <= 12'hFFF;
-      end else if (k2_bpe1_en) begin
+      if (k2_bpe1_en) begin
         if (stage1_cnt_k2 == 12'hFFF) begin
           stage1_cnt_k2 <= 0;
         end else begin
@@ -1206,10 +1185,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage2_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[0] && k2_coef_en1) begin
-      if (k2_sw_lst) begin
-        stage2_cnt_k2 <= 12'hFFF;
-      end else if (step_cnt1_k2 == 0 || step_cnt1_k2 == 1) begin
+      if (step_cnt1_k2 == 0 || step_cnt1_k2 == 1) begin
         if (stage2_cnt_k2 == 12'hFFF) begin
           stage2_cnt_k2 <= 0;
         end else begin
@@ -1238,10 +1217,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k2 <= 4'hF;
+    end else if (k2_sw_lst) begin
+      step_cnt2_k2 <= 4'hF;
     end else if (k2_coef_rdy[1] && k2_coef_en2) begin
-      if (k2_sw_lst) begin
-        step_cnt2_k2 <= 4'hF;
-      end else if (step_cnt2_k2 == 4'hF && k2_bpe2_en) begin
+      if (step_cnt2_k2 == 4'hF && k2_bpe2_en) begin
         step_cnt2_k2 <= 4'h0;
       end else if (step_cnt2_k2 != 4'hF && step_cnt2_k2 != 4'h2) begin
         step_cnt2_k2 <= step_cnt2_k2 + 1;
@@ -1258,10 +1237,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage3_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[1] && k2_coef_en2 && step_cnt2_k2 != 4'h2) begin
-      if (k2_sw_lst) begin
-        stage3_cnt_k2 <= 12'hFFF;
-      end else if (k2_bpe2_en) begin
+      if (k2_bpe2_en) begin
         if (stage3_cnt_k2 == 12'hFFF) begin
           stage3_cnt_k2 <= 0;
         end else begin
@@ -1278,10 +1257,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage4_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[1] && k2_coef_en2) begin
-      if (k2_sw_lst) begin
-        stage4_cnt_k2 <= 12'hFFF;
-      end else if (step_cnt2_k2 == 0 || step_cnt2_k2 == 1) begin
+      if (step_cnt2_k2 == 0 || step_cnt2_k2 == 1) begin
         if (stage4_cnt_k2 == 12'hFFF) begin
           stage4_cnt_k2 <= 0;
         end else begin
@@ -1310,10 +1289,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k2 <= 4'hF;
+    end else if (k2_sw_lst) begin
+      step_cnt3_k2 <= 4'hF;
     end else if (k2_coef_rdy[2] && k2_coef_en3) begin
-      if (k2_sw_lst) begin
-        step_cnt3_k2 <= 4'hF;
-      end else if (step_cnt3_k2 == 4'hF && k2_bpe3_en) begin
+      if (step_cnt3_k2 == 4'hF && k2_bpe3_en) begin
         step_cnt3_k2 <= 4'h0;
       end else if (step_cnt3_k2 != 4'hF && step_cnt3_k2 != 4'h2) begin
         step_cnt3_k2 <= step_cnt3_k2 + 1;
@@ -1330,10 +1309,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage5_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[2] && k2_coef_en3 && step_cnt3_k2 != 4'h2) begin
-      if (k2_sw_lst) begin
-        stage5_cnt_k2 <= 12'hFFF;
-      end else if (k2_bpe3_en) begin
+      if (k2_bpe3_en) begin
         if (stage5_cnt_k2 == 12'hFFF) begin
           stage5_cnt_k2 <= 0;
         end else begin
@@ -1350,10 +1329,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage6_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[2] && k2_coef_en3) begin
-      if (k2_sw_lst) begin
-        stage6_cnt_k2 <= 12'hFFF;
-      end else if (step_cnt3_k2 == 0 || step_cnt3_k2 == 1) begin
+      if (step_cnt3_k2 == 0 || step_cnt3_k2 == 1) begin
         if (stage6_cnt_k2 == 12'hFFF) begin
           stage6_cnt_k2 <= 0;
         end else begin
@@ -1382,10 +1361,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k2 <= 4'hF;
+    end else if (k2_sw_lst) begin
+      step_cnt4_k2 <= 4'hF;
     end else if (k2_coef_rdy[3] && k2_coef_en4) begin
-      if (k2_sw_lst) begin
-        step_cnt4_k2 <= 4'hF;
-      end else if (step_cnt4_k2 == 4'hF && k2_bpe4_en) begin
+      if (step_cnt4_k2 == 4'hF && k2_bpe4_en) begin
         step_cnt4_k2 <= 4'h0;
       end else if (step_cnt4_k2 != 4'hF && step_cnt4_k2 != 4'd11) begin
         step_cnt4_k2 <= step_cnt4_k2 + 1;
@@ -1402,10 +1381,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage7_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[3] && k2_coef_en4 && step_cnt4_k2 != 4'd11) begin
-      if (k2_sw_lst) begin
-        stage7_cnt_k2 <= 12'hFFF;
-      end else if (k2_bpe4_en || step_cnt4_k2 == 2 || step_cnt4_k2 == 5 || step_cnt4_k2 == 8) begin
+      if (k2_bpe4_en || step_cnt4_k2 == 2 || step_cnt4_k2 == 5 || step_cnt4_k2 == 8) begin
         if (stage7_cnt_k2 == 12'hFFF) begin
           stage7_cnt_k2 <= 0;
         end else begin
@@ -1422,10 +1401,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k2 <= 12'hFFF;
+    end else if (k2_sw_lst) begin
+      stage8_cnt_k2 <= 12'hFFF;
     end else if (k2_coef_rdy[3] && k2_coef_en4) begin
-      if (k2_sw_lst) begin
-        stage8_cnt_k2 <= 12'hFFF;
-      end else if (step_cnt4_k2 == 0 || step_cnt4_k2 == 1 || step_cnt4_k2 == 3 || step_cnt4_k2 == 4 
+      if (step_cnt4_k2 == 0 || step_cnt4_k2 == 1 || step_cnt4_k2 == 3 || step_cnt4_k2 == 4 
                 || step_cnt4_k2 == 6 || step_cnt4_k2 == 7 || step_cnt4_k2 == 9 || step_cnt4_k2 == 10) begin
         if (stage8_cnt_k2 == 12'hFFF) begin
           stage8_cnt_k2 <= 0;
@@ -1454,10 +1433,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k2 <= 5'h1F;
+    end else if (k2_sw_lst) begin
+      step_cnt5_k2 <= 5'h1F;
     end else if (k2_coef_rdy[4] && k2_coef_en5) begin
-      if (k2_sw_lst) begin
-        step_cnt5_k2 <= 5'h1F;
-      end else if (step_cnt5_k2 == 5'h1F && k2_bpe5_en) begin
+      if (step_cnt5_k2 == 5'h1F && k2_bpe5_en) begin
         step_cnt5_k2 <= 5'h0;
       end else if (step_cnt5_k2 != 5'h1F && step_cnt5_k2 != 5'd15) begin
         step_cnt5_k2 <= step_cnt5_k2 + 1;
@@ -1474,10 +1453,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k2 <= 12'h0;
+    end else if (k2_sw_lst) begin
+      stage9_cnt_k2 <= 12'h0;
     end else if (k2_coef_rdy[4] && k2_coef_en5) begin
-      if (k2_sw_lst) begin
-        stage9_cnt_k2 <= 12'h0;
-      end else if (step_cnt5_k2 != 5'h1F) begin
+      if (step_cnt5_k2 != 5'h1F) begin
           stage9_cnt_k2 <= stage9_cnt_k2 + 1;
       end else begin
         stage9_cnt_k2 <= stage9_cnt_k2;
@@ -1503,10 +1482,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k3 <= 4'hF;
+    end else if (k3_sw_lst) begin
+      step_cnt1_k3 <= 4'hF;
     end else if (k3_coef_rdy[0] && k3_coef_en1) begin
-      if (k3_sw_lst) begin
-        step_cnt1_k3 <= 4'hF;
-      end else if (step_cnt1_k3 == 4'hF && k3_bpe1_en) begin
+      if (step_cnt1_k3 == 4'hF && k3_bpe1_en) begin
         step_cnt1_k3 <= 4'h0;
       end else if (step_cnt1_k3 != 4'hF && step_cnt1_k3 != 4'h2) begin
         step_cnt1_k3 <= step_cnt1_k3 + 1;
@@ -1523,10 +1502,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage1_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[0] && k3_coef_en1 && step_cnt1_k3 != 4'h2) begin
-      if (k3_sw_lst) begin
-        stage1_cnt_k3 <= 12'hFFF;
-      end else if (k3_bpe1_en) begin
+      if (k3_bpe1_en) begin
         if (stage1_cnt_k3 == 12'hFFF) begin
           stage1_cnt_k3 <= 0;
         end else begin
@@ -1543,10 +1522,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage2_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[0] && k3_coef_en1) begin
-      if (k3_sw_lst) begin
-        stage2_cnt_k3 <= 12'hFFF;
-      end else if (step_cnt1_k3 == 0 || step_cnt1_k3 == 1) begin
+      if (step_cnt1_k3 == 0 || step_cnt1_k3 == 1) begin
         if (stage2_cnt_k3 == 12'hFFF) begin
           stage2_cnt_k3 <= 0;
         end else begin
@@ -1575,10 +1554,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k3 <= 4'hF;
+    end else if (k3_sw_lst) begin
+      step_cnt2_k3 <= 4'hF;
     end else if (k3_coef_rdy[1] && k3_coef_en2) begin
-      if (k3_sw_lst) begin
-        step_cnt2_k3 <= 4'hF;
-      end else if (step_cnt2_k3 == 4'hF && k3_bpe2_en) begin
+      if (step_cnt2_k3 == 4'hF && k3_bpe2_en) begin
         step_cnt2_k3 <= 4'h0;
       end else if (step_cnt2_k3 != 4'hF && step_cnt2_k3 != 4'h2) begin
         step_cnt2_k3 <= step_cnt2_k3 + 1;
@@ -1595,10 +1574,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage3_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[1] && k3_coef_en2 && step_cnt2_k3 != 4'h2) begin
-      if (k3_sw_lst) begin
-        stage3_cnt_k3 <= 12'hFFF;
-      end else if (k3_bpe2_en) begin
+      if (k3_bpe2_en) begin
         if (stage3_cnt_k3 == 12'hFFF) begin
           stage3_cnt_k3 <= 0;
         end else begin
@@ -1615,10 +1594,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage4_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[1] && k3_coef_en2) begin
-      if (k3_sw_lst) begin
-        stage4_cnt_k3 <= 12'hFFF;
-      end else if (step_cnt2_k3 == 0 || step_cnt2_k3 == 1) begin
+      if (step_cnt2_k3 == 0 || step_cnt2_k3 == 1) begin
         if (stage4_cnt_k3 == 12'hFFF) begin
           stage4_cnt_k3 <= 0;
         end else begin
@@ -1647,10 +1626,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k3 <= 4'hF;
+    end else if (k3_sw_lst) begin
+      step_cnt3_k3 <= 4'hF;
     end else if (k3_coef_rdy[2] && k3_coef_en3) begin
-      if (k3_sw_lst) begin
-        step_cnt3_k3 <= 4'hF;
-      end else if (step_cnt3_k3 == 4'hF && k3_bpe3_en) begin
+      if (step_cnt3_k3 == 4'hF && k3_bpe3_en) begin
         step_cnt3_k3 <= 4'h0;
       end else if (step_cnt3_k3 != 4'hF && step_cnt3_k3 != 4'h2) begin
         step_cnt3_k3 <= step_cnt3_k3 + 1;
@@ -1667,10 +1646,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage5_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[2] && k3_coef_en3 && step_cnt3_k3 != 4'h2) begin
-      if (k3_sw_lst) begin
-        stage5_cnt_k3 <= 12'hFFF;
-      end else if (k3_bpe3_en) begin
+      if (k3_bpe3_en) begin
         if (stage5_cnt_k3 == 12'hFFF) begin
           stage5_cnt_k3 <= 0;
         end else begin
@@ -1687,10 +1666,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage6_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[2] && k3_coef_en3) begin
-      if (k3_sw_lst) begin
-        stage6_cnt_k3 <= 12'hFFF;
-      end else if (step_cnt3_k3 == 0 || step_cnt3_k3 == 1) begin
+      if (step_cnt3_k3 == 0 || step_cnt3_k3 == 1) begin
         if (stage6_cnt_k3 == 12'hFFF) begin
           stage6_cnt_k3 <= 0;
         end else begin
@@ -1719,10 +1698,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k3 <= 4'hF;
+    end else if (k3_sw_lst) begin
+      step_cnt4_k3 <= 4'hF;
     end else if (k3_coef_rdy[3] && k3_coef_en4) begin
-      if (k3_sw_lst) begin
-        step_cnt4_k3 <= 4'hF;
-      end else if (step_cnt4_k3 == 4'hF && k3_bpe4_en) begin
+      if (step_cnt4_k3 == 4'hF && k3_bpe4_en) begin
         step_cnt4_k3 <= 4'h0;
       end else if (step_cnt4_k3 != 4'hF && step_cnt4_k3 != 4'd11) begin
         step_cnt4_k3 <= step_cnt4_k3 + 1;
@@ -1739,10 +1718,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage7_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[3] && k3_coef_en4 && step_cnt4_k3 != 4'd11) begin
-      if (k3_sw_lst) begin
-        stage7_cnt_k3 <= 12'hFFF;
-      end else if (k3_bpe4_en || step_cnt4_k3 == 2 || step_cnt4_k3 == 5 || step_cnt4_k3 == 8) begin
+      if (k3_bpe4_en || step_cnt4_k3 == 2 || step_cnt4_k3 == 5 || step_cnt4_k3 == 8) begin
         if (stage7_cnt_k3 == 12'hFFF) begin
           stage7_cnt_k3 <= 0;
         end else begin
@@ -1759,10 +1738,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k3 <= 12'hFFF;
+    end else if (k3_sw_lst) begin
+      stage8_cnt_k3 <= 12'hFFF;
     end else if (k3_coef_rdy[3] && k3_coef_en4) begin
-      if (k3_sw_lst) begin
-        stage8_cnt_k3 <= 12'hFFF;
-      end else if (step_cnt4_k3 == 0 || step_cnt4_k3 == 1 || step_cnt4_k3 == 3 || step_cnt4_k3 == 4 
+      if (step_cnt4_k3 == 0 || step_cnt4_k3 == 1 || step_cnt4_k3 == 3 || step_cnt4_k3 == 4 
                 || step_cnt4_k3 == 6 || step_cnt4_k3 == 7 || step_cnt4_k3 == 9 || step_cnt4_k3 == 10) begin
         if (stage8_cnt_k3 == 12'hFFF) begin
           stage8_cnt_k3 <= 0;
@@ -1792,10 +1771,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k3 <= 5'h1F;
+    end else if (k3_sw_lst) begin
+      step_cnt5_k3 <= 5'h1F;
     end else if (k3_coef_rdy[4] && k3_coef_en5) begin
-      if (k3_sw_lst) begin
-        step_cnt5_k3 <= 5'h1F;
-      end else if (step_cnt5_k3 == 5'h1F && k3_bpe5_en) begin
+      if (step_cnt5_k3 == 5'h1F && k3_bpe5_en) begin
         step_cnt5_k3 <= 5'h0;
       end else if (step_cnt5_k3 != 5'h1F && step_cnt5_k3 != 5'd15) begin
         step_cnt5_k3 <= step_cnt5_k3 + 1;
@@ -1812,10 +1791,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k3 <= 12'h0;
+    end else if (k3_sw_lst) begin
+      stage9_cnt_k3 <= 12'h0;
     end else if (k3_coef_rdy[4] && k3_coef_en5) begin
-      if (k3_sw_lst) begin
-        stage9_cnt_k3 <= 12'h0;
-      end else if (step_cnt5_k3 != 5'h1F) begin
+      if (step_cnt5_k3 != 5'h1F) begin
           stage9_cnt_k3 <= stage9_cnt_k3 + 1;
       end else begin
         stage9_cnt_k3 <= stage9_cnt_k3;
@@ -1841,10 +1820,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt1_k4 <= 4'hF;
+    end else if (k4_sw_lst) begin
+      step_cnt1_k4 <= 4'hF;
     end else if (k4_coef_rdy[0] && k4_coef_en1) begin
-      if (k4_sw_lst) begin
-        step_cnt1_k4 <= 4'hF;
-      end else if (step_cnt1_k4 == 4'hF && k4_bpe1_en) begin
+      if (step_cnt1_k4 == 4'hF && k4_bpe1_en) begin
         step_cnt1_k4 <= 4'h0;
       end else if (step_cnt1_k4 != 4'hF && step_cnt1_k4 != 4'h2) begin
         step_cnt1_k4 <= step_cnt1_k4 + 1;
@@ -1861,10 +1840,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage1_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage1_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[0] && k4_coef_en1 && step_cnt1_k4 != 4'h2) begin
-      if (k4_sw_lst) begin
-        stage1_cnt_k4 <= 12'hFFF;
-      end else if (k4_bpe1_en) begin
+      if (k4_bpe1_en) begin
         if (stage1_cnt_k4 == 12'hFFF) begin
           stage1_cnt_k4 <= 0;
         end else begin
@@ -1881,10 +1860,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage2_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage2_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[0] && k4_coef_en1) begin
-      if (k4_sw_lst) begin
-        stage2_cnt_k4 <= 12'hFFF;
-      end else if (step_cnt1_k4 == 0 || step_cnt1_k4 == 1) begin
+      if (step_cnt1_k4 == 0 || step_cnt1_k4 == 1) begin
         if (stage2_cnt_k4 == 12'hFFF) begin
           stage2_cnt_k4 <= 0;
         end else begin
@@ -1913,10 +1892,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt2_k4 <= 4'hF;
+    end else if (k4_sw_lst) begin
+      step_cnt2_k4 <= 4'hF;
     end else if (k4_coef_rdy[1] && k4_coef_en2) begin
-      if (k4_sw_lst) begin
-        step_cnt2_k4 <= 4'hF;
-      end else if (step_cnt2_k4 == 4'hF && k4_bpe2_en) begin
+      if (step_cnt2_k4 == 4'hF && k4_bpe2_en) begin
         step_cnt2_k4 <= 4'h0;
       end else if (step_cnt2_k4 != 4'hF && step_cnt2_k4 != 4'h2) begin
         step_cnt2_k4 <= step_cnt2_k4 + 1;
@@ -1933,10 +1912,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage3_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage3_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[1] && k4_coef_en2 && step_cnt2_k4 != 4'h2) begin
-      if (k4_sw_lst) begin
-        stage3_cnt_k4 <= 12'hFFF;
-      end else if (k4_bpe2_en) begin
+      if (k4_bpe2_en) begin
         if (stage3_cnt_k4 == 12'hFFF) begin
           stage3_cnt_k4 <= 0;
         end else begin
@@ -1953,10 +1932,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage4_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage4_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[1] && k4_coef_en2) begin
-      if (k4_sw_lst) begin
-        stage4_cnt_k4 <= 12'hFFF;
-      end else if (step_cnt2_k4 == 0 || step_cnt2_k4 == 1) begin
+      if (step_cnt2_k4 == 0 || step_cnt2_k4 == 1) begin
         if (stage4_cnt_k4 == 12'hFFF) begin
           stage4_cnt_k4 <= 0;
         end else begin
@@ -1985,10 +1964,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt3_k4 <= 4'hF;
+    end else if (k4_sw_lst) begin
+      step_cnt3_k4 <= 4'hF;
     end else if (k4_coef_rdy[2] && k4_coef_en3) begin
-      if (k4_sw_lst) begin
-        step_cnt3_k4 <= 4'hF;
-      end else if (step_cnt3_k4 == 4'hF && k4_bpe3_en) begin
+      if (step_cnt3_k4 == 4'hF && k4_bpe3_en) begin
         step_cnt3_k4 <= 4'h0;
       end else if (step_cnt3_k4 != 4'hF && step_cnt3_k4 != 4'h2) begin
         step_cnt3_k4 <= step_cnt3_k4 + 1;
@@ -2005,10 +1984,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage5_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage5_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[2] && k4_coef_en3 && step_cnt3_k4 != 4'h2) begin
-      if (k4_sw_lst) begin
-        stage5_cnt_k4 <= 12'hFFF;
-      end else if (k4_bpe3_en) begin
+      if (k4_bpe3_en) begin
         if (stage5_cnt_k4 == 12'hFFF) begin
           stage5_cnt_k4 <= 0;
         end else begin
@@ -2025,10 +2004,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage6_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage6_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[2] && k4_coef_en3) begin
-      if (k4_sw_lst) begin
-        stage6_cnt_k4 <= 12'hFFF;
-      end else if (step_cnt3_k4 == 0 || step_cnt3_k4 == 1) begin
+      if (step_cnt3_k4 == 0 || step_cnt3_k4 == 1) begin
         if (stage6_cnt_k4 == 12'hFFF) begin
           stage6_cnt_k4 <= 0;
         end else begin
@@ -2057,10 +2036,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt4_k4 <= 4'hF;
+    end else if (k4_sw_lst) begin
+      step_cnt4_k4 <= 4'hF;
     end else if (k4_coef_rdy[3] && k4_coef_en4) begin
-      if (k4_sw_lst) begin
-        step_cnt4_k4 <= 4'hF;
-      end else if (step_cnt4_k4 == 4'hF && k4_bpe4_en) begin
+      if (step_cnt4_k4 == 4'hF && k4_bpe4_en) begin
         step_cnt4_k4 <= 4'h0;
       end else if (step_cnt4_k4 != 4'hF && step_cnt4_k4 != 4'd11) begin
         step_cnt4_k4 <= step_cnt4_k4 + 1;
@@ -2077,10 +2056,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage7_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage7_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[3] && k4_coef_en4 && step_cnt4_k4 != 4'd11) begin
-      if (k4_sw_lst) begin
-        stage7_cnt_k4 <= 12'hFFF;
-      end else if (k4_bpe4_en || step_cnt4_k4 == 2 || step_cnt4_k4 == 5 || step_cnt4_k4 == 8) begin
+      if (k4_bpe4_en || step_cnt4_k4 == 2 || step_cnt4_k4 == 5 || step_cnt4_k4 == 8) begin
         if (stage7_cnt_k4 == 12'hFFF) begin
           stage7_cnt_k4 <= 0;
         end else begin
@@ -2097,10 +2076,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage8_cnt_k4 <= 12'hFFF;
+    end else if (k4_sw_lst) begin
+      stage8_cnt_k4 <= 12'hFFF;
     end else if (k4_coef_rdy[3] && k4_coef_en4) begin
-      if (k4_sw_lst) begin
-        stage8_cnt_k4 <= 12'hFFF;
-      end else if (step_cnt4_k4 == 0 || step_cnt4_k4 == 1 || step_cnt4_k4 == 3 || step_cnt4_k4 == 4 
+      if (step_cnt4_k4 == 0 || step_cnt4_k4 == 1 || step_cnt4_k4 == 3 || step_cnt4_k4 == 4 
                 || step_cnt4_k4 == 6 || step_cnt4_k4 == 7 || step_cnt4_k4 == 9 || step_cnt4_k4 == 10) begin
         if (stage8_cnt_k4 == 12'hFFF) begin
           stage8_cnt_k4 <= 0;
@@ -2130,10 +2109,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       step_cnt5_k4 <= 5'h1F;
+    end else if (k4_sw_lst) begin
+      step_cnt5_k4 <= 5'h1F;
     end else if (k4_coef_rdy[4] && k4_coef_en5) begin
-      if (k4_sw_lst) begin
-        step_cnt5_k4 <= 5'h1F;
-      end else if (step_cnt5_k4 == 5'h1F && k4_bpe5_en) begin
+      if (step_cnt5_k4 == 5'h1F && k4_bpe5_en) begin
         step_cnt5_k4 <= 5'h0;
       end else if (step_cnt5_k4 != 5'h1F && step_cnt5_k4 != 5'd15) begin
         step_cnt5_k4 <= step_cnt5_k4 + 1;
@@ -2150,10 +2129,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
       stage9_cnt_k4 <= 12'h0;
+    end else if (k4_sw_lst) begin
+      stage9_cnt_k4 <= 12'h0;
     end else if (k4_coef_rdy[4] && k4_coef_en5) begin
-      if (k4_sw_lst) begin
-        stage9_cnt_k4 <= 12'h0;
-      end else if (step_cnt5_k4 != 5'h1F) begin
+      if (step_cnt5_k4 != 5'h1F) begin
           stage9_cnt_k4 <= stage9_cnt_k4 + 1;
       end else begin
         stage9_cnt_k4 <= stage9_cnt_k4;
@@ -2222,10 +2201,19 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   ///////////////
   // coef data //
   ///////////////
-  assign k1_coef_dat = (k1_mode_r == 2'b00 || k1_mode_r == 2'b01) ? fft_coef_ram_do : (k1_mode_r == 2'b10) ? ntt_coef_ram_do : (k1_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
-  assign k2_coef_dat = (k2_mode_r == 2'b00 || k2_mode_r == 2'b01) ? fft_coef_ram_do : (k2_mode_r == 2'b10) ? ntt_coef_ram_do : (k2_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
-  assign k3_coef_dat = (k3_mode_r == 2'b00 || k3_mode_r == 2'b01) ? fft_coef_ram_do : (k3_mode_r == 2'b10) ? ntt_coef_ram_do : (k3_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
-  assign k4_coef_dat = (k4_mode_r == 2'b00 || k4_mode_r == 2'b01) ? fft_coef_ram_do : (k4_mode_r == 2'b10) ? ntt_coef_ram_do : (k4_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
+  wire neg1;
+  wire neg2;
+  wire neg3;
+  wire neg4;
+  assign neg1 = k1_mode_r == 2'b01;
+  assign neg2 = k2_mode_r == 2'b01;
+  assign neg3 = k3_mode_r == 2'b01;
+  assign neg4 = k4_mode_r == 2'b01;
+
+  assign k1_coef_dat = (k1_mode_r == 2'b00) ? fft_coef_ram_do : (neg1) ? {fft_coef_ram_do[127:64], ~fft_coef_ram_do[63], fft_coef_ram_do[62:0]} :  (k1_mode_r == 2'b10) ? ntt_coef_ram_do : (k1_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
+  assign k2_coef_dat = (k2_mode_r == 2'b00) ? fft_coef_ram_do : (neg2) ? {fft_coef_ram_do[127:64], ~fft_coef_ram_do[63], fft_coef_ram_do[62:0]} :  (k2_mode_r == 2'b10) ? ntt_coef_ram_do : (k2_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
+  assign k3_coef_dat = (k3_mode_r == 2'b00) ? fft_coef_ram_do : (neg3) ? {fft_coef_ram_do[127:64], ~fft_coef_ram_do[63], fft_coef_ram_do[62:0]} :  (k3_mode_r == 2'b10) ? ntt_coef_ram_do : (k3_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
+  assign k4_coef_dat = (k4_mode_r == 2'b00) ? fft_coef_ram_do : (neg4) ? {fft_coef_ram_do[127:64], ~fft_coef_ram_do[63], fft_coef_ram_do[62:0]} :  (k4_mode_r == 2'b10) ? ntt_coef_ram_do : (k4_mode_r == 2'b11) ?  intt_coef_ram_do : 0 ;
 
   //////////////
   // coef vld //
@@ -2528,20 +2516,23 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     reg [3:0] ap_idle3_next;
     reg [3:0] ap_idle4_r;
     reg [3:0] ap_idle4_next;
-
+/*
     reg coef_ctrl_r;
     reg coef_ctrl_next;
 
     assign coef_ctrl = coef_ctrl_r;
+*/
     assign ap_ctrl = {ap_idle4_r, ap_done4_r, ap_idle3_r, ap_done3_r, ap_idle2_r, ap_done2_r, ap_idle1_r, ap_done1_r};
 
     always @(*) begin
+/*
         // coef_ctrl
         if ((meta_counter == data_length) && ss_rdy && (destination == COEF)) begin
             coef_ctrl_next = 1;
         end else begin
             coef_ctrl_next = coef_ctrl_r;
         end
+*/
         // ap_idle1
         if (meta_decode == 1 && destination == KERNEL_1) begin
             ap_idle1_next = 0;
@@ -2610,7 +2601,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
-        coef_ctrl_r <= 0;
+        // coef_ctrl_r <= 0;
         ap_idle1_r <= 1;
         ap_idle2_r <= 1;
         ap_idle3_r <= 1;
@@ -2620,7 +2611,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
         ap_done3_r <= 0;
         ap_done4_r <= 0;
       end else begin
-        coef_ctrl_r <= coef_ctrl_next;
+        // coef_ctrl_r <= coef_ctrl_next;
         ap_idle1_r <= ap_idle1_next;
         ap_idle2_r <= ap_idle2_next;
         ap_idle3_r <= ap_idle3_next;
