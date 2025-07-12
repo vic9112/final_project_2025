@@ -105,24 +105,42 @@ module kernel_NTT
     output  reg[12:0]   sram_addr_32
 
 );
-    localparam S1 = 4'b0000;
-    localparam S2 = 4'b0001;
-    localparam S3 = 4'b0010;
-    localparam S4 = 4'b0011;
-    localparam S5 = 4'b0100;
-    localparam S6 = 4'b0101;
-    localparam S7_to_10 = 4'b0110;
-    localparam OUT = 4'b0111;
-    localparam IDLE = 4'b1000;
+    localparam MODE_SWITCH = 4'b0000;
+    localparam S1          = 4'b0001;
+    localparam S2          = 4'b0010;
+    localparam S3          = 4'b0011;
+    localparam S4          = 4'b0100;
+    localparam S5          = 4'b0101;
+    localparam S6          = 4'b0110;
+    localparam S7_to_10    = 4'b0111;
+    localparam OUT         = 4'b1000;
+    localparam IDLE        = 4'b1001;
 
     localparam NTT = 2'b10;
     localparam iNTT = 2'b11;
 
     reg [6:0] s1_o_cnt, s2_o_cnt, s3_o_cnt, s4_o_cnt, s5_o_cnt, s6_o_cnt, s7_o_cnt, s8_o_cnt, s9_o_cnt, s10_o_cnt; 
+    wire [6:0] s7_o_cnt_o;
     reg [3:0] stage, next_stage;
 
 //============shared resources mux signal============//
     reg [(pDATA_WIDTH-1):0] sram_dout_128_buf, sram_dout_512_buf;
+    // s0 (ld dat) : sram 512
+    reg [(pDATA_WIDTH_2x-1):0] s0_i_sram_din_512_tmp;
+    reg [25:0] s0_i_sram_addr_512_tmp;
+    reg [3:0]s0_i_WE_512;
+    reg s0_i_sram_en_512;
+    reg [(pDATA_WIDTH-1):0] s0_i_sram_din_512;
+    reg [12:0]  s0_i_sram_addr_512;
+
+    // s1 input : sram 512
+    reg [(pDATA_WIDTH_2x-1):0] s1_i_sram_din_512_tmp;
+    reg [25:0] s1_i_sram_addr_512_tmp;
+    reg [3:0]s1_i_WE_512;
+    reg s1_i_sram_en_512;
+    wire [(pDATA_WIDTH-1):0] s1_i_sram_din_512;
+    wire [12:0]  s1_i_sram_addr_512;
+
     // s1 output : sram 128
     reg [(pDATA_WIDTH_2x-1):0] s1_o_sram_din_128_tmp;
     reg [25:0] s1_o_sram_addr_128_tmp;
@@ -245,6 +263,27 @@ module kernel_NTT
     wire [12:0] sm_o_sram_addr_128;
     reg [(pDATA_WIDTH-1):0] sm_o_sram_din_128;
 
+    // mode switch
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE1_ain;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE1_bin;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE1_coef;
+    reg ms_BPE1_i_vld, nxt_ms_BPE1_i_vld;
+
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE2_ain;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE2_bin;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE2_coef;
+    reg ms_BPE2_i_vld, nxt_ms_BPE2_i_vld;
+
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE3_ain;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE3_bin;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE3_coef;
+    reg ms_BPE3_i_vld, nxt_ms_BPE3_i_vld;
+
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE4_ain;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE4_bin;
+    reg  [(pDATA_WIDTH-1):0]  ms_BPE4_coef;
+    reg ms_BPE4_i_vld, nxt_ms_BPE4_i_vld;
+
     // s1 : BPE1
     reg  [(pDATA_WIDTH-1):0] s1_BPE1_ain;
     reg  [(pDATA_WIDTH-1):0] s1_BPE1_bin;
@@ -306,19 +345,20 @@ module kernel_NTT
     reg s10_BPE4_i_vld;
 
 // =============coef=================//
-    reg [127:0] W0, W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W13, W14, W15, W16, W17, W18, W19, W20, W21, W22, W23, W24, W25, W26, W27, W28, W29, W30, W31;
+    wire [127:0] W0;
+    reg [127:0] W1, W2, W3, W4, W5, W6, W7, W8, W9, W10, W11, W12, W13, W14, W15, W16, W17, W18, W19, W20, W21, W22, W23, W24, W25, W26, W27, W28, W29, W30, W31;
     reg [127:0] W32, W33, W34, W35, W36, W37, W38, W39, W40, W41, W42, W43, W44, W45, W46, W47, W48, W49, W50, W51, W52, W53, W54, W55, W56, W57, W58, W59, W60, W61, W62, W63;
 
 //======================================== general declarations ======================================== // 
 //============ kernel operation mode ============//
-    reg [7:0] mode_state;
-    always @(posedge clk or negedge rstn) begin
-        if (!rstn) begin
-            mode_state <= 0;
-        end else begin
-            mode_state <= (decode) ? mode : mode_state;
-        end
-    end
+    // reg [7:0] mode_state;
+    // always @(posedge clk or negedge rstn) begin
+    //     if (!rstn) begin
+    //         mode_state <= 0;
+    //     end else begin
+    //         mode_state <= (decode) ? mode : mode_state;
+    //     end
+    // end
 
 //=============== kernel state ===============//
     localparam KER_IDLE = 1'b0;
@@ -361,7 +401,6 @@ module kernel_NTT
     assign BPE2_o_rdy = 1;
     assign BPE3_o_rdy = 1;
     assign BPE4_o_rdy = 1;
-
     
 //==================clk_2x, two phase=======================//
     reg phase; 
@@ -386,13 +425,11 @@ module kernel_NTT
 
     assign next_coef_idx = (coef_vld && coef_rdy) ? ((coef_idx == 6'd63) ? coef_idx : coef_idx + 1) : coef_idx;
 
-    always @* begin
-        W0 = (coef_vld && coef_rdy && next_coef_idx == 0) ? coef_dat : W0;
-    end
-
+    assign W0 = (coef_idx == 0) ? coef_dat : W0;
+    
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
-            W0 <= 0;  W1 <= 0;  W2 <= 0;  W3 <= 0;  W4 <= 0;  W5 <= 0;  W6 <= 0;  W7 <= 0;
+            W1 <= 0;  W2 <= 0;  W3 <= 0;  W4 <= 0;  W5 <= 0;  W6 <= 0;  W7 <= 0;
             W8 <= 0;  W9 <= 0;  W10 <= 0; W11 <= 0; W12 <= 0; W13 <= 0; W14 <= 0; W15 <= 0;
             W16 <= 0; W17 <= 0; W18 <= 0; W19 <= 0; W20 <= 0; W21 <= 0; W22 <= 0; W23 <= 0;
             W24 <= 0; W25 <= 0; W26 <= 0; W27 <= 0; W28 <= 0; W29 <= 0; W30 <= 0; W31 <= 0;
@@ -401,115 +438,257 @@ module kernel_NTT
             W48 <= 0; W49 <= 0; W50 <= 0; W51 <= 0; W52 <= 0; W53 <= 0; W54 <= 0; W55 <= 0;
             W56 <= 0; W57 <= 0; W58 <= 0; W59 <= 0; W60 <= 0; W61 <= 0; W62 <= 0; W63 <= 0;
         end else begin
-            W1 <=  (coef_vld && coef_rdy && coef_idx == 0) ? coef_dat : W1;
-            W2 <=  (coef_vld && coef_rdy && coef_idx == 1) ? coef_dat : W2;
-            W3 <=  (coef_vld && coef_rdy && coef_idx == 2) ? coef_dat : W3;
-            W4 <=  (coef_vld && coef_rdy && coef_idx == 3) ? coef_dat : W4;
-            W5 <=  (coef_vld && coef_rdy && coef_idx == 4) ? coef_dat : W5;
-            W6 <=  (coef_vld && coef_rdy && coef_idx == 5) ? coef_dat : W6;
-            W7 <=  (coef_vld && coef_rdy && coef_idx == 6) ? coef_dat : W7;
-            W8 <=  (coef_vld && coef_rdy && coef_idx == 7) ? coef_dat : W8;
-            W9 <=  (coef_vld && coef_rdy && coef_idx == 8) ? coef_dat : W9;
-            W10 <= (coef_vld && coef_rdy && coef_idx == 9) ? coef_dat : W10;
-            W11 <= (coef_vld && coef_rdy && coef_idx == 10) ? coef_dat : W11;
-            W12 <= (coef_vld && coef_rdy && coef_idx == 11) ? coef_dat : W12;
-            W13 <= (coef_vld && coef_rdy && coef_idx == 12) ? coef_dat : W13;
-            W14 <= (coef_vld && coef_rdy && coef_idx == 13) ? coef_dat : W14;
-            W15 <= (coef_vld && coef_rdy && coef_idx == 14) ? coef_dat : W15;
-            W16 <= (coef_vld && coef_rdy && coef_idx == 15) ? coef_dat : W16;
-            W17 <= (coef_vld && coef_rdy && coef_idx == 16) ? coef_dat : W17;
-            W18 <= (coef_vld && coef_rdy && coef_idx == 17) ? coef_dat : W18;
-            W19 <= (coef_vld && coef_rdy && coef_idx == 18) ? coef_dat : W19;
-            W20 <= (coef_vld && coef_rdy && coef_idx == 19) ? coef_dat : W20;
-            W21 <= (coef_vld && coef_rdy && coef_idx == 20) ? coef_dat : W21;
-            W22 <= (coef_vld && coef_rdy && coef_idx == 21) ? coef_dat : W22;
-            W23 <= (coef_vld && coef_rdy && coef_idx == 22) ? coef_dat : W23;
-            W24 <= (coef_vld && coef_rdy && coef_idx == 23) ? coef_dat : W24;
-            W25 <= (coef_vld && coef_rdy && coef_idx == 24) ? coef_dat : W25;
-            W26 <= (coef_vld && coef_rdy && coef_idx == 25) ? coef_dat : W26;
-            W27 <= (coef_vld && coef_rdy && coef_idx == 26) ? coef_dat : W27;
-            W28 <= (coef_vld && coef_rdy && coef_idx == 27) ? coef_dat : W28;
-            W29 <= (coef_vld && coef_rdy && coef_idx == 28) ? coef_dat : W29;
-            W30 <= (coef_vld && coef_rdy && coef_idx == 29) ? coef_dat : W30;
-            W31 <= (coef_vld && coef_rdy && coef_idx == 30) ? coef_dat : W31;
-            W32 <= (coef_vld && coef_rdy && coef_idx == 31) ? coef_dat : W32;
-            W33 <= (coef_vld && coef_rdy && coef_idx == 32) ? coef_dat : W33;
-            W34 <= (coef_vld && coef_rdy && coef_idx == 33) ? coef_dat : W34;
-            W35 <= (coef_vld && coef_rdy && coef_idx == 34) ? coef_dat : W35;
-            W36 <= (coef_vld && coef_rdy && coef_idx == 35) ? coef_dat : W36;
-            W37 <= (coef_vld && coef_rdy && coef_idx == 36) ? coef_dat : W37;
-            W38 <= (coef_vld && coef_rdy && coef_idx == 37) ? coef_dat : W38;
-            W39 <= (coef_vld && coef_rdy && coef_idx == 38) ? coef_dat : W39;
-            W40 <= (coef_vld && coef_rdy && coef_idx == 39) ? coef_dat : W40;
-            W41 <= (coef_vld && coef_rdy && coef_idx == 40) ? coef_dat : W41;
-            W42 <= (coef_vld && coef_rdy && coef_idx == 41) ? coef_dat : W42;
-            W43 <= (coef_vld && coef_rdy && coef_idx == 42) ? coef_dat : W43;
-            W44 <= (coef_vld && coef_rdy && coef_idx == 43) ? coef_dat : W44;
-            W45 <= (coef_vld && coef_rdy && coef_idx == 44) ? coef_dat : W45;
-            W46 <= (coef_vld && coef_rdy && coef_idx == 45) ? coef_dat : W46;
-            W47 <= (coef_vld && coef_rdy && coef_idx == 46) ? coef_dat : W47;
-            W48 <= (coef_vld && coef_rdy && coef_idx == 47) ? coef_dat : W48;
-            W49 <= (coef_vld && coef_rdy && coef_idx == 48) ? coef_dat : W49;
-            W50 <= (coef_vld && coef_rdy && coef_idx == 49) ? coef_dat : W50;
-            W51 <= (coef_vld && coef_rdy && coef_idx == 50) ? coef_dat : W51;
-            W52 <= (coef_vld && coef_rdy && coef_idx == 51) ? coef_dat : W52;
-            W53 <= (coef_vld && coef_rdy && coef_idx == 52) ? coef_dat : W53;
-            W54 <= (coef_vld && coef_rdy && coef_idx == 53) ? coef_dat : W54;
-            W55 <= (coef_vld && coef_rdy && coef_idx == 54) ? coef_dat : W55;
-            W56 <= (coef_vld && coef_rdy && coef_idx == 55) ? coef_dat : W56;
-            W57 <= (coef_vld && coef_rdy && coef_idx == 56) ? coef_dat : W57;
-            W58 <= (coef_vld && coef_rdy && coef_idx == 57) ? coef_dat : W58;
-            W59 <= (coef_vld && coef_rdy && coef_idx == 58) ? coef_dat : W59;
-            W60 <= (coef_vld && coef_rdy && coef_idx == 59) ? coef_dat : W60;
-            W61 <= (coef_vld && coef_rdy && coef_idx == 60) ? coef_dat : W61;
-            W62 <= (coef_vld && coef_rdy && coef_idx == 61) ? coef_dat : W62;
-            W63 <= (coef_vld && coef_rdy && coef_idx == 62) ? coef_dat : W63;
+            W1 <=  (coef_vld && coef_rdy && coef_idx ==  1) ? coef_dat : W1;
+            W2 <=  (coef_vld && coef_rdy && coef_idx ==  2) ? coef_dat : W2;
+            W3 <=  (coef_vld && coef_rdy && coef_idx ==  3) ? coef_dat : W3;
+            W4 <=  (coef_vld && coef_rdy && coef_idx ==  4) ? coef_dat : W4;
+            W5 <=  (coef_vld && coef_rdy && coef_idx ==  5) ? coef_dat : W5;
+            W6 <=  (coef_vld && coef_rdy && coef_idx ==  6) ? coef_dat : W6;
+            W7 <=  (coef_vld && coef_rdy && coef_idx ==  7) ? coef_dat : W7;
+            W8 <=  (coef_vld && coef_rdy && coef_idx ==  8) ? coef_dat : W8;
+            W9 <=  (coef_vld && coef_rdy && coef_idx ==  9) ? coef_dat : W9;
+            W10 <= (coef_vld && coef_rdy && coef_idx == 10) ? coef_dat : W10;
+            W11 <= (coef_vld && coef_rdy && coef_idx == 11) ? coef_dat : W11;
+            W12 <= (coef_vld && coef_rdy && coef_idx == 12) ? coef_dat : W12;
+            W13 <= (coef_vld && coef_rdy && coef_idx == 13) ? coef_dat : W13;
+            W14 <= (coef_vld && coef_rdy && coef_idx == 14) ? coef_dat : W14;
+            W15 <= (coef_vld && coef_rdy && coef_idx == 15) ? coef_dat : W15;
+            W16 <= (coef_vld && coef_rdy && coef_idx == 16) ? coef_dat : W16;
+            W17 <= (coef_vld && coef_rdy && coef_idx == 17) ? coef_dat : W17;
+            W18 <= (coef_vld && coef_rdy && coef_idx == 18) ? coef_dat : W18;
+            W19 <= (coef_vld && coef_rdy && coef_idx == 19) ? coef_dat : W19;
+            W20 <= (coef_vld && coef_rdy && coef_idx == 20) ? coef_dat : W20;
+            W21 <= (coef_vld && coef_rdy && coef_idx == 21) ? coef_dat : W21;
+            W22 <= (coef_vld && coef_rdy && coef_idx == 22) ? coef_dat : W22;
+            W23 <= (coef_vld && coef_rdy && coef_idx == 23) ? coef_dat : W23;
+            W24 <= (coef_vld && coef_rdy && coef_idx == 24) ? coef_dat : W24;
+            W25 <= (coef_vld && coef_rdy && coef_idx == 25) ? coef_dat : W25;
+            W26 <= (coef_vld && coef_rdy && coef_idx == 26) ? coef_dat : W26;
+            W27 <= (coef_vld && coef_rdy && coef_idx == 27) ? coef_dat : W27;
+            W28 <= (coef_vld && coef_rdy && coef_idx == 28) ? coef_dat : W28;
+            W29 <= (coef_vld && coef_rdy && coef_idx == 29) ? coef_dat : W29;
+            W30 <= (coef_vld && coef_rdy && coef_idx == 30) ? coef_dat : W30;
+            W31 <= (coef_vld && coef_rdy && coef_idx == 31) ? coef_dat : W31;
+            W32 <= (coef_vld && coef_rdy && coef_idx == 32) ? coef_dat : W32;
+            W33 <= (coef_vld && coef_rdy && coef_idx == 33) ? coef_dat : W33;
+            W34 <= (coef_vld && coef_rdy && coef_idx == 34) ? coef_dat : W34;
+            W35 <= (coef_vld && coef_rdy && coef_idx == 35) ? coef_dat : W35;
+            W36 <= (coef_vld && coef_rdy && coef_idx == 36) ? coef_dat : W36;
+            W37 <= (coef_vld && coef_rdy && coef_idx == 37) ? coef_dat : W37;
+            W38 <= (coef_vld && coef_rdy && coef_idx == 38) ? coef_dat : W38;
+            W39 <= (coef_vld && coef_rdy && coef_idx == 39) ? coef_dat : W39;
+            W40 <= (coef_vld && coef_rdy && coef_idx == 40) ? coef_dat : W40;
+            W41 <= (coef_vld && coef_rdy && coef_idx == 41) ? coef_dat : W41;
+            W42 <= (coef_vld && coef_rdy && coef_idx == 42) ? coef_dat : W42;
+            W43 <= (coef_vld && coef_rdy && coef_idx == 43) ? coef_dat : W43;
+            W44 <= (coef_vld && coef_rdy && coef_idx == 44) ? coef_dat : W44;
+            W45 <= (coef_vld && coef_rdy && coef_idx == 45) ? coef_dat : W45;
+            W46 <= (coef_vld && coef_rdy && coef_idx == 46) ? coef_dat : W46;
+            W47 <= (coef_vld && coef_rdy && coef_idx == 47) ? coef_dat : W47;
+            W48 <= (coef_vld && coef_rdy && coef_idx == 48) ? coef_dat : W48;
+            W49 <= (coef_vld && coef_rdy && coef_idx == 49) ? coef_dat : W49;
+            W50 <= (coef_vld && coef_rdy && coef_idx == 50) ? coef_dat : W50;
+            W51 <= (coef_vld && coef_rdy && coef_idx == 51) ? coef_dat : W51;
+            W52 <= (coef_vld && coef_rdy && coef_idx == 52) ? coef_dat : W52;
+            W53 <= (coef_vld && coef_rdy && coef_idx == 53) ? coef_dat : W53;
+            W54 <= (coef_vld && coef_rdy && coef_idx == 54) ? coef_dat : W54;
+            W55 <= (coef_vld && coef_rdy && coef_idx == 55) ? coef_dat : W55;
+            W56 <= (coef_vld && coef_rdy && coef_idx == 56) ? coef_dat : W56;
+            W57 <= (coef_vld && coef_rdy && coef_idx == 57) ? coef_dat : W57;
+            W58 <= (coef_vld && coef_rdy && coef_idx == 58) ? coef_dat : W58;
+            W59 <= (coef_vld && coef_rdy && coef_idx == 59) ? coef_dat : W59;
+            W60 <= (coef_vld && coef_rdy && coef_idx == 60) ? coef_dat : W60;
+            W61 <= (coef_vld && coef_rdy && coef_idx == 61) ? coef_dat : W61;
+            W62 <= (coef_vld && coef_rdy && coef_idx == 62) ? coef_dat : W62;
+            W63 <= (coef_vld && coef_rdy && coef_idx == 63) ? coef_dat : W63;
         end
-    end                           
+    end                                                
+
+//==================================== butterfly stage switch to NTT ===================================//
+//============= stage 0 ============== // 
+// Mode switch: BPE1、BPE2、BPE3、BPE4 // 
+// Read: ld_dat                       // 
+// Write: sram 512 * 128              // 
+//============= stage 0 ==============// 
+
+//============ switch mode for BPE ============ //
+    localparam FIRST_VLD = 2'b00;
+    localparam WAIT_22C = 2'b01;
+    localparam DONE_MS = 2'b10;
+
+    reg [1:0] state_vld, nxt_state_vld;
+    reg [4:0] count_to_sec_vld, nxt_count_to_sec_vld; //22cyc
+
+    always@* 
+        case(state_vld)
+            FIRST_VLD: begin
+                if(decode) begin
+                    nxt_ms_BPE1_i_vld = 1; 
+                    nxt_ms_BPE2_i_vld = 1; 
+                    nxt_ms_BPE3_i_vld = 1; 
+                    nxt_ms_BPE4_i_vld = 1; 
+                    nxt_count_to_sec_vld = count_to_sec_vld + 1;
+                    nxt_state_vld = WAIT_22C;
+                end else begin
+                    nxt_ms_BPE1_i_vld = 0; 
+                    nxt_ms_BPE2_i_vld = 0; 
+                    nxt_ms_BPE3_i_vld = 0; 
+                    nxt_ms_BPE4_i_vld = 0; 
+                    nxt_count_to_sec_vld = count_to_sec_vld;
+                    nxt_state_vld = FIRST_VLD;
+                end
+            end
+            WAIT_22C: begin
+                if(count_to_sec_vld == 28) begin  // or BPE_rdy?
+                    nxt_ms_BPE1_i_vld = 1; 
+                    nxt_ms_BPE2_i_vld = 1; 
+                    nxt_ms_BPE3_i_vld = 1; 
+                    nxt_ms_BPE4_i_vld = 1; 
+                    nxt_count_to_sec_vld = 0;
+                    nxt_state_vld = DONE_MS;
+                end else begin
+                    nxt_ms_BPE1_i_vld = 0; 
+                    nxt_ms_BPE2_i_vld = 0; 
+                    nxt_ms_BPE3_i_vld = 0; 
+                    nxt_ms_BPE4_i_vld = 0; 
+                    nxt_count_to_sec_vld = count_to_sec_vld + 1;
+                    nxt_state_vld = WAIT_22C;
+                end
+            end
+            DONE_MS: begin
+                nxt_ms_BPE1_i_vld = 0; 
+                nxt_ms_BPE2_i_vld = 0; 
+                nxt_ms_BPE3_i_vld = 0; 
+                nxt_ms_BPE4_i_vld = 0; 
+                nxt_count_to_sec_vld = 0;
+                nxt_state_vld = DONE_MS;
+            end
+            default: begin
+                nxt_ms_BPE1_i_vld = 0; 
+                nxt_ms_BPE2_i_vld = 0; 
+                nxt_ms_BPE3_i_vld = 0; 
+                nxt_ms_BPE4_i_vld = 0; 
+                nxt_count_to_sec_vld = 0;
+                nxt_state_vld = DONE_MS;
+            end
+        endcase
+
+    // first vld, counter to second vld 
+    always @(posedge clk or negedge rstn)
+        if(!rstn) begin
+            ms_BPE1_ain   <= 0;
+            ms_BPE1_bin   <= 0;
+            ms_BPE1_coef  <= 0;
+            ms_BPE1_i_vld <= 0; 
+
+            ms_BPE2_ain   <= 0;
+            ms_BPE2_bin   <= 0;
+            ms_BPE2_coef  <= 0;
+            ms_BPE2_i_vld <= 0; 
+
+            ms_BPE3_ain   <= 0;
+            ms_BPE3_bin   <= 0;
+            ms_BPE3_coef  <= 0;
+            ms_BPE3_i_vld <= 0; 
+
+            ms_BPE4_ain   <= 0;
+            ms_BPE4_bin   <= 0;
+            ms_BPE4_coef  <= 0;
+            ms_BPE4_i_vld <= 0; 
+
+            count_to_sec_vld <= 0;
+            state_vld <= FIRST_VLD;
+        end else begin
+            ms_BPE1_ain   <= 0;
+            ms_BPE1_bin   <= 0;
+            ms_BPE1_coef  <= 0;
+            ms_BPE1_i_vld <= nxt_ms_BPE1_i_vld; 
+
+            ms_BPE2_ain   <= 0;
+            ms_BPE2_bin   <= 0;
+            ms_BPE2_coef  <= 0;
+            ms_BPE2_i_vld <= nxt_ms_BPE2_i_vld; 
+
+            ms_BPE3_ain   <= 0;
+            ms_BPE3_bin   <= 0;
+            ms_BPE3_coef  <= 0;
+            ms_BPE3_i_vld <= nxt_ms_BPE3_i_vld; 
+
+            ms_BPE4_ain   <= 0;
+            ms_BPE4_bin   <= 0;
+            ms_BPE4_coef  <= 0;
+            ms_BPE4_i_vld <= nxt_ms_BPE4_i_vld; 
+
+            count_to_sec_vld <= nxt_count_to_sec_vld;
+            state_vld <= nxt_state_vld;
+        end
+
+//================= store s1 input data to sram==============//
+    wire [12:0] s0_addr;
+
+    reg [7:0] s0_i_cnt;             
+
+    always@(posedge clk or negedge rstn) 
+        if(!rstn) begin
+            s0_i_cnt <= 0;
+        end else begin
+            s0_i_cnt <= (ld_vld && ld_rdy) ? 
+                        ((s0_i_cnt == 8'd128) ? 0 : s0_i_cnt + 1) : s0_i_cnt;
+        end 
+    
+    assign s0_addr = 4* s0_i_cnt;
+
+    always@(posedge clk or negedge rstn) begin
+        if(!rstn) begin
+            s0_i_sram_en_512 <= 0;
+            s0_i_WE_512 <= 0;
+            s0_i_sram_addr_512 <= 0;
+            s0_i_sram_din_512 <= 0;
+        end else begin
+            s0_i_sram_en_512 <= (ld_vld && ld_rdy);
+            s0_i_WE_512 <= {4{(ld_vld && ld_rdy)}};
+            s0_i_sram_addr_512 <= (ld_vld && ld_rdy) ? s0_addr : s0_i_sram_addr_512; //要想一下
+            s0_i_sram_din_512 <= (ld_vld && ld_rdy) ? ld_dat : s0_i_sram_din_512;
+        end
+    end
 
 //====================================== butterfly stage 1 ======================================// 
 //============= stage 1 =============// 
 // Arithmetic unit: BPE1             // 
-// Read: ld_dat                      // 
+// Read: sram 512 * 128              // 
 // Write: sram 128 * 128             // 
 //============= stage 1 =============// 
 
 //============= Get s1 input data ===========//
-    reg [7:0] s1_i_cnt;             // 0~1023
+    reg [6:0] s1_i_cnt;          
 
     always@(posedge clk or negedge rstn) 
         if(!rstn) begin
             s1_i_cnt <= 0;
         end else begin
-            s1_i_cnt <= (ld_vld && ld_rdy) ? 
-                        ((s1_i_cnt == 8'd128) ? 0 : s1_i_cnt + 1) : s1_i_cnt;
+            s1_i_cnt <= (stage == S1) ? ((s1_i_cnt == 8'd65) ? s1_i_cnt : s1_i_cnt + 1) : s1_i_cnt;
         end 
     
 //============= input to BPE1(data, coefficient) ===========//
-    reg [(pDATA_WIDTH-1):0] s1_coef;   //W0 = {w7, w6, w5, w4, w3, w2, w1, w0}
-    
-    always@(posedge clk or negedge rstn) begin
-        if(!rstn) begin
-            s1_BPE1_ain <= 0;
-            s1_BPE1_bin <= 0;
-            s1_BPE1_coef <= 0;
-            s1_BPE1_i_vld <= 0;
-        end else begin
-            s1_BPE1_ain <= (ld_vld && ld_rdy && s1_i_cnt[0] == 1'b0) ? ld_dat : s1_BPE1_ain;
-            s1_BPE1_bin <= (ld_vld && ld_rdy && s1_i_cnt[0] == 1'b1) ? ld_dat : s1_BPE1_bin;
-            s1_BPE1_coef <= (ld_vld && ld_rdy && s1_i_cnt[0] == 1'b1) ? {8{W0[15:0]}} : s1_BPE1_coef;
-            s1_BPE1_i_vld <= (ld_vld && ld_rdy && s1_i_cnt[0] == 1'b1) ? 1 : 0;
-        end 
-    end
+    wire [12:0] s1_i_addr_1, s1_i_addr_2;
 
-    always@(posedge clk or negedge rstn) begin
-        if(!rstn) begin
-            s1_coef <= 0;
-        end else begin
-            s1_coef <= (coef_vld && coef_rdy) ? coef_dat : s1_coef;
-        end 
-    end
+    assign s1_i_addr_1 = 4 * (2* s1_i_cnt);
+    assign s1_i_addr_2 = 4 * (2 * s1_i_cnt + 1'd1);
 
+    always@* begin
+        s1_i_sram_addr_512_tmp [25:13] = (stage == S1 && s1_i_cnt <= 64) ? s1_i_addr_2 : s1_i_sram_addr_512_tmp;
+        s1_i_sram_addr_512_tmp [12:0] = (stage == S1 && s1_i_cnt <= 64) ? s1_i_addr_1 : s1_i_sram_addr_512_tmp;
+        s1_i_sram_en_512 = (stage == S1 && s1_i_cnt <= 64);
+    end 
+
+    assign s1_i_sram_addr_512 = (!phase) ? s1_i_sram_addr_512_tmp[25:13]: s1_i_sram_addr_512_tmp[12:0];
+
+    always@* begin
+        s1_BPE1_ain = (phase && s1_i_cnt >= 1 && s1_i_cnt <= 64) ? sram_dout_512_buf : s1_BPE1_ain;
+        s1_BPE1_bin = (!phase && s1_i_cnt >= 1 && s1_i_cnt <= 64) ? sram_dout_512_buf : s1_BPE1_bin;
+        s1_BPE1_i_vld = (!phase && s1_i_cnt >= 1 && s1_i_cnt <= 64) ? 1 : 0;
+        s1_BPE1_coef = (!phase && s1_i_cnt >= 1 && s1_i_cnt <= 64) ? {8{W0[15:0]}} : s1_BPE1_coef;
+    end
 
 //============= output to bram 128===========//
     reg [6:0] s1_addr; 
@@ -539,8 +718,8 @@ module kernel_NTT
             s1_o_sram_en_128 <= (stage == S1 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s1_o_sram_din_128 = (phase) ? s1_o_sram_din_128_tmp[255:128]: s1_o_sram_din_128_tmp[127:0];
-    assign s1_o_sram_addr_128 = (phase) ? s1_o_sram_addr_128_tmp[25:13]: s1_o_sram_addr_128_tmp[12:0];
+    assign s1_o_sram_din_128 = (!phase) ? s1_o_sram_din_128_tmp[255:128]: s1_o_sram_din_128_tmp[127:0];
+    assign s1_o_sram_addr_128 = (!phase) ? s1_o_sram_addr_128_tmp[25:13]: s1_o_sram_addr_128_tmp[12:0];
 
     
 
@@ -575,7 +754,7 @@ always@(posedge clk or negedge rstn) begin
     if(!rstn) begin
         s2_i_cnt <= 0;
     end else begin
-        s2_i_cnt <= (stage == S2) ? ((s2_i_cnt == 66) ? s2_i_cnt : s2_i_cnt + 1) : s2_i_cnt;
+        s2_i_cnt <= (stage == S2) ? ((s2_i_cnt == 7'd65) ? s2_i_cnt : s2_i_cnt + 1) : s2_i_cnt;
     end
 end
 
@@ -586,32 +765,38 @@ end
     assign s2_i_addr_2 = 4 * (7'd64 + s2_i_cnt);
 
     always@* begin
-        s2_i_sram_addr_128_tmp [25:13] <= (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_2 : s2_i_sram_addr_128_tmp;
-        s2_i_sram_addr_128_tmp [12:0] <= (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_1 : s2_i_sram_addr_128_tmp;
+        s2_i_sram_addr_128_tmp [25:13] = (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_2 : s2_i_sram_addr_128_tmp;
+        s2_i_sram_addr_128_tmp [12:0] = (stage == S2 && s2_i_cnt <= 64) ? s2_i_addr_1 : s2_i_sram_addr_128_tmp;
         s2_i_sram_en_128 = (stage == S2 && s2_i_cnt <= 64);
     end
 
-    assign s2_i_sram_addr_128 = (phase) ? s2_i_sram_addr_128_tmp[25:13]: s2_i_sram_addr_128_tmp[12:0];
+    assign s2_i_sram_addr_128 = (!phase) ? s2_i_sram_addr_128_tmp[25:13]: s2_i_sram_addr_128_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s2_BPE1_ain <= 0;
-            s2_BPE1_bin <= 0;
-            s2_BPE1_i_vld <= 0;
-        end else begin
-            s2_BPE1_ain <= (!phase && s2_i_cnt >= 1 && s2_i_cnt <= 65) ? sram_dout_128_buf : s2_BPE1_ain;
-            s2_BPE1_bin <= (phase && s2_i_cnt >= 1 && s2_i_cnt <= 65) ? sram_dout_128_buf : s2_BPE1_bin;
-            s2_BPE1_i_vld <= (phase && s2_i_cnt >= 1 && s2_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s2_BPE1_ain <= 0;
+    //         s2_BPE1_bin <= 0;
+    //         s2_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s2_BPE1_ain <= (phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? sram_dout_128_buf : s2_BPE1_ain;
+    //         s2_BPE1_bin <= (!phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? sram_dout_128_buf : s2_BPE1_bin;
+    //         s2_BPE1_i_vld <= (!phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s2_BPE1_ain = (phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? sram_dout_128_buf : s2_BPE1_ain;
+        s2_BPE1_bin = (!phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? sram_dout_128_buf : s2_BPE1_bin;
+        s2_BPE1_i_vld = (!phase && s2_i_cnt >= 1 && s2_i_cnt <= 64) ? 1 : 0;
     end
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s2_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if((s2_i_cnt >= 1 && s2_i_cnt <= 32)) s2_BPE1_coef <=  {8{W0[15:0]}};
-                else if((s2_i_cnt >= 33 && s2_i_cnt <= 65)) s2_BPE1_coef <=  {8{W1[15:0]}};
+            if(!phase) begin
+                if((s2_i_cnt >= 0 && s2_i_cnt <= 31)) s2_BPE1_coef <=  {8{W0[15:0]}};
+                else if((s2_i_cnt >= 32 && s2_i_cnt <= 63)) s2_BPE1_coef <=  {8{W1[15:0]}};
                 else s2_BPE1_coef <= s2_BPE1_coef;
             end else begin
                 s2_BPE1_coef <= s2_BPE1_coef;
@@ -620,7 +805,6 @@ end
 
 //============= output to bram 512===========//
     reg [6:0] s2_addr; 
-    wire [6:0] s2_current_addr;
     wire [12:0] s2_current_addr_1, s2_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
@@ -630,10 +814,6 @@ end
             s2_o_cnt <= (stage ==S2 && BPE1_o_vld && BPE1_o_rdy) ? 
                         ((s2_o_cnt == 7'd64) ? 0 : s2_o_cnt + 1) : s2_o_cnt;
         end 
-
-
-    assign s2_current_addr_1 = 4 * s2_current_addr;
-    assign s2_current_addr_2 = 4 * (5'd16 + s2_current_addr);
 
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -650,8 +830,8 @@ end
             s2_o_sram_en_512 <= (stage == S2 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s2_o_sram_din_512 = (phase) ? s2_o_sram_din_512_tmp[255:128]: s2_o_sram_din_512_tmp[127:0];
-    assign s2_o_sram_addr_512 = (phase) ? s2_o_sram_addr_512_tmp[25:13]: s2_o_sram_addr_512_tmp[12:0];
+    assign s2_o_sram_din_512 = (!phase) ? s2_o_sram_din_512_tmp[255:128]: s2_o_sram_din_512_tmp[127:0];
+    assign s2_o_sram_addr_512 = (!phase) ? s2_o_sram_addr_512_tmp[25:13]: s2_o_sram_addr_512_tmp[12:0];
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
@@ -669,7 +849,8 @@ end
         end
     end
 
-    assign s2_current_addr = s2_addr;
+    assign s2_current_addr_1 = 4 * s2_addr;
+    assign s2_current_addr_2 = 4 * (5'd16 + s2_addr);
 
 //====================================== butterfly stage 3 ======================================// 
 //============= stage 3 =============// 
@@ -685,7 +866,7 @@ always@(posedge clk or negedge rstn) begin
     if(!rstn) begin
         s3_i_cnt <= 0;
     end else begin
-        s3_i_cnt <= (stage == S3) ? ((s3_i_cnt == 7'd66) ? s3_i_cnt : s3_i_cnt + 1) : s3_i_cnt;
+        s3_i_cnt <= (stage == S3) ? ((s3_i_cnt == 7'd65) ? s3_i_cnt : s3_i_cnt + 1) : s3_i_cnt;
     end
 end
 
@@ -696,34 +877,40 @@ end
     assign s3_i_addr_2 = 4 * (7'd64 + s3_i_cnt);
 
     always@* begin
-        s3_i_sram_addr_512_tmp [25:13] <= (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_2 : s3_i_sram_addr_512_tmp;
-        s3_i_sram_addr_512_tmp [12:0] <= (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_1 : s3_i_sram_addr_512_tmp;
+        s3_i_sram_addr_512_tmp [25:13] = (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_2 : s3_i_sram_addr_512_tmp;
+        s3_i_sram_addr_512_tmp [12:0] = (stage == S3 && s3_i_cnt <= 64) ? s3_i_addr_1 : s3_i_sram_addr_512_tmp;
         s3_i_sram_en_512 = (stage == S3 && s3_i_cnt <= 64);
     end
 
-    assign s3_i_sram_addr_512 = (phase) ? s3_i_sram_addr_512_tmp[25:13]: s3_i_sram_addr_512_tmp[12:0];
+    assign s3_i_sram_addr_512 = (!phase) ? s3_i_sram_addr_512_tmp[25:13]: s3_i_sram_addr_512_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s3_BPE1_ain <= 0;
-            s3_BPE1_bin <= 0;
-            s3_BPE1_i_vld <= 0;
-        end else begin
-            s3_BPE1_ain <= (!phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? sram_dout_512_buf : s3_BPE1_ain;
-            s3_BPE1_bin <= (phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? sram_dout_512_buf : s3_BPE1_bin;
-            s3_BPE1_i_vld <= (phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s3_BPE1_ain <= 0;
+    //         s3_BPE1_bin <= 0;
+    //         s3_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s3_BPE1_ain <= (!phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? sram_dout_512_buf : s3_BPE1_ain;
+    //         s3_BPE1_bin <= (phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? sram_dout_512_buf : s3_BPE1_bin;
+    //         s3_BPE1_i_vld <= (phase && s3_i_cnt >= 1 && s3_i_cnt <= 65) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s3_BPE1_ain = (phase && s3_i_cnt >= 1 && s3_i_cnt <= 64) ? sram_dout_512_buf : s3_BPE1_ain;
+        s3_BPE1_bin = (!phase && s3_i_cnt >= 1 && s3_i_cnt <= 64) ? sram_dout_512_buf : s3_BPE1_bin;
+        s3_BPE1_i_vld = (!phase && s3_i_cnt >= 1 && s3_i_cnt <= 64) ? 1 : 0;
     end
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s3_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if((s3_i_cnt >= 1 && s3_i_cnt <= 16)) s3_BPE1_coef <=  {8{W0[15:0]}};
-                else if((s3_i_cnt >= 17 && s3_i_cnt <= 32)) s3_BPE1_coef <=  {8{W1[15:0]}};
-                else if((s3_i_cnt >= 33 && s3_i_cnt <= 48)) s3_BPE1_coef <=  {8{W2[15:0]}};
-                else if((s3_i_cnt >= 49 && s3_i_cnt <= 65)) s3_BPE1_coef <=  {8{W3[15:0]}};
+            if(!phase) begin
+                if((s3_i_cnt >= 0 && s3_i_cnt <= 15)) s3_BPE1_coef <=  {8{W0[15:0]}};
+                else if((s3_i_cnt >= 16 && s3_i_cnt <= 31)) s3_BPE1_coef <=  {8{W1[15:0]}};
+                else if((s3_i_cnt >= 32 && s3_i_cnt <= 47)) s3_BPE1_coef <=  {8{W2[15:0]}};
+                else if((s3_i_cnt >= 48 && s3_i_cnt <= 63)) s3_BPE1_coef <=  {8{W3[15:0]}};
                 else s3_BPE1_coef <= s3_BPE1_coef;
             end else begin
                 s3_BPE1_coef <= s3_BPE1_coef;
@@ -732,7 +919,6 @@ end
 
 //============= output to bram 512===========//
     reg [6:0] s3_addr; 
-    wire [6:0] s3_current_addr;
     wire [12:0] s3_current_addr_1, s3_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
@@ -742,11 +928,6 @@ end
             s3_o_cnt <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy) ? 
                         ((s3_o_cnt == 7'd64) ? 0 : s3_o_cnt + 1) : s3_o_cnt;
         end 
-    
-
-
-    assign s3_current_addr_1 = 4 * s3_current_addr;
-    assign s3_current_addr_2 = 4 * (5'd8 + s3_current_addr);
 
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -763,8 +944,8 @@ end
             s3_o_sram_en_128 <= (stage == S3 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s3_o_sram_din_128 = (phase) ? s3_o_sram_din_128_tmp[255:128]: s3_o_sram_din_128_tmp[127:0];
-    assign s3_o_sram_addr_128 = (phase) ? s3_o_sram_addr_128_tmp[25:13]: s3_o_sram_addr_128_tmp[12:0];
+    assign s3_o_sram_din_128 = (!phase) ? s3_o_sram_din_128_tmp[255:128]: s3_o_sram_din_128_tmp[127:0];
+    assign s3_o_sram_addr_128 = (!phase) ? s3_o_sram_addr_128_tmp[25:13]: s3_o_sram_addr_128_tmp[12:0];
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
@@ -786,8 +967,8 @@ end
         end
     end
 
-    assign s3_current_addr = s3_addr;
-
+    assign s3_current_addr_1 = 4 * s3_addr;
+    assign s3_current_addr_2 = 4 * (5'd8 + s3_addr);
 
 //====================================== butterfly stage 4 ======================================// 
 //============= stage 4 =============// 
@@ -803,7 +984,7 @@ always@(posedge clk or negedge rstn) begin
     if(!rstn) begin
         s4_i_cnt <= 0;
     end else begin
-        s4_i_cnt <= (stage == S4) ? ((s4_i_cnt == 7'd66) ? s4_i_cnt : s4_i_cnt + 1) : s4_i_cnt;
+        s4_i_cnt <= (stage == S4) ? ((s4_i_cnt == 7'd65) ? s4_i_cnt : s4_i_cnt + 1) : s4_i_cnt;
     end
 end
 
@@ -814,38 +995,44 @@ end
     assign s4_i_addr_2 = 4 * (7'd64 + s4_i_cnt);
 
     always@* begin
-        s4_i_sram_addr_128_tmp [25:13] <= (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_2 : s4_i_sram_addr_128_tmp;
-        s4_i_sram_addr_128_tmp [12:0] <= (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_1 : s4_i_sram_addr_128_tmp;
+        s4_i_sram_addr_128_tmp [25:13] = (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_2 : s4_i_sram_addr_128_tmp;
+        s4_i_sram_addr_128_tmp [12:0] = (stage == S4 && s4_i_cnt <= 64) ? s4_i_addr_1 : s4_i_sram_addr_128_tmp;
         s4_i_sram_en_128 = (stage == S4 && s4_i_cnt <= 64);
     end
 
-    assign s4_i_sram_addr_128 = (phase) ? s4_i_sram_addr_128_tmp[25:13]: s4_i_sram_addr_128_tmp[12:0];
+    assign s4_i_sram_addr_128 = (!phase) ? s4_i_sram_addr_128_tmp[25:13]: s4_i_sram_addr_128_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s4_BPE1_ain <= 0;
-            s4_BPE1_bin <= 0;
-            s4_BPE1_i_vld <= 0;
-        end else begin
-            s4_BPE1_ain <= (!phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? sram_dout_128_buf : s4_BPE1_ain;
-            s4_BPE1_bin <= (phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? sram_dout_128_buf : s4_BPE1_bin;
-            s4_BPE1_i_vld <= (phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s4_BPE1_ain <= 0;
+    //         s4_BPE1_bin <= 0;
+    //         s4_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s4_BPE1_ain <= (!phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? sram_dout_128_buf : s4_BPE1_ain;
+    //         s4_BPE1_bin <= (phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? sram_dout_128_buf : s4_BPE1_bin;
+    //         s4_BPE1_i_vld <= (phase && s4_i_cnt >= 1 && s4_i_cnt <= 65) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s4_BPE1_ain = (phase && s4_i_cnt >= 1 && s4_i_cnt <= 64) ? sram_dout_128_buf : s4_BPE1_ain;
+        s4_BPE1_bin = (!phase && s4_i_cnt >= 1 && s4_i_cnt <= 64) ? sram_dout_128_buf : s4_BPE1_bin;
+        s4_BPE1_i_vld = (!phase && s4_i_cnt >= 1 && s4_i_cnt <= 64) ? 1 : 0;
     end
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s4_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if((s4_i_cnt >= 1 && s4_i_cnt <= 8)) s4_BPE1_coef <=  {8{W0[15:0]}};
-                else if((s4_i_cnt >= 9 && s4_i_cnt <= 16)) s4_BPE1_coef <=  {8{W1[15:0]}};
-                else if((s4_i_cnt >= 17 && s4_i_cnt <= 24)) s4_BPE1_coef <=  {8{W2[15:0]}};
-                else if((s4_i_cnt >= 25 && s4_i_cnt <= 32)) s4_BPE1_coef <=  {8{W3[15:0]}};
-                else if((s4_i_cnt >= 33 && s4_i_cnt <= 40)) s4_BPE1_coef <=  {8{W4[15:0]}};
-                else if((s4_i_cnt >= 41 && s4_i_cnt <= 48)) s4_BPE1_coef <=  {8{W5[15:0]}};
-                else if((s4_i_cnt >= 49 && s4_i_cnt <= 56)) s4_BPE1_coef <=  {8{W6[15:0]}};
-                else if((s4_i_cnt >= 57 && s4_i_cnt <= 65)) s4_BPE1_coef <=  {8{W7[15:0]}};
+            if(!phase) begin
+                if((s4_i_cnt >= 0 && s4_i_cnt <= 7)) s4_BPE1_coef <=  {8{W0[15:0]}};
+                else if((s4_i_cnt >= 8 && s4_i_cnt <= 15)) s4_BPE1_coef <=  {8{W1[15:0]}};
+                else if((s4_i_cnt >= 16 && s4_i_cnt <= 23)) s4_BPE1_coef <=  {8{W2[15:0]}};
+                else if((s4_i_cnt >= 24 && s4_i_cnt <= 31)) s4_BPE1_coef <=  {8{W3[15:0]}};
+                else if((s4_i_cnt >= 32 && s4_i_cnt <= 39)) s4_BPE1_coef <=  {8{W4[15:0]}};
+                else if((s4_i_cnt >= 40 && s4_i_cnt <= 47)) s4_BPE1_coef <=  {8{W5[15:0]}};
+                else if((s4_i_cnt >= 48 && s4_i_cnt <= 55)) s4_BPE1_coef <=  {8{W6[15:0]}};
+                else if((s4_i_cnt >= 56 && s4_i_cnt <= 63)) s4_BPE1_coef <=  {8{W7[15:0]}};
                 else s4_BPE1_coef <= s4_BPE1_coef;
             end else begin
                 s4_BPE1_coef <= s4_BPE1_coef;
@@ -853,9 +1040,7 @@ end
         end
 
 //============= output to bram 512===========//
-    reg [6:0] s4_addr;
-    
-    wire [6:0] s4_current_addr; 
+    reg [6:0] s4_addr; 
     wire [12:0] s4_current_addr_1, s4_current_addr_2;
 
 
@@ -867,8 +1052,8 @@ end
                         ((s4_o_cnt == 7'd64) ? 0 : s4_o_cnt + 1) : s4_o_cnt;
         end 
     
-    assign s4_current_addr_1 = 4 * s4_current_addr;
-    assign s4_current_addr_2 = 4 * (5'd4 + s4_current_addr);
+    assign s4_current_addr_1 = 4 * s4_addr;
+    assign s4_current_addr_2 = 4 * (5'd4 + s4_addr);
 
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -885,8 +1070,8 @@ end
             s4_o_sram_en_512 <= (stage == S4 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s4_o_sram_din_512 = (phase) ? s4_o_sram_din_512_tmp[255:128]: s4_o_sram_din_512_tmp[127:0];
-    assign s4_o_sram_addr_512 = (phase) ? s4_o_sram_addr_512_tmp[25:13]: s4_o_sram_addr_512_tmp[12:0];
+    assign s4_o_sram_din_512 = (!phase) ? s4_o_sram_din_512_tmp[255:128]: s4_o_sram_din_512_tmp[127:0];
+    assign s4_o_sram_addr_512 = (!phase) ? s4_o_sram_addr_512_tmp[25:13]: s4_o_sram_addr_512_tmp[12:0];
 
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
@@ -916,8 +1101,6 @@ end
         end
     end
 
-    assign s4_current_addr = s4_addr;
-
 
 //====================================== butterfly stage 5 ======================================// 
 //============= stage 5 =============// 
@@ -933,7 +1116,7 @@ always@(posedge clk or negedge rstn) begin
     if(!rstn) begin
         s5_i_cnt <= 0;
     end else begin
-        s5_i_cnt <= (stage == S5) ? ((s5_i_cnt == 7'd66) ? s5_i_cnt : s5_i_cnt + 1) : s5_i_cnt;
+        s5_i_cnt <= (stage == S5) ? ((s5_i_cnt == 7'd65) ? s5_i_cnt : s5_i_cnt + 1) : s5_i_cnt;
     end
 end
 
@@ -942,47 +1125,55 @@ end
 
     assign s5_i_addr_1 = 4 * s5_i_cnt;
     assign s5_i_addr_2 = 4 * (7'd64 + s5_i_cnt);
+
     always@* begin
-        s5_i_sram_addr_512_tmp [25:13] <= (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_2 : s5_i_sram_addr_512_tmp;
-        s5_i_sram_addr_512_tmp [12:0] <= (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_1 : s5_i_sram_addr_512_tmp;
+        s5_i_sram_addr_512_tmp [25:13] = (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_2 : s5_i_sram_addr_512_tmp;
+        s5_i_sram_addr_512_tmp [12:0] = (stage == S5 && s5_i_cnt <= 64) ? s5_i_addr_1 : s5_i_sram_addr_512_tmp;
         s5_i_sram_en_512 = (stage == S5 && s5_i_cnt <= 64);
     end
 
-    assign s5_i_sram_addr_512 = (phase) ? s5_i_sram_addr_512_tmp[25:13]: s5_i_sram_addr_512_tmp[12:0];
+    assign s5_i_sram_addr_512 = (!phase) ? s5_i_sram_addr_512_tmp[25:13]: s5_i_sram_addr_512_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s5_BPE1_ain <= 0;
-            s5_BPE1_bin <= 0;
-            s5_BPE1_i_vld <= 0;
-        end else begin
-            s5_BPE1_ain <= (!phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? sram_dout_512_buf : s5_BPE1_ain;
-            s5_BPE1_bin <= (phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? sram_dout_512_buf : s5_BPE1_bin;
-            s5_BPE1_i_vld <= (phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s5_BPE1_ain <= 0;
+    //         s5_BPE1_bin <= 0;
+    //         s5_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s5_BPE1_ain <= (!phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? sram_dout_512_buf : s5_BPE1_ain;
+    //         s5_BPE1_bin <= (phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? sram_dout_512_buf : s5_BPE1_bin;
+    //         s5_BPE1_i_vld <= (phase && s5_i_cnt >= 1 && s5_i_cnt <= 65) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s5_BPE1_ain = (phase && s5_i_cnt >= 1 && s5_i_cnt <= 64) ? sram_dout_512_buf : s5_BPE1_ain;
+        s5_BPE1_bin = (!phase && s5_i_cnt >= 1 && s5_i_cnt <= 64) ? sram_dout_512_buf : s5_BPE1_bin;
+        s5_BPE1_i_vld = (!phase && s5_i_cnt >= 1 && s5_i_cnt <= 64) ? 1 : 0;
     end
+
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s5_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if((s5_i_cnt >= 1 && s5_i_cnt <= 4)) s5_BPE1_coef <=  {8{W0[15:0]}};
-                else if((s5_i_cnt >= 5 && s5_i_cnt <= 8)) s5_BPE1_coef <=  {8{W1[15:0]}};
-                else if((s5_i_cnt >= 9 && s5_i_cnt <= 12)) s5_BPE1_coef <=  {8{W2[15:0]}};
-                else if((s5_i_cnt >= 13 && s5_i_cnt <= 16)) s5_BPE1_coef <=  {8{W3[15:0]}};
-                else if((s5_i_cnt >= 17 && s5_i_cnt <= 20)) s5_BPE1_coef <=  {8{W4[15:0]}};
-                else if((s5_i_cnt >= 21 && s5_i_cnt <= 24)) s5_BPE1_coef <=  {8{W5[15:0]}};
-                else if((s5_i_cnt >= 25 && s5_i_cnt <= 28)) s5_BPE1_coef <=  {8{W6[15:0]}};
-                else if((s5_i_cnt >= 29 && s5_i_cnt <= 32)) s5_BPE1_coef <=  {8{W7[15:0]}};
-                else if((s5_i_cnt >= 33 && s5_i_cnt <= 36)) s5_BPE1_coef <=  {8{W8[15:0]}};
-                else if((s5_i_cnt >= 37 && s5_i_cnt <= 40)) s5_BPE1_coef <=  {8{W9[15:0]}};
-                else if((s5_i_cnt >= 41 && s5_i_cnt <= 44)) s5_BPE1_coef <=  {8{W10[15:0]}};
-                else if((s5_i_cnt >= 45 && s5_i_cnt <= 48)) s5_BPE1_coef <=  {8{W11[15:0]}};
-                else if((s5_i_cnt >= 49 && s5_i_cnt <= 52)) s5_BPE1_coef <=  {8{W12[15:0]}};
-                else if((s5_i_cnt >= 53 && s5_i_cnt <= 56)) s5_BPE1_coef <=  {8{W13[15:0]}};
-                else if((s5_i_cnt >= 57 && s5_i_cnt <= 60)) s5_BPE1_coef <=  {8{W14[15:0]}};
-                else if((s5_i_cnt >= 61 && s5_i_cnt <= 65)) s5_BPE1_coef <=  {8{W15[15:0]}};
+            if(!phase) begin
+                if ((s5_i_cnt >= 0 && s5_i_cnt <= 3))        s5_BPE1_coef <= {8{W0[15:0]}};
+                else if ((s5_i_cnt >= 4 && s5_i_cnt <= 7))   s5_BPE1_coef <= {8{W1[15:0]}};
+                else if ((s5_i_cnt >= 8 && s5_i_cnt <= 11))  s5_BPE1_coef <= {8{W2[15:0]}};
+                else if ((s5_i_cnt >= 12 && s5_i_cnt <= 15)) s5_BPE1_coef <= {8{W3[15:0]}};
+                else if ((s5_i_cnt >= 16 && s5_i_cnt <= 19)) s5_BPE1_coef <= {8{W4[15:0]}};
+                else if ((s5_i_cnt >= 20 && s5_i_cnt <= 23)) s5_BPE1_coef <= {8{W5[15:0]}};
+                else if ((s5_i_cnt >= 24 && s5_i_cnt <= 27)) s5_BPE1_coef <= {8{W6[15:0]}};
+                else if ((s5_i_cnt >= 28 && s5_i_cnt <= 31)) s5_BPE1_coef <= {8{W7[15:0]}};
+                else if ((s5_i_cnt >= 32 && s5_i_cnt <= 35)) s5_BPE1_coef <= {8{W8[15:0]}};
+                else if ((s5_i_cnt >= 36 && s5_i_cnt <= 39)) s5_BPE1_coef <= {8{W9[15:0]}};
+                else if ((s5_i_cnt >= 40 && s5_i_cnt <= 43)) s5_BPE1_coef <= {8{W10[15:0]}};
+                else if ((s5_i_cnt >= 44 && s5_i_cnt <= 47)) s5_BPE1_coef <= {8{W11[15:0]}};
+                else if ((s5_i_cnt >= 48 && s5_i_cnt <= 51)) s5_BPE1_coef <= {8{W12[15:0]}};
+                else if ((s5_i_cnt >= 52 && s5_i_cnt <= 55)) s5_BPE1_coef <= {8{W13[15:0]}};
+                else if ((s5_i_cnt >= 56 && s5_i_cnt <= 59)) s5_BPE1_coef <= {8{W14[15:0]}};
+                else if ((s5_i_cnt >= 60 && s5_i_cnt <= 63)) s5_BPE1_coef <= {8{W15[15:0]}};
                 else s5_BPE1_coef <= s5_BPE1_coef;
             end else begin
                 s5_BPE1_coef <= s5_BPE1_coef;
@@ -991,7 +1182,6 @@ end
 
 //============= output to bram 512===========//
     reg [6:0] s5_addr;
-    wire [6:0] s5_current_addr; 
     wire [12:0] s5_current_addr_1, s5_current_addr_2;
 
     always@(posedge clk or negedge rstn) 
@@ -1002,8 +1192,8 @@ end
                         ((s5_o_cnt == 7'd64) ? 0 : s5_o_cnt + 1) : s5_o_cnt;
         end 
     
-    assign s5_current_addr_1 = 4 * s5_current_addr;
-    assign s5_current_addr_2 = 4 * (2'd2 + s5_current_addr);
+    assign s5_current_addr_1 = 4 * s5_addr;
+    assign s5_current_addr_2 = 4 * (2'd2 + s5_addr);
 
     always@ (posedge clk or negedge rstn) 
         if(!rstn) begin
@@ -1020,8 +1210,8 @@ end
             s5_o_sram_en_128 <= (stage == S5 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s5_o_sram_din_128 = (phase) ? s5_o_sram_din_128_tmp[255:128]: s5_o_sram_din_128_tmp[127:0];
-    assign s5_o_sram_addr_128 = (phase) ? s5_o_sram_addr_128_tmp[25:13]: s5_o_sram_addr_128_tmp[12:0];
+    assign s5_o_sram_din_128 = (!phase) ? s5_o_sram_din_128_tmp[255:128]: s5_o_sram_din_128_tmp[127:0];
+    assign s5_o_sram_addr_128 = (!phase) ? s5_o_sram_addr_128_tmp[25:13]: s5_o_sram_addr_128_tmp[12:0];
 
     reg  [3:0] s5_group_idx;  // 0 ~ 15
     reg  [1:0] s5_inner_idx;  // 0 ~ 3
@@ -1050,9 +1240,6 @@ end
         endcase
     end
 
-    assign s5_current_addr = s5_addr;
-
-
 //====================================== butterfly stage 6 ======================================// 
 //============= stage 6 =============// 
 // Arithmetic unit: BPE1             // 
@@ -1067,7 +1254,7 @@ always@(posedge clk or negedge rstn) begin
     if(!rstn) begin
         s6_i_cnt <= 0;
     end else begin
-        s6_i_cnt <= (stage == S6) ? ((s6_i_cnt == 7'd66) ? s6_i_cnt : s6_i_cnt + 1) : s6_i_cnt;
+        s6_i_cnt <= (stage == S6) ? ((s6_i_cnt == 7'd65) ? s6_i_cnt : s6_i_cnt + 1) : s6_i_cnt;
     end
 end
 
@@ -1083,57 +1270,63 @@ end
         s6_i_sram_en_128 = (stage == S6 && s6_i_cnt <= 64);
     end
 
-    assign s6_i_sram_addr_128 = (phase) ? s6_i_sram_addr_128_tmp[25:13]: s6_i_sram_addr_128_tmp[12:0];
+    assign s6_i_sram_addr_128 = (!phase) ? s6_i_sram_addr_128_tmp[25:13]: s6_i_sram_addr_128_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s6_BPE1_ain <= 0;
-            s6_BPE1_bin <= 0;
-            s6_BPE1_i_vld <= 0;
-        end else begin
-            s6_BPE1_ain <= (!phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? sram_dout_128_buf : s6_BPE1_ain;
-            s6_BPE1_bin <= (phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? sram_dout_128_buf : s6_BPE1_bin;
-            s6_BPE1_i_vld <= (phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s6_BPE1_ain <= 0;
+    //         s6_BPE1_bin <= 0;
+    //         s6_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s6_BPE1_ain <= (!phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? sram_dout_128_buf : s6_BPE1_ain;
+    //         s6_BPE1_bin <= (phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? sram_dout_128_buf : s6_BPE1_bin;
+    //         s6_BPE1_i_vld <= (phase && s6_i_cnt >= 1 && s6_i_cnt <= 65) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s6_BPE1_ain = (phase && s6_i_cnt >= 1 && s6_i_cnt <= 64) ? sram_dout_128_buf : s6_BPE1_ain;
+        s6_BPE1_bin = (!phase && s6_i_cnt >= 1 && s6_i_cnt <= 64) ? sram_dout_128_buf : s6_BPE1_bin;
+        s6_BPE1_i_vld = (!phase && s6_i_cnt >= 1 && s6_i_cnt <= 64) ? 1 : 0;
     end
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s6_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if((s6_i_cnt >= 1  && s6_i_cnt <= 2))   s6_BPE1_coef <=  {8{W0[15:0]}};
-                else if((s6_i_cnt >= 3  && s6_i_cnt <= 4))   s6_BPE1_coef <=  {8{W1[15:0]}};
-                else if((s6_i_cnt >= 5  && s6_i_cnt <= 6))   s6_BPE1_coef <=  {8{W2[15:0]}};
-                else if((s6_i_cnt >= 7  && s6_i_cnt <= 8))   s6_BPE1_coef <=  {8{W3[15:0]}};
-                else if((s6_i_cnt >= 9  && s6_i_cnt <= 10))  s6_BPE1_coef <=  {8{W4[15:0]}};
-                else if((s6_i_cnt >= 11 && s6_i_cnt <= 12))  s6_BPE1_coef <=  {8{W5[15:0]}};
-                else if((s6_i_cnt >= 13 && s6_i_cnt <= 14))  s6_BPE1_coef <=  {8{W6[15:0]}};
-                else if((s6_i_cnt >= 15 && s6_i_cnt <= 16))  s6_BPE1_coef <=  {8{W7[15:0]}};
-                else if((s6_i_cnt >= 17 && s6_i_cnt <= 18))  s6_BPE1_coef <=  {8{W8[15:0]}};
-                else if((s6_i_cnt >= 19 && s6_i_cnt <= 20))  s6_BPE1_coef <=  {8{W9[15:0]}};
-                else if((s6_i_cnt >= 21 && s6_i_cnt <= 22))  s6_BPE1_coef <=  {8{W10[15:0]}};
-                else if((s6_i_cnt >= 23 && s6_i_cnt <= 24))  s6_BPE1_coef <=  {8{W11[15:0]}};
-                else if((s6_i_cnt >= 25 && s6_i_cnt <= 26))  s6_BPE1_coef <=  {8{W12[15:0]}};
-                else if((s6_i_cnt >= 27 && s6_i_cnt <= 28))  s6_BPE1_coef <=  {8{W13[15:0]}};
-                else if((s6_i_cnt >= 29 && s6_i_cnt <= 30))  s6_BPE1_coef <=  {8{W14[15:0]}};
-                else if((s6_i_cnt >= 31 && s6_i_cnt <= 32))  s6_BPE1_coef <=  {8{W15[15:0]}};
-                else if((s6_i_cnt >= 33 && s6_i_cnt <= 34))  s6_BPE1_coef <=  {8{W16[15:0]}};
-                else if((s6_i_cnt >= 35 && s6_i_cnt <= 36))  s6_BPE1_coef <=  {8{W17[15:0]}};
-                else if((s6_i_cnt >= 37 && s6_i_cnt <= 38))  s6_BPE1_coef <=  {8{W18[15:0]}};       
-                else if((s6_i_cnt >= 39 && s6_i_cnt <= 40))  s6_BPE1_coef <=  {8{W19[15:0]}};
-                else if((s6_i_cnt >= 41 && s6_i_cnt <= 42))  s6_BPE1_coef <=  {8{W20[15:0]}};
-                else if((s6_i_cnt >= 43 && s6_i_cnt <= 44))  s6_BPE1_coef <=  {8{W21[15:0]}};
-                else if((s6_i_cnt >= 45 && s6_i_cnt <= 46))  s6_BPE1_coef <=  {8{W22[15:0]}};
-                else if((s6_i_cnt >= 47 && s6_i_cnt <= 48))  s6_BPE1_coef <=  {8{W23[15:0]}};
-                else if((s6_i_cnt >= 49 && s6_i_cnt <= 50))  s6_BPE1_coef <=  {8{W24[15:0]}};
-                else if((s6_i_cnt >= 51 && s6_i_cnt <= 52))  s6_BPE1_coef <=  {8{W25[15:0]}};
-                else if((s6_i_cnt >= 53 && s6_i_cnt <= 54))  s6_BPE1_coef <=  {8{W26[15:0]}};
-                else if((s6_i_cnt >= 55 && s6_i_cnt <= 56))  s6_BPE1_coef <=  {8{W27[15:0]}};
-                else if((s6_i_cnt >= 57 && s6_i_cnt <= 58))  s6_BPE1_coef <=  {8{W28[15:0]}};
-                else if((s6_i_cnt >= 59 && s6_i_cnt <= 60))  s6_BPE1_coef <=  {8{W29[15:0]}};
-                else if((s6_i_cnt >= 61 && s6_i_cnt <= 62))  s6_BPE1_coef <=  {8{W30[15:0]}};
-                else if((s6_i_cnt >= 63 && s6_i_cnt <= 65))  s6_BPE1_coef <=  {8{W31[15:0]}};   
+            if(!phase) begin
+                if ((s6_i_cnt >= 0  && s6_i_cnt <= 1))   s6_BPE1_coef <= {8{W0[15:0]}};
+                else if ((s6_i_cnt >= 2  && s6_i_cnt <= 3))   s6_BPE1_coef <= {8{W1[15:0]}};
+                else if ((s6_i_cnt >= 4  && s6_i_cnt <= 5))   s6_BPE1_coef <= {8{W2[15:0]}};
+                else if ((s6_i_cnt >= 6  && s6_i_cnt <= 7))   s6_BPE1_coef <= {8{W3[15:0]}};
+                else if ((s6_i_cnt >= 8  && s6_i_cnt <= 9))   s6_BPE1_coef <= {8{W4[15:0]}};
+                else if ((s6_i_cnt >= 10 && s6_i_cnt <= 11))  s6_BPE1_coef <= {8{W5[15:0]}};
+                else if ((s6_i_cnt >= 12 && s6_i_cnt <= 13))  s6_BPE1_coef <= {8{W6[15:0]}};
+                else if ((s6_i_cnt >= 14 && s6_i_cnt <= 15))  s6_BPE1_coef <= {8{W7[15:0]}};
+                else if ((s6_i_cnt >= 16 && s6_i_cnt <= 17))  s6_BPE1_coef <= {8{W8[15:0]}};
+                else if ((s6_i_cnt >= 18 && s6_i_cnt <= 19))  s6_BPE1_coef <= {8{W9[15:0]}};
+                else if ((s6_i_cnt >= 20 && s6_i_cnt <= 21))  s6_BPE1_coef <= {8{W10[15:0]}};
+                else if ((s6_i_cnt >= 22 && s6_i_cnt <= 23))  s6_BPE1_coef <= {8{W11[15:0]}};
+                else if ((s6_i_cnt >= 24 && s6_i_cnt <= 25))  s6_BPE1_coef <= {8{W12[15:0]}};
+                else if ((s6_i_cnt >= 26 && s6_i_cnt <= 27))  s6_BPE1_coef <= {8{W13[15:0]}};
+                else if ((s6_i_cnt >= 28 && s6_i_cnt <= 29))  s6_BPE1_coef <= {8{W14[15:0]}};
+                else if ((s6_i_cnt >= 30 && s6_i_cnt <= 31))  s6_BPE1_coef <= {8{W15[15:0]}};
+                else if ((s6_i_cnt >= 32 && s6_i_cnt <= 33))  s6_BPE1_coef <= {8{W16[15:0]}};
+                else if ((s6_i_cnt >= 34 && s6_i_cnt <= 35))  s6_BPE1_coef <= {8{W17[15:0]}};
+                else if ((s6_i_cnt >= 36 && s6_i_cnt <= 37))  s6_BPE1_coef <= {8{W18[15:0]}};
+                else if ((s6_i_cnt >= 38 && s6_i_cnt <= 39))  s6_BPE1_coef <= {8{W19[15:0]}};
+                else if ((s6_i_cnt >= 40 && s6_i_cnt <= 41))  s6_BPE1_coef <= {8{W20[15:0]}};
+                else if ((s6_i_cnt >= 42 && s6_i_cnt <= 43))  s6_BPE1_coef <= {8{W21[15:0]}};
+                else if ((s6_i_cnt >= 44 && s6_i_cnt <= 45))  s6_BPE1_coef <= {8{W22[15:0]}};
+                else if ((s6_i_cnt >= 46 && s6_i_cnt <= 47))  s6_BPE1_coef <= {8{W23[15:0]}};
+                else if ((s6_i_cnt >= 48 && s6_i_cnt <= 49))  s6_BPE1_coef <= {8{W24[15:0]}};
+                else if ((s6_i_cnt >= 50 && s6_i_cnt <= 51))  s6_BPE1_coef <= {8{W25[15:0]}};
+                else if ((s6_i_cnt >= 52 && s6_i_cnt <= 53))  s6_BPE1_coef <= {8{W26[15:0]}};
+                else if ((s6_i_cnt >= 54 && s6_i_cnt <= 55))  s6_BPE1_coef <= {8{W27[15:0]}};
+                else if ((s6_i_cnt >= 56 && s6_i_cnt <= 57))  s6_BPE1_coef <= {8{W28[15:0]}};
+                else if ((s6_i_cnt >= 58 && s6_i_cnt <= 59))  s6_BPE1_coef <= {8{W29[15:0]}};
+                else if ((s6_i_cnt >= 60 && s6_i_cnt <= 61))  s6_BPE1_coef <= {8{W30[15:0]}};
+                else if ((s6_i_cnt >= 62 && s6_i_cnt <= 63))  s6_BPE1_coef <= {8{W31[15:0]}};
                 else s6_BPE1_coef <= s6_BPE1_coef;
             end else begin
                 s6_BPE1_coef <= s6_BPE1_coef;
@@ -1172,8 +1365,8 @@ end
             s6_o_sram_en_512 <= (stage == S6 && BPE1_o_vld && BPE1_o_rdy);
         end 
 
-    assign s6_o_sram_din_512 = (phase) ? s6_o_sram_din_512_tmp[255:128]: s6_o_sram_din_512_tmp[127:0];
-    assign s6_o_sram_addr_512 = (phase) ? s6_o_sram_addr_512_tmp[25:13]: s6_o_sram_addr_512_tmp[12:0];
+    assign s6_o_sram_din_512 = (!phase) ? s6_o_sram_din_512_tmp[255:128]: s6_o_sram_din_512_tmp[127:0];
+    assign s6_o_sram_addr_512 = (!phase) ? s6_o_sram_addr_512_tmp[25:13]: s6_o_sram_addr_512_tmp[12:0];
 
     reg  [5:0] s6_group_idx;  // 0 ~ 31
     reg  [1:0] s6_inner_idx;  // 0 ~ 1  
@@ -1224,94 +1417,101 @@ end
     assign s7_i_addr_2 = 4 * (7'd64 + s7_i_cnt);
 
     always@* begin
-        s7_i_sram_addr_512_tmp [25:13] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_2 : s7_i_sram_addr_512_tmp;
-        s7_i_sram_addr_512_tmp [12:0] <= (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_1 : s7_i_sram_addr_512_tmp;
+        s7_i_sram_addr_512_tmp [25:13] = (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_2 : s7_i_sram_addr_512_tmp;
+        s7_i_sram_addr_512_tmp [12:0] = (stage == S7_to_10 && s7_i_cnt <= 64) ? s7_i_addr_1 : s7_i_sram_addr_512_tmp;
         s7_i_sram_en_512 = (stage == S7_to_10 && s7_i_cnt <= 64);
     end
 
-    assign s7_i_sram_addr_512 = (phase) ? s7_i_sram_addr_512_tmp[25:13]: s7_i_sram_addr_512_tmp[12:0];
+    assign s7_i_sram_addr_512 = (!phase) ? s7_i_sram_addr_512_tmp[25:13]: s7_i_sram_addr_512_tmp[12:0];
      
-    always@(posedge clk_2x or negedge rstn) begin
-        if(!rstn) begin
-            s7_BPE1_ain <= 0;
-            s7_BPE1_bin <= 0;
-            s7_BPE1_i_vld <= 0;
-        end else begin
-            s7_BPE1_ain <= (!phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? sram_dout_512_buf : s7_BPE1_ain;
-            s7_BPE1_bin <= (phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? sram_dout_512_buf : s7_BPE1_bin;
-            s7_BPE1_i_vld <= (phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? 1 : 0;
-        end 
+    // always@(posedge clk_2x or negedge rstn) begin
+    //     if(!rstn) begin
+    //         s7_BPE1_ain <= 0;
+    //         s7_BPE1_bin <= 0;
+    //         s7_BPE1_i_vld <= 0;
+    //     end else begin
+    //         s7_BPE1_ain <= (!phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? sram_dout_512_buf : s7_BPE1_ain;
+    //         s7_BPE1_bin <= (phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? sram_dout_512_buf : s7_BPE1_bin;
+    //         s7_BPE1_i_vld <= (phase && s7_i_cnt >= 1 && s7_i_cnt <= 65) ? 1 : 0;
+    //     end 
+    // end
+
+    always@* begin
+        s7_BPE1_ain = (phase && s7_i_cnt >= 1 && s7_i_cnt <= 64) ? sram_dout_512_buf : s7_BPE1_ain;
+        s7_BPE1_bin = (!phase && s7_i_cnt >= 1 && s7_i_cnt <= 64) ? sram_dout_512_buf : s7_BPE1_bin;
+        s7_BPE1_i_vld = (!phase && s7_i_cnt >= 1 && s7_i_cnt <= 64) ? 1 : 0;
     end
+
 
     always @(posedge clk_2x or negedge rstn)
         if(!rstn) begin
             s7_BPE1_coef <= 0;
         end else begin
-            if(phase) begin
-                if(s7_i_cnt == 1)   s7_BPE1_coef <=  {8{W0[15:0]}};
-                else if(s7_i_cnt == 2)   s7_BPE1_coef <=  {8{W1[15:0]}};
-                else if(s7_i_cnt == 3)   s7_BPE1_coef <=  {8{W2[15:0]}};
-                else if(s7_i_cnt == 4)   s7_BPE1_coef <=  {8{W3[15:0]}};
-                else if(s7_i_cnt == 5)   s7_BPE1_coef <=  {8{W4[15:0]}};
-                else if(s7_i_cnt == 6)   s7_BPE1_coef <=  {8{W5[15:0]}};
-                else if(s7_i_cnt == 7)   s7_BPE1_coef <=  {8{W6[15:0]}};
-                else if(s7_i_cnt == 8)   s7_BPE1_coef <=  {8{W7[15:0]}};
-                else if(s7_i_cnt == 9)   s7_BPE1_coef <=  {8{W8[15:0]}};
-                else if(s7_i_cnt == 10)  s7_BPE1_coef <=  {8{W9[15:0]}};
-                else if(s7_i_cnt == 11)  s7_BPE1_coef <=  {8{W10[15:0]}};
-                else if(s7_i_cnt == 12)  s7_BPE1_coef <=  {8{W11[15:0]}};
-                else if(s7_i_cnt == 13)  s7_BPE1_coef <=  {8{W12[15:0]}};
-                else if(s7_i_cnt == 14)  s7_BPE1_coef <=  {8{W13[15:0]}};
-                else if(s7_i_cnt == 15)  s7_BPE1_coef <=  {8{W14[15:0]}};
-                else if(s7_i_cnt == 16)  s7_BPE1_coef <=  {8{W15[15:0]}};
-                else if(s7_i_cnt == 17)  s7_BPE1_coef <=  {8{W16[15:0]}};
-                else if(s7_i_cnt == 18)  s7_BPE1_coef <=  {8{W17[15:0]}};
-                else if(s7_i_cnt == 19)  s7_BPE1_coef <=  {8{W18[15:0]}};
-                else if(s7_i_cnt == 20)  s7_BPE1_coef <=  {8{W19[15:0]}};
-                else if(s7_i_cnt == 21)  s7_BPE1_coef <=  {8{W20[15:0]}};
-                else if(s7_i_cnt == 22)  s7_BPE1_coef <=  {8{W21[15:0]}};
-                else if(s7_i_cnt == 23)  s7_BPE1_coef <=  {8{W22[15:0]}};
-                else if(s7_i_cnt == 24)  s7_BPE1_coef <=  {8{W23[15:0]}};
-                else if(s7_i_cnt == 25)  s7_BPE1_coef <=  {8{W24[15:0]}};
-                else if(s7_i_cnt == 26)  s7_BPE1_coef <=  {8{W25[15:0]}};
-                else if(s7_i_cnt == 27)  s7_BPE1_coef <=  {8{W26[15:0]}};
-                else if(s7_i_cnt == 28)  s7_BPE1_coef <=  {8{W27[15:0]}};
-                else if(s7_i_cnt == 29)  s7_BPE1_coef <=  {8{W28[15:0]}};
-                else if(s7_i_cnt == 30)  s7_BPE1_coef <=  {8{W29[15:0]}};
-                else if(s7_i_cnt == 31)  s7_BPE1_coef <=  {8{W30[15:0]}};
-                else if(s7_i_cnt == 32)  s7_BPE1_coef <=  {8{W31[15:0]}};
-                else if(s7_i_cnt == 33)  s7_BPE1_coef <=  {8{W32[15:0]}};
-                else if(s7_i_cnt == 34)  s7_BPE1_coef <=  {8{W33[15:0]}};
-                else if(s7_i_cnt == 35)  s7_BPE1_coef <=  {8{W34[15:0]}};
-                else if(s7_i_cnt == 36)  s7_BPE1_coef <=  {8{W35[15:0]}};
-                else if(s7_i_cnt == 37)  s7_BPE1_coef <=  {8{W36[15:0]}};
-                else if(s7_i_cnt == 38)  s7_BPE1_coef <=  {8{W37[15:0]}};
-                else if(s7_i_cnt == 39)  s7_BPE1_coef <=  {8{W38[15:0]}};
-                else if(s7_i_cnt == 40)  s7_BPE1_coef <=  {8{W39[15:0]}};
-                else if(s7_i_cnt == 41)  s7_BPE1_coef <=  {8{W40[15:0]}};
-                else if(s7_i_cnt == 42)  s7_BPE1_coef <=  {8{W41[15:0]}};
-                else if(s7_i_cnt == 43)  s7_BPE1_coef <=  {8{W42[15:0]}};
-                else if(s7_i_cnt == 44)  s7_BPE1_coef <=  {8{W43[15:0]}};
-                else if(s7_i_cnt == 45)  s7_BPE1_coef <=  {8{W44[15:0]}};
-                else if(s7_i_cnt == 46)  s7_BPE1_coef <=  {8{W45[15:0]}};
-                else if(s7_i_cnt == 47)  s7_BPE1_coef <=  {8{W46[15:0]}};
-                else if(s7_i_cnt == 48)  s7_BPE1_coef <=  {8{W47[15:0]}};
-                else if(s7_i_cnt == 49)  s7_BPE1_coef <=  {8{W48[15:0]}};
-                else if(s7_i_cnt == 50)  s7_BPE1_coef <=  {8{W49[15:0]}};
-                else if(s7_i_cnt == 51)  s7_BPE1_coef <=  {8{W50[15:0]}};
-                else if(s7_i_cnt == 52)  s7_BPE1_coef <=  {8{W51[15:0]}};
-                else if(s7_i_cnt == 53)  s7_BPE1_coef <=  {8{W52[15:0]}};
-                else if(s7_i_cnt == 54)  s7_BPE1_coef <=  {8{W53[15:0]}};
-                else if(s7_i_cnt == 55)  s7_BPE1_coef <=  {8{W54[15:0]}};
-                else if(s7_i_cnt == 56)  s7_BPE1_coef <=  {8{W55[15:0]}};
-                else if(s7_i_cnt == 57)  s7_BPE1_coef <=  {8{W56[15:0]}};
-                else if(s7_i_cnt == 58)  s7_BPE1_coef <=  {8{W57[15:0]}};
-                else if(s7_i_cnt == 59)  s7_BPE1_coef <=  {8{W58[15:0]}};
-                else if(s7_i_cnt == 60)  s7_BPE1_coef <=  {8{W59[15:0]}};
-                else if(s7_i_cnt == 61)  s7_BPE1_coef <=  {8{W60[15:0]}};
-                else if(s7_i_cnt == 62)  s7_BPE1_coef <=  {8{W61[15:0]}};
-                else if(s7_i_cnt == 63)  s7_BPE1_coef <=  {8{W62[15:0]}};
-                else if(s7_i_cnt >= 64 &&  s7_i_cnt <= 65)  s7_BPE1_coef <=  {8{W63[15:0]}};
+            if(!phase) begin
+                if(s7_i_cnt == 0)   s7_BPE1_coef <=  {8{W0[15:0]}};
+                else if(s7_i_cnt == 1)   s7_BPE1_coef <=  {8{W1[15:0]}};
+                else if(s7_i_cnt == 2)   s7_BPE1_coef <=  {8{W2[15:0]}};
+                else if(s7_i_cnt == 3)   s7_BPE1_coef <=  {8{W3[15:0]}};
+                else if(s7_i_cnt == 4)   s7_BPE1_coef <=  {8{W4[15:0]}};
+                else if(s7_i_cnt == 5)   s7_BPE1_coef <=  {8{W5[15:0]}};
+                else if(s7_i_cnt == 6)   s7_BPE1_coef <=  {8{W6[15:0]}};
+                else if(s7_i_cnt == 7)   s7_BPE1_coef <=  {8{W7[15:0]}};
+                else if(s7_i_cnt == 8)   s7_BPE1_coef <=  {8{W8[15:0]}};
+                else if(s7_i_cnt == 9)   s7_BPE1_coef <=  {8{W9[15:0]}};
+                else if(s7_i_cnt == 10)  s7_BPE1_coef <=  {8{W10[15:0]}};
+                else if(s7_i_cnt == 11)  s7_BPE1_coef <=  {8{W11[15:0]}};
+                else if(s7_i_cnt == 12)  s7_BPE1_coef <=  {8{W12[15:0]}};
+                else if(s7_i_cnt == 13)  s7_BPE1_coef <=  {8{W13[15:0]}};
+                else if(s7_i_cnt == 14)  s7_BPE1_coef <=  {8{W14[15:0]}};
+                else if(s7_i_cnt == 15)  s7_BPE1_coef <=  {8{W15[15:0]}};
+                else if(s7_i_cnt == 16)  s7_BPE1_coef <=  {8{W16[15:0]}};
+                else if(s7_i_cnt == 17)  s7_BPE1_coef <=  {8{W17[15:0]}};
+                else if(s7_i_cnt == 18)  s7_BPE1_coef <=  {8{W18[15:0]}};
+                else if(s7_i_cnt == 19)  s7_BPE1_coef <=  {8{W19[15:0]}};
+                else if(s7_i_cnt == 20)  s7_BPE1_coef <=  {8{W20[15:0]}};
+                else if(s7_i_cnt == 21)  s7_BPE1_coef <=  {8{W21[15:0]}};
+                else if(s7_i_cnt == 22)  s7_BPE1_coef <=  {8{W22[15:0]}};
+                else if(s7_i_cnt == 23)  s7_BPE1_coef <=  {8{W23[15:0]}};
+                else if(s7_i_cnt == 24)  s7_BPE1_coef <=  {8{W24[15:0]}};
+                else if(s7_i_cnt == 25)  s7_BPE1_coef <=  {8{W25[15:0]}};
+                else if(s7_i_cnt == 26)  s7_BPE1_coef <=  {8{W26[15:0]}};
+                else if(s7_i_cnt == 27)  s7_BPE1_coef <=  {8{W27[15:0]}};
+                else if(s7_i_cnt == 28)  s7_BPE1_coef <=  {8{W28[15:0]}};
+                else if(s7_i_cnt == 29)  s7_BPE1_coef <=  {8{W29[15:0]}};
+                else if(s7_i_cnt == 30)  s7_BPE1_coef <=  {8{W30[15:0]}};
+                else if(s7_i_cnt == 31)  s7_BPE1_coef <=  {8{W31[15:0]}};
+                else if(s7_i_cnt == 32)  s7_BPE1_coef <=  {8{W32[15:0]}};
+                else if(s7_i_cnt == 33)  s7_BPE1_coef <=  {8{W33[15:0]}};
+                else if(s7_i_cnt == 34)  s7_BPE1_coef <=  {8{W34[15:0]}};
+                else if(s7_i_cnt == 35)  s7_BPE1_coef <=  {8{W35[15:0]}};
+                else if(s7_i_cnt == 36)  s7_BPE1_coef <=  {8{W36[15:0]}};
+                else if(s7_i_cnt == 37)  s7_BPE1_coef <=  {8{W37[15:0]}};
+                else if(s7_i_cnt == 38)  s7_BPE1_coef <=  {8{W38[15:0]}};
+                else if(s7_i_cnt == 39)  s7_BPE1_coef <=  {8{W39[15:0]}};
+                else if(s7_i_cnt == 40)  s7_BPE1_coef <=  {8{W40[15:0]}};
+                else if(s7_i_cnt == 41)  s7_BPE1_coef <=  {8{W41[15:0]}};
+                else if(s7_i_cnt == 42)  s7_BPE1_coef <=  {8{W42[15:0]}};
+                else if(s7_i_cnt == 43)  s7_BPE1_coef <=  {8{W43[15:0]}};
+                else if(s7_i_cnt == 44)  s7_BPE1_coef <=  {8{W44[15:0]}};
+                else if(s7_i_cnt == 45)  s7_BPE1_coef <=  {8{W45[15:0]}};
+                else if(s7_i_cnt == 46)  s7_BPE1_coef <=  {8{W46[15:0]}};
+                else if(s7_i_cnt == 47)  s7_BPE1_coef <=  {8{W47[15:0]}};
+                else if(s7_i_cnt == 48)  s7_BPE1_coef <=  {8{W48[15:0]}};
+                else if(s7_i_cnt == 49)  s7_BPE1_coef <=  {8{W49[15:0]}};
+                else if(s7_i_cnt == 50)  s7_BPE1_coef <=  {8{W50[15:0]}};
+                else if(s7_i_cnt == 51)  s7_BPE1_coef <=  {8{W51[15:0]}};
+                else if(s7_i_cnt == 52)  s7_BPE1_coef <=  {8{W52[15:0]}};
+                else if(s7_i_cnt == 53)  s7_BPE1_coef <=  {8{W53[15:0]}};
+                else if(s7_i_cnt == 54)  s7_BPE1_coef <=  {8{W54[15:0]}};
+                else if(s7_i_cnt == 55)  s7_BPE1_coef <=  {8{W55[15:0]}};
+                else if(s7_i_cnt == 56)  s7_BPE1_coef <=  {8{W56[15:0]}};
+                else if(s7_i_cnt == 57)  s7_BPE1_coef <=  {8{W57[15:0]}};
+                else if(s7_i_cnt == 58)  s7_BPE1_coef <=  {8{W58[15:0]}};
+                else if(s7_i_cnt == 59)  s7_BPE1_coef <=  {8{W59[15:0]}};
+                else if(s7_i_cnt == 60)  s7_BPE1_coef <=  {8{W60[15:0]}};
+                else if(s7_i_cnt == 61)  s7_BPE1_coef <=  {8{W61[15:0]}};
+                else if(s7_i_cnt == 62)  s7_BPE1_coef <=  {8{W62[15:0]}};
+                else if(s7_i_cnt == 63)  s7_BPE1_coef <=  {8{W63[15:0]}};
                 else s7_BPE1_coef <= s7_BPE1_coef;
             end else begin
                 s7_BPE1_coef <= s7_BPE1_coef;
@@ -1326,8 +1526,7 @@ end
         if(!rstn) begin
             s7_o_cnt <= 0;
         end else begin
-            s7_o_cnt <= (stage == S7_to_10 && BPE1_o_vld && BPE1_o_rdy) ? 
-                        ((s7_o_cnt == 7'd64) ? 0 : s7_o_cnt + 1) : s7_o_cnt;
+            s7_o_cnt <= (s7_o_cnt == 7'd64) ? 0 : (stage == S7_to_10 && BPE1_o_vld && BPE1_o_rdy) ? s7_o_cnt + 1 : s7_o_cnt;
         end 
     
     always@ (posedge clk or negedge rstn) 
@@ -1349,6 +1548,9 @@ end
 //============= stage 8 =============//  
 
 //============= input to BPE2(data, coefficient) ===========//
+    
+
+    assign s7_o_cnt_o = s7_o_cnt;
     always@(posedge clk or negedge rstn) begin
         if(!rstn) begin
             s8_BPE2_ain <= 0;
@@ -1365,70 +1567,70 @@ end
         if(!rstn) begin
             s8_BPE2_coef <= 0;
         end else begin
-            if      (s7_o_cnt == 1)  s8_BPE2_coef <= {{4{W1[15:0]}},{4{W0[15:0]}}};
-            else if (s7_o_cnt == 2)  s8_BPE2_coef <= {{4{W3[15:0]}},{4{W2[15:0]}}};
-            else if (s7_o_cnt == 3)  s8_BPE2_coef  <= {{4{W5[15:0]}},{4{W4[15:0]}}};
-            else if (s7_o_cnt == 4)  s8_BPE2_coef  <= {{4{W7[15:0]}},{4{W6[15:0]}}};
-            else if (s7_o_cnt == 5)  s8_BPE2_coef  <= {{4{W9[15:0]}},{4{W8[15:0]}}};
-            else if (s7_o_cnt == 6)  s8_BPE2_coef  <= {{4{W11[15:0]}},{4{W10[15:0]}}};
-            else if (s7_o_cnt == 7)  s8_BPE2_coef  <= {{4{W13[15:0]}},{4{W12[15:0]}}};
-            else if (s7_o_cnt == 8)  s8_BPE2_coef  <= {{4{W15[15:0]}},{4{W14[15:0]}}};
-            else if (s7_o_cnt == 9)  s8_BPE2_coef  <= {{4{W17[15:0]}},{4{W16[15:0]}}};
-            else if (s7_o_cnt == 10) s8_BPE2_coef  <= {{4{W19[15:0]}},{4{W18[15:0]}}};
-            else if (s7_o_cnt == 11) s8_BPE2_coef  <= {{4{W21[15:0]}},{4{W20[15:0]}}};
-            else if (s7_o_cnt == 12) s8_BPE2_coef  <= {{4{W23[15:0]}},{4{W22[15:0]}}};
-            else if (s7_o_cnt == 13) s8_BPE2_coef  <= {{4{W25[15:0]}},{4{W24[15:0]}}};
-            else if (s7_o_cnt == 14) s8_BPE2_coef  <= {{4{W27[15:0]}},{4{W26[15:0]}}};
-            else if (s7_o_cnt == 15) s8_BPE2_coef  <= {{4{W29[15:0]}},{4{W28[15:0]}}};
-            else if (s7_o_cnt == 16) s8_BPE2_coef  <= {{4{W31[15:0]}},{4{W30[15:0]}}};
-            else if (s7_o_cnt == 17) s8_BPE2_coef  <= {{4{W33[15:0]}},{4{W32[15:0]}}};
-            else if (s7_o_cnt == 18) s8_BPE2_coef  <= {{4{W35[15:0]}},{4{W34[15:0]}}};
-            else if (s7_o_cnt == 19) s8_BPE2_coef  <= {{4{W37[15:0]}},{4{W36[15:0]}}};
-            else if (s7_o_cnt == 20) s8_BPE2_coef  <= {{4{W39[15:0]}},{4{W38[15:0]}}};
-            else if (s7_o_cnt == 21) s8_BPE2_coef  <= {{4{W41[15:0]}},{4{W40[15:0]}}};
-            else if (s7_o_cnt == 22) s8_BPE2_coef  <= {{4{W43[15:0]}},{4{W42[15:0]}}};
-            else if (s7_o_cnt == 23) s8_BPE2_coef  <= {{4{W45[15:0]}},{4{W44[15:0]}}};
-            else if (s7_o_cnt == 24) s8_BPE2_coef  <= {{4{W47[15:0]}},{4{W46[15:0]}}};
-            else if (s7_o_cnt == 25) s8_BPE2_coef  <= {{4{W49[15:0]}},{4{W48[15:0]}}};
-            else if (s7_o_cnt == 26) s8_BPE2_coef  <= {{4{W51[15:0]}},{4{W50[15:0]}}};
-            else if (s7_o_cnt == 27) s8_BPE2_coef  <= {{4{W53[15:0]}},{4{W52[15:0]}}};
-            else if (s7_o_cnt == 28) s8_BPE2_coef  <= {{4{W55[15:0]}},{4{W54[15:0]}}};
-            else if (s7_o_cnt == 29) s8_BPE2_coef  <= {{4{W57[15:0]}},{4{W56[15:0]}}};
-            else if (s7_o_cnt == 30) s8_BPE2_coef  <= {{4{W59[15:0]}},{4{W58[15:0]}}};
-            else if (s7_o_cnt == 31) s8_BPE2_coef  <= {{4{W61[15:0]}},{4{W60[15:0]}}};
-            else if (s7_o_cnt == 32) s8_BPE2_coef  <= {{4{W63[15:0]}},{4{W62[15:0]}}};
-            else if (s7_o_cnt == 33)  s8_BPE2_coef <= {{4{W1[79:64]}},{4{W0[79:64]}}};
-            else if (s7_o_cnt == 34)  s8_BPE2_coef <= {{4{W3[79:64]}},{4{W2[79:64]}}};
-            else if (s7_o_cnt == 35)  s8_BPE2_coef <= {{4{W5[79:64]}},{4{W4[79:64]}}};
-            else if (s7_o_cnt == 36)  s8_BPE2_coef <= {{4{W7[79:64]}},{4{W6[79:64]}}};
-            else if (s7_o_cnt == 37)  s8_BPE2_coef <= {{4{W9[79:64]}},{4{W8[79:64]}}};
-            else if (s7_o_cnt == 38)  s8_BPE2_coef <= {{4{W11[79:64]}},{4{W10[79:64]}}};
-            else if (s7_o_cnt == 39)  s8_BPE2_coef <= {{4{W13[79:64]}},{4{W12[79:64]}}};
-            else if (s7_o_cnt == 40)  s8_BPE2_coef <= {{4{W15[79:64]}},{4{W14[79:64]}}};
-            else if (s7_o_cnt == 41)  s8_BPE2_coef <= {{4{W17[79:64]}},{4{W16[79:64]}}};
-            else if (s7_o_cnt == 42)  s8_BPE2_coef <= {{4{W19[79:64]}},{4{W18[79:64]}}};
-            else if (s7_o_cnt == 43)  s8_BPE2_coef <= {{4{W21[79:64]}},{4{W20[79:64]}}};
-            else if (s7_o_cnt == 44)  s8_BPE2_coef <= {{4{W23[79:64]}},{4{W22[79:64]}}};
-            else if (s7_o_cnt == 45)  s8_BPE2_coef <= {{4{W25[79:64]}},{4{W24[79:64]}}};
-            else if (s7_o_cnt == 46)  s8_BPE2_coef <= {{4{W27[79:64]}},{4{W26[79:64]}}};
-            else if (s7_o_cnt == 47)  s8_BPE2_coef <= {{4{W29[79:64]}},{4{W28[79:64]}}};
-            else if (s7_o_cnt == 48)  s8_BPE2_coef <= {{4{W31[79:64]}},{4{W30[79:64]}}};
-            else if (s7_o_cnt == 49)  s8_BPE2_coef <= {{4{W33[79:64]}},{4{W32[79:64]}}};
-            else if (s7_o_cnt == 50)  s8_BPE2_coef <= {{4{W35[79:64]}},{4{W34[79:64]}}};
-            else if (s7_o_cnt == 51)  s8_BPE2_coef <= {{4{W37[79:64]}},{4{W36[79:64]}}};
-            else if (s7_o_cnt == 52)  s8_BPE2_coef <= {{4{W39[79:64]}},{4{W38[79:64]}}};
-            else if (s7_o_cnt == 53)  s8_BPE2_coef <= {{4{W41[79:64]}},{4{W40[79:64]}}};
-            else if (s7_o_cnt == 54)  s8_BPE2_coef <= {{4{W43[79:64]}},{4{W42[79:64]}}};
-            else if (s7_o_cnt == 55)  s8_BPE2_coef <= {{4{W45[79:64]}},{4{W44[79:64]}}};
-            else if (s7_o_cnt == 56)  s8_BPE2_coef <= {{4{W47[79:64]}},{4{W46[79:64]}}};
-            else if (s7_o_cnt == 57)  s8_BPE2_coef <= {{4{W49[79:64]}},{4{W48[79:64]}}};
-            else if (s7_o_cnt == 58)  s8_BPE2_coef <= {{4{W51[79:64]}},{4{W50[79:64]}}};
-            else if (s7_o_cnt == 59)  s8_BPE2_coef <= {{4{W53[79:64]}},{4{W52[79:64]}}};
-            else if (s7_o_cnt == 60)  s8_BPE2_coef <= {{4{W55[79:64]}},{4{W54[79:64]}}};
-            else if (s7_o_cnt == 61)  s8_BPE2_coef <= {{4{W57[79:64]}},{4{W56[79:64]}}};
-            else if (s7_o_cnt == 62)  s8_BPE2_coef <= {{4{W59[79:64]}},{4{W58[79:64]}}};
-            else if (s7_o_cnt == 63)  s8_BPE2_coef <= {{4{W61[79:64]}},{4{W60[79:64]}}};
-            else if (s7_o_cnt == 64)  s8_BPE2_coef <= {{4{W63[79:64]}},{4{W62[79:64]}}};
+            if      (s7_o_cnt == 7'd1 ) s8_BPE2_coef <= {{4{W1[15:0]}},{4{W0[15:0]}}};
+            else if (s7_o_cnt == 7'd2 ) s8_BPE2_coef <= {{4{W3[15:0]}},{4{W2[15:0]}}};
+            else if (s7_o_cnt == 7'd3 ) s8_BPE2_coef <= {{4{W5[15:0]}},{4{W4[15:0]}}};
+            else if (s7_o_cnt == 7'd4 ) s8_BPE2_coef <= {{4{W7[15:0]}},{4{W6[15:0]}}};
+            else if (s7_o_cnt == 7'd5 ) s8_BPE2_coef <= {{4{W9[15:0]}},{4{W8[15:0]}}};
+            else if (s7_o_cnt == 7'd6 ) s8_BPE2_coef <= {{4{W11[15:0]}},{4{W10[15:0]}}};
+            else if (s7_o_cnt == 7'd7 ) s8_BPE2_coef <= {{4{W13[15:0]}},{4{W12[15:0]}}};
+            else if (s7_o_cnt == 7'd8 ) s8_BPE2_coef <= {{4{W15[15:0]}},{4{W14[15:0]}}};
+            else if (s7_o_cnt == 7'd9 ) s8_BPE2_coef <= {{4{W17[15:0]}},{4{W16[15:0]}}};
+            else if (s7_o_cnt == 7'd10) s8_BPE2_coef <= {{4{W19[15:0]}},{4{W18[15:0]}}};
+            else if (s7_o_cnt == 7'd11) s8_BPE2_coef <= {{4{W21[15:0]}},{4{W20[15:0]}}};
+            else if (s7_o_cnt == 7'd12) s8_BPE2_coef <= {{4{W23[15:0]}},{4{W22[15:0]}}};
+            else if (s7_o_cnt == 7'd13) s8_BPE2_coef <= {{4{W25[15:0]}},{4{W24[15:0]}}};
+            else if (s7_o_cnt == 7'd14) s8_BPE2_coef <= {{4{W27[15:0]}},{4{W26[15:0]}}};
+            else if (s7_o_cnt == 7'd15) s8_BPE2_coef <= {{4{W29[15:0]}},{4{W28[15:0]}}};
+            else if (s7_o_cnt == 7'd16) s8_BPE2_coef <= {{4{W31[15:0]}},{4{W30[15:0]}}};
+            else if (s7_o_cnt == 7'd17) s8_BPE2_coef <= {{4{W33[15:0]}},{4{W32[15:0]}}};
+            else if (s7_o_cnt == 7'd18) s8_BPE2_coef <= {{4{W35[15:0]}},{4{W34[15:0]}}};
+            else if (s7_o_cnt == 7'd19) s8_BPE2_coef <= {{4{W37[15:0]}},{4{W36[15:0]}}};
+            else if (s7_o_cnt == 7'd20) s8_BPE2_coef <= {{4{W39[15:0]}},{4{W38[15:0]}}};
+            else if (s7_o_cnt == 7'd21) s8_BPE2_coef <= {{4{W41[15:0]}},{4{W40[15:0]}}};
+            else if (s7_o_cnt == 7'd22) s8_BPE2_coef <= {{4{W43[15:0]}},{4{W42[15:0]}}};
+            else if (s7_o_cnt == 7'd23) s8_BPE2_coef <= {{4{W45[15:0]}},{4{W44[15:0]}}};
+            else if (s7_o_cnt == 7'd24) s8_BPE2_coef <= {{4{W47[15:0]}},{4{W46[15:0]}}};
+            else if (s7_o_cnt == 7'd25) s8_BPE2_coef <= {{4{W49[15:0]}},{4{W48[15:0]}}};
+            else if (s7_o_cnt == 7'd26) s8_BPE2_coef <= {{4{W51[15:0]}},{4{W50[15:0]}}};
+            else if (s7_o_cnt == 7'd27) s8_BPE2_coef <= {{4{W53[15:0]}},{4{W52[15:0]}}};
+            else if (s7_o_cnt == 7'd28) s8_BPE2_coef <= {{4{W55[15:0]}},{4{W54[15:0]}}};
+            else if (s7_o_cnt == 7'd29) s8_BPE2_coef <= {{4{W57[15:0]}},{4{W56[15:0]}}};
+            else if (s7_o_cnt == 7'd30) s8_BPE2_coef <= {{4{W59[15:0]}},{4{W58[15:0]}}};
+            else if (s7_o_cnt == 7'd31) s8_BPE2_coef <= {{4{W61[15:0]}},{4{W60[15:0]}}};
+            else if (s7_o_cnt == 7'd32) s8_BPE2_coef <= {{4{W63[15:0]}},{4{W62[15:0]}}};
+            else if (s7_o_cnt == 7'd33) s8_BPE2_coef <= {{4{W1[79:64]}},{4{W0[79:64]}}};
+            else if (s7_o_cnt == 7'd34) s8_BPE2_coef <= {{4{W3[79:64]}},{4{W2[79:64]}}};
+            else if (s7_o_cnt == 7'd35) s8_BPE2_coef <= {{4{W5[79:64]}},{4{W4[79:64]}}};
+            else if (s7_o_cnt == 7'd36) s8_BPE2_coef <= {{4{W7[79:64]}},{4{W6[79:64]}}};
+            else if (s7_o_cnt == 7'd37) s8_BPE2_coef <= {{4{W9[79:64]}},{4{W8[79:64]}}};
+            else if (s7_o_cnt == 7'd38) s8_BPE2_coef <= {{4{W11[79:64]}},{4{W10[79:64]}}};
+            else if (s7_o_cnt == 7'd39) s8_BPE2_coef <= {{4{W13[79:64]}},{4{W12[79:64]}}};
+            else if (s7_o_cnt == 7'd40) s8_BPE2_coef <= {{4{W15[79:64]}},{4{W14[79:64]}}};
+            else if (s7_o_cnt == 7'd41) s8_BPE2_coef <= {{4{W17[79:64]}},{4{W16[79:64]}}};
+            else if (s7_o_cnt == 7'd42) s8_BPE2_coef <= {{4{W19[79:64]}},{4{W18[79:64]}}};
+            else if (s7_o_cnt == 7'd43) s8_BPE2_coef <= {{4{W21[79:64]}},{4{W20[79:64]}}};
+            else if (s7_o_cnt == 7'd44) s8_BPE2_coef <= {{4{W23[79:64]}},{4{W22[79:64]}}};
+            else if (s7_o_cnt == 7'd45) s8_BPE2_coef <= {{4{W25[79:64]}},{4{W24[79:64]}}};
+            else if (s7_o_cnt == 7'd46) s8_BPE2_coef <= {{4{W27[79:64]}},{4{W26[79:64]}}};
+            else if (s7_o_cnt == 7'd47) s8_BPE2_coef <= {{4{W29[79:64]}},{4{W28[79:64]}}};
+            else if (s7_o_cnt == 7'd48) s8_BPE2_coef <= {{4{W31[79:64]}},{4{W30[79:64]}}};
+            else if (s7_o_cnt == 7'd49) s8_BPE2_coef <= {{4{W33[79:64]}},{4{W32[79:64]}}};
+            else if (s7_o_cnt == 7'd50) s8_BPE2_coef <= {{4{W35[79:64]}},{4{W34[79:64]}}};
+            else if (s7_o_cnt == 7'd51) s8_BPE2_coef <= {{4{W37[79:64]}},{4{W36[79:64]}}};
+            else if (s7_o_cnt == 7'd52) s8_BPE2_coef <= {{4{W39[79:64]}},{4{W38[79:64]}}};
+            else if (s7_o_cnt == 7'd53) s8_BPE2_coef <= {{4{W41[79:64]}},{4{W40[79:64]}}};
+            else if (s7_o_cnt == 7'd54) s8_BPE2_coef <= {{4{W43[79:64]}},{4{W42[79:64]}}};
+            else if (s7_o_cnt == 7'd55) s8_BPE2_coef <= {{4{W45[79:64]}},{4{W44[79:64]}}};
+            else if (s7_o_cnt == 7'd56) s8_BPE2_coef <= {{4{W47[79:64]}},{4{W46[79:64]}}};
+            else if (s7_o_cnt == 7'd57) s8_BPE2_coef <= {{4{W49[79:64]}},{4{W48[79:64]}}};
+            else if (s7_o_cnt == 7'd58) s8_BPE2_coef <= {{4{W51[79:64]}},{4{W50[79:64]}}};
+            else if (s7_o_cnt == 7'd59) s8_BPE2_coef <= {{4{W53[79:64]}},{4{W52[79:64]}}};
+            else if (s7_o_cnt == 7'd60) s8_BPE2_coef <= {{4{W55[79:64]}},{4{W54[79:64]}}};
+            else if (s7_o_cnt == 7'd61) s8_BPE2_coef <= {{4{W57[79:64]}},{4{W56[79:64]}}};
+            else if (s7_o_cnt == 7'd62) s8_BPE2_coef <= {{4{W59[79:64]}},{4{W58[79:64]}}};
+            else if (s7_o_cnt == 7'd63) s8_BPE2_coef <= {{4{W61[79:64]}},{4{W60[79:64]}}};
+            else if (s7_o_cnt == 7'd64) s8_BPE2_coef <= {{4{W63[79:64]}},{4{W62[79:64]}}};
             else s8_BPE2_coef <= s8_BPE2_coef;
         end 
 
@@ -1479,16 +1681,16 @@ end
         if(!rstn) begin
             s9_BPE3_coef <= 0;
         end else begin
-            if      (s8_o_cnt == 1)  s9_BPE3_coef <= {{2{W3[15:0]}},  {2{W2[15:0]}},  {2{W1[15:0]}},  {2{W0[15:0]}}};
-            else if (s8_o_cnt == 2)  s9_BPE3_coef <= {{2{W7[15:0]}},  {2{W6[15:0]}},  {2{W5[15:0]}},  {2{W4[15:0]}}};
-            else if (s8_o_cnt == 3)  s9_BPE3_coef <= {{2{W11[15:0]}}, {2{W10[15:0]}}, {2{W9[15:0]}},  {2{W8[15:0]}}};
-            else if (s8_o_cnt == 4)  s9_BPE3_coef <= {{2{W15[15:0]}}, {2{W14[15:0]}}, {2{W13[15:0]}}, {2{W12[15:0]}}};
-            else if (s8_o_cnt == 5)  s9_BPE3_coef <= {{2{W19[15:0]}}, {2{W18[15:0]}}, {2{W17[15:0]}}, {2{W16[15:0]}}};
-            else if (s8_o_cnt == 6)  s9_BPE3_coef <= {{2{W23[15:0]}}, {2{W22[15:0]}}, {2{W21[15:0]}}, {2{W20[15:0]}}};
-            else if (s8_o_cnt == 7)  s9_BPE3_coef <= {{2{W27[15:0]}}, {2{W26[15:0]}}, {2{W25[15:0]}}, {2{W24[15:0]}}};
-            else if (s8_o_cnt == 8)  s9_BPE3_coef <= {{2{W31[15:0]}}, {2{W30[15:0]}}, {2{W29[15:0]}}, {2{W28[15:0]}}};
-            else if (s8_o_cnt == 9)  s9_BPE3_coef <= {{2{W35[15:0]}}, {2{W34[15:0]}}, {2{W33[15:0]}}, {2{W32[15:0]}}};
-            else if (s8_o_cnt == 10) s9_BPE3_coef <= {{2{W39[15:0]}}, {2{W38[15:0]}}, {2{W37[15:0]}}, {2{W36[15:0]}}};
+            if      (s8_o_cnt == 1 )  s9_BPE3_coef <= {{2{W3[15:0]}},  {2{W2[15:0]}},  {2{W1[15:0]}},  {2{W0[15:0]}}};
+            else if (s8_o_cnt == 2 )  s9_BPE3_coef <= {{2{W7[15:0]}},  {2{W6[15:0]}},  {2{W5[15:0]}},  {2{W4[15:0]}}};
+            else if (s8_o_cnt == 3 )  s9_BPE3_coef <= {{2{W11[15:0]}}, {2{W10[15:0]}}, {2{W9[15:0]}},  {2{W8[15:0]}}};
+            else if (s8_o_cnt == 4 )  s9_BPE3_coef <= {{2{W15[15:0]}}, {2{W14[15:0]}}, {2{W13[15:0]}}, {2{W12[15:0]}}};
+            else if (s8_o_cnt == 5 )  s9_BPE3_coef <= {{2{W19[15:0]}}, {2{W18[15:0]}}, {2{W17[15:0]}}, {2{W16[15:0]}}};
+            else if (s8_o_cnt == 6 )  s9_BPE3_coef <= {{2{W23[15:0]}}, {2{W22[15:0]}}, {2{W21[15:0]}}, {2{W20[15:0]}}};
+            else if (s8_o_cnt == 7 )  s9_BPE3_coef <= {{2{W27[15:0]}}, {2{W26[15:0]}}, {2{W25[15:0]}}, {2{W24[15:0]}}};
+            else if (s8_o_cnt == 8 )  s9_BPE3_coef <= {{2{W31[15:0]}}, {2{W30[15:0]}}, {2{W29[15:0]}}, {2{W28[15:0]}}};
+            else if (s8_o_cnt == 9 )  s9_BPE3_coef <= {{2{W35[15:0]}}, {2{W34[15:0]}}, {2{W33[15:0]}}, {2{W32[15:0]}}};
+            else if (s8_o_cnt == 10)  s9_BPE3_coef <= {{2{W39[15:0]}}, {2{W38[15:0]}}, {2{W37[15:0]}}, {2{W36[15:0]}}};
             else if (s8_o_cnt == 11) s9_BPE3_coef <= {{2{W43[15:0]}}, {2{W42[15:0]}}, {2{W41[15:0]}}, {2{W40[15:0]}}};
             else if (s8_o_cnt == 12) s9_BPE3_coef <= {{2{W47[15:0]}}, {2{W46[15:0]}}, {2{W45[15:0]}}, {2{W44[15:0]}}};
             else if (s8_o_cnt == 13) s9_BPE3_coef <= {{2{W51[15:0]}}, {2{W50[15:0]}}, {2{W49[15:0]}}, {2{W48[15:0]}}};
@@ -1613,8 +1815,8 @@ end
             else if (s9_o_cnt == 7)  s10_BPE4_coef <= {W55[15:0], W54[15:0], W53[15:0], W52[15:0], W51[15:0], W50[15:0], W49[15:0], W48[15:0]};
             else if (s9_o_cnt == 8)  s10_BPE4_coef <= {W63[15:0], W62[15:0], W61[15:0], W60[15:0], W59[15:0], W58[15:0], W57[15:0], W56[15:0]};
             
-            else if (s9_o_cnt == 9)  s10_BPE4_coef <= {W7[79:64], W6[79:64], W5[79:64], W4[79:64], W3[79:64], W2[79:64], W1[79:64], W0[79:64]};
-            else if (s9_o_cnt == 10) s10_BPE4_coef <= {W15[79:64], W14[79:64], W13[79:64], W12[79:64], W11[79:64], W10[79:64], W9[79:64], W8[79:64]};
+            else if (s9_o_cnt == 9 )  s10_BPE4_coef <= {W7[79:64], W6[79:64], W5[79:64], W4[79:64], W3[79:64], W2[79:64], W1[79:64], W0[79:64]};
+            else if (s9_o_cnt == 10)  s10_BPE4_coef <= {W15[79:64], W14[79:64], W13[79:64], W12[79:64], W11[79:64], W10[79:64], W9[79:64], W8[79:64]};
             else if (s9_o_cnt == 11) s10_BPE4_coef <= {W23[79:64], W22[79:64], W21[79:64], W20[79:64], W19[79:64], W18[79:64], W17[79:64], W16[79:64]};
             else if (s9_o_cnt == 12) s10_BPE4_coef <= {W31[79:64], W30[79:64], W29[79:64], W28[79:64], W27[79:64], W26[79:64], W25[79:64], W24[79:64]};
             else if (s9_o_cnt == 13) s10_BPE4_coef <= {W39[79:64], W38[79:64], W37[79:64], W36[79:64], W35[79:64], W34[79:64], W33[79:64], W32[79:64]};
@@ -1698,7 +1900,7 @@ end
             s10_o_tmp_a <= 0;
             s10_o_tmp_b <= 0;
         end else begin
-            case(mode_state[1:0])
+            case(mode[1:0])
             NTT: begin
                 s10_o_tmp_a <= (stage == S7_to_10 && s10_o_cnt <= 7'd64 && BPE4_o_vld && BPE4_o_rdy) ?
                             {BPE4_bout[63:48], BPE4_aout[63:48], BPE4_bout[47:32], BPE4_aout[47:32], BPE4_bout[31:16], BPE4_aout[31:16], BPE4_bout[15:0], BPE4_aout[15:0]}: s10_o_tmp_a;
@@ -1718,7 +1920,7 @@ end
         if(!rstn) begin
             s10_div_o_cnt <= 0;
         end else begin
-            s10_div_o_cnt <= (s10_div_o_cnt == 7'd64) ? 0 : (o_vld1_iNTT) ? s10_div_o_cnt + 1: s10_div_o_cnt;
+            s10_div_o_cnt <= (s10_div_o_cnt == 7'd64) ? 0 : (stage == S7_to_10 && o_vld1_iNTT) ? s10_div_o_cnt + 1: s10_div_o_cnt;
         end
 
     // iNTT output to divN
@@ -1726,7 +1928,7 @@ end
         .in_A(BPE4_aout),
         .clk(clk),
         .rst_n(rstn),
-        .in_valid(BPE4_o_vld && mode_state[1:0] == iNTT),
+        .in_valid(BPE4_o_vld && mode[1:0] == iNTT),
         .result_int(aout_iNTT),
         .out_valid(o_vld1_iNTT)
     );
@@ -1736,7 +1938,7 @@ end
         .in_A(BPE4_bout),
         .clk(clk),
         .rst_n(rstn),
-        .in_valid(BPE4_o_vld && mode_state[1:0] == iNTT),
+        .in_valid(BPE4_o_vld && mode[1:0] == iNTT),
         .result_int(bout_iNTT),
         .out_valid(o_vld2_iNTT)
     );
@@ -1753,7 +1955,7 @@ end
     wire [6:0]temp;
     assign temp = (s10_o_cnt-1) << 1;
     always@* 
-        case(mode_state[1:0]) 
+        case(mode[1:0]) 
             NTT:begin
                 s10_o_sram_din_128_tmp [255:128] = (stage == S7_to_10 && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_b[127:0]} : s10_o_sram_din_128_tmp[255:128];
                 s10_o_sram_din_128_tmp [127:0] = (stage == S7_to_10  && s10_o_cnt >= 1'd1 && s10_o_cnt <= 7'd64) ? {s10_o_tmp_a[127:0]} : s10_o_sram_din_128_tmp[127:0];
@@ -1784,9 +1986,11 @@ end
 // Read: sram 128*128 (NTT)                         // 
 // Write:                                           // 
 //=================== stream out ===================// 
-    localparam FETCH = 1'b0;
-    localparam WAIT_OUT = 1'b1;
-    reg sm_state, next_sm_state;
+    localparam FETCH = 2'b00;
+    localparam WAIT_OUT = 2'b01;
+    localparam WAIT_LAST = 2'b10;
+    localparam DONE = 2'b11;
+    reg [1:0] sm_state, next_sm_state;
     reg next_sm_o_en, next_sw_vld;
     reg [6:0] sm_o_sram_addr_128_tmp;
     reg [6:0] next_sm_o_sram_addr_128_tmp;
@@ -1795,7 +1999,7 @@ end
         case(sm_state)
             FETCH: begin
                 next_sm_o_en = 0;
-                next_sm_state = WAIT_OUT;
+                next_sm_state = (sw_lst) ? WAIT_LAST :WAIT_OUT ;
                 next_sw_vld = 1;
                 next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
             end
@@ -1811,6 +2015,25 @@ end
                     next_sw_vld = 1;
                     next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
                 end
+            end
+            WAIT_LAST: begin
+                if(sw_rdy) begin
+                    next_sm_o_en = 0;
+                    next_sm_state = DONE;
+                    next_sw_vld = 0;
+                    next_sm_o_sram_addr_128_tmp = 0;
+                end else begin
+                    next_sm_o_en = 0;
+                    next_sm_state = WAIT_LAST;
+                    next_sw_vld = 1;
+                    next_sm_o_sram_addr_128_tmp = sm_o_sram_addr_128_tmp;
+                end
+            end
+            DONE: begin
+                next_sm_o_en = 0;
+                next_sm_state = DONE;
+                next_sw_vld = 0;
+                next_sm_o_sram_addr_128_tmp = 0;
             end
             default: begin
                 next_sm_o_en = 0;
@@ -1829,21 +2052,17 @@ end
             sm_o_sram_addr_128_tmp <= 0;
             sw_dat <= 0;
         end else begin
-            sm_o_sram_en_128 <= (stage == OUT) ? next_sm_o_en : sm_o_sram_en_128;
-            sm_state <= (stage == OUT) ? next_sm_state : sm_state;
-            sw_vld <= (stage == OUT) ? next_sw_vld : sw_vld;
-            sm_o_sram_addr_128_tmp <= (stage == OUT) ? next_sm_o_sram_addr_128_tmp : sm_o_sram_addr_128_tmp;
-            sw_dat <= (sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
+            sm_o_sram_en_128 <= (stage == OUT || stage == IDLE) ? next_sm_o_en : sm_o_sram_en_128;
+            sm_state <= (stage == OUT || stage == IDLE) ? next_sm_state : sm_state;
+            sw_vld <= (stage == OUT || stage == IDLE) ? next_sw_vld : sw_vld;
+            sm_o_sram_addr_128_tmp <= (stage == OUT || stage == IDLE) ? next_sm_o_sram_addr_128_tmp : sm_o_sram_addr_128_tmp;
+            sw_dat <= ((stage == OUT || stage == IDLE) && sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
         end
     end 
 
-    // assign sw_dat = (sm_o_sram_en_128) ? sram_dout_128 : sw_dat;
     assign sm_o_sram_addr_128 = sm_o_sram_addr_128_tmp * 4;
     assign sw_lst = (sm_o_sram_addr_128_tmp == 127);
-//====================================== sram signal controller ======================================// 
-
-// ============ sram 512 * 128 ============ //
-    
+//====================================== sram signal controller ======================================//     
     always @(posedge clk_2x or negedge rstn) begin
         if(!rstn) begin
             sram_dout_128_buf <= 0;
@@ -1856,24 +2075,64 @@ end
 
     always @(*) begin
         case (stage)
+            // notification for mode switch and store s1 data in sram 512
+            MODE_SWITCH: begin
+                // BPE1 (mode switch)
+                BPE1_ain   = ms_BPE1_ain;
+                BPE1_bin   = ms_BPE1_bin;
+                BPE1_coef  = ms_BPE1_coef;
+                BPE1_i_vld = ms_BPE1_i_vld;
+                
+                // BPE2 (mode switch)
+                BPE2_ain   = ms_BPE2_ain;
+                BPE2_bin   = ms_BPE2_bin;
+                BPE2_coef  = ms_BPE2_coef;
+                BPE2_i_vld = ms_BPE2_i_vld;
+
+                // BPE3 (mode switch)
+                BPE3_ain   = ms_BPE3_ain;
+                BPE3_bin   = ms_BPE3_bin;
+                BPE3_coef  = ms_BPE3_coef;
+                BPE3_i_vld = ms_BPE3_i_vld;
+
+                // BPE4 (mode switch)
+                BPE4_ain   = ms_BPE4_ain;
+                BPE4_bin   = ms_BPE4_bin;
+                BPE4_coef  = ms_BPE4_coef;
+                BPE4_i_vld = ms_BPE4_i_vld;
+
+                // sram 512*128 (write)
+                sram_en_512   = s0_i_sram_en_512;
+                WE_512        = s0_i_WE_512;
+                sram_addr_512 = s0_i_sram_addr_512;
+                sram_din_512  = s0_i_sram_din_512;
+                // sram 128*128
+                sram_en_128   = 0;
+                WE_128        = 0;
+                sram_addr_128 = 0;
+                sram_din_128  = 0;
+
+                next_stage = (s0_i_cnt == 8'd128 && s0_i_sram_en_512) ? S1 : MODE_SWITCH;
+            end
             S1: begin
+                // sram 512*512 (read)
+                sram_en_512   = s1_i_sram_en_512;
+                WE_512        = s1_i_WE_512;
+                sram_addr_512 = s1_i_sram_addr_512;
+                sram_din_512  = s1_i_sram_din_512;
+                
                 // sram 128*128 (write)
                 sram_en_128   = s1_o_sram_en_128;
                 WE_128        = s1_o_WE_128;
                 sram_addr_128 = s1_o_sram_addr_128;
                 sram_din_128  = s1_o_sram_din_128;
                 next_stage = (s1_o_cnt == 7'd64 && s1_o_sram_en_128) ? S2 : S1;
+
                 // BPE1
                 BPE1_ain   = s1_BPE1_ain;
                 BPE1_bin   = s1_BPE1_bin;
                 BPE1_coef  = s1_BPE1_coef;
                 BPE1_i_vld = s1_BPE1_i_vld;
-
-                // sram 512*128 
-                sram_en_512   = 0;
-                WE_512        = 4'b0000;
-                sram_addr_512 = 0;
-                sram_din_512  = 0;
 
                 // BPE2 
                 BPE2_ain   = 0;
@@ -2105,8 +2364,8 @@ end
                 BPE4_coef  = s10_BPE4_coef;
                 BPE4_i_vld = s10_BPE4_i_vld;
 
-                next_stage = (mode_state[1:0] == NTT && s10_o_sram_en_128 && s10_o_cnt == 7'd64 || 
-                              mode_state[1:0] == iNTT && s10_div_o_cnt == 7'd64) ? OUT : S7_to_10;
+                next_stage = (mode[1:0] == NTT && s10_o_sram_en_128 && s10_o_cnt == 7'd64 || 
+                              mode[1:0] == iNTT && s10_div_o_cnt == 7'd64) ? OUT : S7_to_10;
             end
             OUT: begin
                 // sram 128*128 (read)
@@ -2187,11 +2446,10 @@ end
 
     always @ (posedge clk or negedge rstn) begin
         if(!rstn) begin
-            stage <= S1;
+            stage <= MODE_SWITCH;
         end else begin
             stage <= next_stage;
         end
     end
 
 endmodule
-
