@@ -1617,7 +1617,7 @@ always @(*) begin
       BPE2_coef = coef_reg_0_2nd;
     end
     RECEIVE_CAL3: begin
-      BPE2_coef = coef_reg_0_2nd;
+      BPE2_coef = (counter_2nd[1]) ? coef_reg_1_2nd : coef_reg_0_2nd;
     end
     RECEIVE_CAL_OUTPUT: begin
       BPE2_coef = (counter_2nd[1]) ? coef_reg_1_2nd : coef_reg_0_2nd;
