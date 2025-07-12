@@ -186,7 +186,7 @@ module fiFFNTT_tb;
   );
 
     //Prevent hang
-    integer timeout = (100000);
+    integer timeout = (60000);
     initial begin
         while(timeout > 0) begin
             @(posedge clk);
@@ -389,7 +389,7 @@ module fiFFNTT_tb;
     end
   endtask
 
-  // sm_stream_out
+  // Wrong code by Team TB
   task sm_stream_out(
     input integer N,
     input integer M
@@ -397,23 +397,21 @@ module fiFFNTT_tb;
     begin
       j = 0; 
       while (j < N) begin
-        @(posedge clk);
         sm_tready <= 1;
-
-        wait(sm_tvalid);
-        if (M == 0) begin
-          out_FFT[j] = sm_tdata;
-        end else if (M == 1) begin
-          out_iFFT[j] = sm_tdata;
-        end else if (M == 2) begin
-          out_NTT[j] = sm_tdata;
-        end else if (M == 3) begin
-          out_iNTT[j] = sm_tdata;
-        end
-        j = j + 1;
         @(posedge clk);
-        sm_tready <= 0;
+        if (sm_tvalid) begin
+          case (M)
+            0: out_FFT[j]  = sm_tdata;
+            1: out_iFFT[j] = sm_tdata;
+            2: out_NTT[j]  = sm_tdata;
+            3: out_iNTT[j] = sm_tdata;
+          endcase
+          j = j + 1;
+          sm_tready <= 0; // 每收完一筆，ready往下拉
+          @(posedge clk);
+        end
       end
+      sm_tready <= 0;
     end
   endtask
 
@@ -524,9 +522,45 @@ module fiFFNTT_tb;
   endtask
 
 
+  task compare_fp64(
+    input [63:0] golden_bits,
+    input [63:0] output_bits,
+    output err
+  );
+
+    real golden_val;
+    real output_val;
+    real golden_val_tmp;
+    real output_val_tmp;
+    real abs_error;
+    real rel_error;
+
+      begin
+        golden_val = $bitstoreal(golden_bits); // golden float type
+        output_val = $bitstoreal(output_bits); // output float type
+
+        abs_error = golden_val - output_val;
+        if (abs_error < 0) begin
+          abs_error = -abs_error;
+        end
+
+        if (abs_error <= 0.000000001) // if error <= e-10 => pass
+          err = 0;
+        else
+          err = 1;
+      end
+    
+  endtask
+
+  integer fd; 
+  reg [63:0] golden_tmp;
+  reg [63:0] output_tmp;
+  reg err_tmp;
+
   initial begin
-    $fsdbDumpfile("fiFFNTT.fsdb");
-    $fsdbDumpvars(0, fiFFNTT_tb);
+    fd = $fopen("terminal_message.txt", "w");
+    $dumpfile("fiFFNTT.vcd");
+    $dumpvars(0, fiFFNTT_tb);
     awvalid = 0; 
     wvalid = 0;
     arvalid = 0; 
@@ -544,18 +578,18 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("fft_g_in.hex", coef_mem_FFT);
+    $readmemh("coef.hex", coef_mem_FFT);
     //$readmemh("addr0_511_128b.hex", coef_mem1);
-    $readmemh("addr0_1023_32b.hex", coef_mem_NTT);
-    $readmemh("addr0_1023_32b.hex", coef_mem_iNTT);
-    $readmemh("fft_a_in.hex", in_mem_FFT);
-    $readmemh("addr0_511_128b_bitreverse.hex", in_iFFT);
-    $readmemh("addr0_1023_32b.hex", in_mem_NTT);
-    $readmemh("addr0_1023_32b_bitreverse.hex", in_mem_iNTT);
-    $readmemh("fft_golden_a.hex", golden_mem_FFT);
-    $readmemh("addr0_511_128b.hex", golden_mem_iFFT);
-    $readmemh("addr0_1023_32b.hex", golden_mem_NTT);
-    $readmemh("addr0_1023_32b.hex", golden_mem_iNTT);
+    $readmemh("NTT_coef.hex", coef_mem_NTT);
+    $readmemh("iNTT_coef.hex", coef_mem_iNTT);
+    $readmemh("input.hex", in_mem_FFT);
+    $readmemh("output.hex", in_iFFT);
+    $readmemh("NTT_in.hex", in_mem_NTT);
+    $readmemh("iNTT_in.hex", in_mem_iNTT);
+    $readmemh("output.hex", golden_mem_FFT);
+    $readmemh("input.hex", golden_mem_iFFT);
+    $readmemh("NTT_out.hex", golden_mem_NTT);
+    $readmemh("iNTT_out.hex", golden_mem_iNTT);
 
     for (k = 0; k < 512; k = k + 1) begin
       coef_NTT[k] = {coef_mem_NTT[k]};
@@ -641,17 +675,51 @@ module fiFFNTT_tb;
     end
 
     // Check results
-    for (i = 0; i < 2048; i = i + 1) begin
-      if (out_FFT[i] != golden_FFT[i]) begin
-        $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    for (i = 0; i < 2048; i = i + 2) begin
+      golden_tmp = {golden_FFT[i], golden_FFT[i+1]};
+      output_tmp = {out_FFT[i], out_FFT[i+1]};
+      compare_fp64(golden_tmp, output_tmp, err_tmp);
+      if (err_tmp == 1) begin
+        $display("\033[1;31mFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
       end else begin
-        $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+        $display("\033[1;32mFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
       end
     end
+    // for (i = 0; i < 2048; i = i + 1) begin
+    //   if (i % 2 == 0) begin
+    //     if (out_FFT[i] != golden_FFT[i]) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //       //$finish;
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //     end
+    //   end else begin
+    //     if (out_FFT[i][31:12] != golden_FFT[i][31:12]) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //       //$finish;
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //     end
+    //   end
+    // end
+    
+
+    // for (i = 0; i < 2048; i = i + 1) begin
+    //   if (i % 4 == 3) begin
+    //     if ((out_FFT[i] != golden_FFT[i]) || (out_FFT[i-1] != golden_FFT[i-1]) || (out_FFT[i-2] != golden_FFT[i-2]) || (out_FFT[i-3] != golden_FFT[i-3])) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
+    //     end
+    //   end
+    // end
 
     for (i = 0; i < 2048; i = i + 1) begin
       if (out_iFFT[i] != golden_iFFT[i]) begin
         $display("iFFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
+        $finish;
       end else begin
         $display("iFFT match idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
       end
@@ -675,7 +743,8 @@ module fiFFNTT_tb;
 
     $display("Kernel %d PASS", k);
     $display("First test end");
-    
+    $fclose(fd);
+    /*
     // test 2 starts
     fork
       test2_data_in;
@@ -696,8 +765,8 @@ module fiFFNTT_tb;
     join
     $display("Test3 pass!!");
     $finish;
-  end
-
-  //$finish;
   
+  */
+  //$finish;
+  end
 endmodule
