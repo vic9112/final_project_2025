@@ -41,6 +41,8 @@ module fiFFNTT
     reg awready_next;
     reg wready_tmp;
     reg wready_next;
+    reg [(pADDR_WIDTH-1):0] awaddr_tmp;
+    reg [(pADDR_WIDTH-1):0] awaddr_next;
 
     // axi read is used to read the ap_state of the kenel
     // coef_done can be determined by the metadata -> dont need axi write for now
@@ -60,8 +62,8 @@ module fiFFNTT
     // local parameter
     localparam PULL_DN = 0; // pull down
     localparam PULL_UP = 1; 
-    localparam AP_STAT = 32'h00; // 0x00
-    localparam COEF_STAT = 32'h10; // 0x10
+    localparam AP_STAT = 32'h3000_0000; // 0x00
+    localparam COEF_STAT = 32'h3000_0010; // 0x10
     // =============== IOP =============== //
     wire clk_k1, clk_k2, clk_k3, clk_k4;
     wire [7:0] k1_mode;    
@@ -79,6 +81,8 @@ module fiFFNTT
     wire [7:0] k4_mode;
     wire decode4;
     wire k4_sw_lst;
+
+    wire rst_mode;
     
     // =============== Kernel interface =============== //
     // Kernel 1
@@ -132,6 +136,7 @@ module fiFFNTT
         arready_tmp <= PULL_DN;
         rvalid_tmp <= PULL_DN;
         araddr_tmp <= PULL_DN;
+        awaddr_tmp <= PULL_DN;
         read_ap_stat_tmp <= PULL_DN;
       end else begin
         awready_tmp <= awready_next;
@@ -139,19 +144,31 @@ module fiFFNTT
         arready_tmp <= arready_next;
         rvalid_tmp <= rvalid_next;
         araddr_tmp <= araddr_next;
+        awaddr_tmp <= awaddr_next;
         read_ap_stat_tmp <= read_ap_stat_next;
       end
     end
 
     always @(*) begin
       // axi write (used for coef_done)
-      if (awvalid && wvalid && !wready) begin
+      if (awvalid && !awready) begin
         awready_next = PULL_UP;
-        wready_next = PULL_UP;
       end else begin
         awready_next = PULL_DN;
+      end
+
+      if (wvalid && !wready) begin
+        wready_next = PULL_UP;
+      end else begin
         wready_next = PULL_DN;
       end
+
+      if (awvalid && awready) begin
+        awaddr_next = awaddr;
+      end else begin
+        awaddr_next = awaddr_tmp;
+      end
+
       // axi read - arready
       if (arvalid && !arready) begin
         arready_next = PULL_UP;
@@ -426,6 +443,31 @@ module fiFFNTT
     wire ss_vld;
     assign ss_vld = ss_tvalid2 && !(meta_counter == 0 && data_ram_state == 1);
 
+    ///////////////
+    // coef_ctrl //
+    ///////////////
+
+    reg  [31:0] coef_ctrl_next;
+    reg  [31:0] coef_ctrl_r;
+
+    assign coef_ctrl = coef_ctrl_r;
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        coef_ctrl_r <= 0;
+      end else begin
+        coef_ctrl_r <= coef_ctrl_next;
+      end
+    end
+
+    always @* begin
+      if (wready && awaddr == COEF_STAT) begin
+        coef_ctrl_next = wdata;
+      end else begin
+        coef_ctrl_next = coef_ctrl_r;
+      end
+    end
+
     /*================================================================================================
     #                                            IOP                                                 #
     ================================================================================================*/
@@ -438,7 +480,7 @@ module fiFFNTT
       
       //.in1_sw      (     ),
       .ap_ctrl     (ap_ctrl),
-      .coef_ctrl   (coef_ctrl),
+      // .coef_ctrl   (coef_ctrl),
       .ap_read     (ap_read),
 
       .ss_vld      (ss_vld),
@@ -528,7 +570,9 @@ module fiFFNTT
 
       .k4_mode     (k4_mode),
       .decode4     (decode4),
-      .k4_sw_lst   (k4_sw_lst) 
+      .k4_sw_lst   (k4_sw_lst),
+
+      .rst_mode   (rst_mode) // new signal to control reset mode
     );
 
 
@@ -541,6 +585,7 @@ module fiFFNTT
       .clk        (clk_k1),
       .clk_2x     (clk_2x),
       .rstn       (rstn),
+      .rst_mode   (rst_mode),
 
       .ld_vld     (k1_load_vld),
       .ld_rdy     (k1_load_rdy),
@@ -567,6 +612,7 @@ module fiFFNTT
         .clk        (clk_k2),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k2_load_vld),
         .ld_rdy     (k2_load_rdy),
@@ -593,6 +639,7 @@ module fiFFNTT
         .clk        (clk_k3),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k3_load_vld),
         .ld_rdy     (k3_load_rdy),
@@ -619,6 +666,7 @@ module fiFFNTT
         .clk        (clk_k4),
         .clk_2x     (clk_2x),
         .rstn       (rstn),
+        .rst_mode   (rst_mode),
 
         .ld_vld     (k4_load_vld),
         .ld_rdy     (k4_load_rdy),

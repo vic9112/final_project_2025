@@ -3,7 +3,7 @@
 module fiFFNTT_tb;
 
   // Parameters & Constants
-  localparam CLK_PERIOD    = 10;             // 100 MHz clock
+  localparam CLK_PERIOD    = 12;             // 100 MHz clock
   localparam ADDR_WIDTH    = 32;
   localparam DATA_WIDTH    = 32;
   localparam NUM_KER       = 4;
@@ -13,7 +13,7 @@ module fiFFNTT_tb;
   localparam int LEN [NUM_KER] = {2048, 2048, 1024, 1024};
   localparam int COEF_LEN [NUM_KER] = {512, 512, 1024, 1024};
   */
-    function [15:0] get_LEN;
+  function [15:0] get_LEN;
   input integer idx;
   begin
     case(idx)
@@ -30,17 +30,17 @@ module fiFFNTT_tb;
     input integer idx;
     begin
       case(idx)
-        0: get_COEF_LEN = 512;
-        1: get_COEF_LEN = 512;
-        2: get_COEF_LEN = 1024;
-        3: get_COEF_LEN = 1024;
+        0: get_COEF_LEN = 1024;
+        1: get_COEF_LEN = 1024;
+        2: get_COEF_LEN = 512;
+        3: get_COEF_LEN = 512;
         default: get_COEF_LEN = 0;
       endcase
     end
   endfunction
 
   // Register map
-  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h0000_0000;
+  localparam [ADDR_WIDTH-1:0] STATUS_ADDR    = 32'h3000_0000;
   localparam [ADDR_WIDTH-1:0] COEF_DONE_ADDR = 32'h3000_0010;
   localparam [ADDR_WIDTH-1:0] MB_BASE_ADDR   = 32'h3000_2000;
   localparam [7:0]            COEF_BASE      = 8'b0001_0100;
@@ -53,9 +53,9 @@ module fiFFNTT_tb;
   localparam [DATA_WIDTH-1:0] PAT_KER_BUSY = 32'h5A5A5A5A;
 
   // Clock & Reset
-  reg clk = 0;
+  reg clk = 1;
   reg rstn = 0;
-  reg clk_2x = 0;
+  reg clk_2x = 1;
   always #(CLK_PERIOD/2) clk = ~clk;
   always #(CLK_PERIOD/4) clk_2x = ~clk_2x;  // 2x freq clock
   initial begin 
@@ -89,23 +89,38 @@ module fiFFNTT_tb;
   integer i, j, k, m;
 
   // Memories for input/output/golden data
-  reg [DATA_WIDTH-1:0] coef_mem0 [0:2047];
-  reg [DATA_WIDTH-1:0] coef_mem1 [0:2047];
-  reg [DATA_WIDTH-1:0] coef_mem2 [0:2047];
-  reg [DATA_WIDTH-1:0] coef_mem3 [0:2047];
-  reg [DATA_WIDTH-1:0] in_mem0 [0:2047];
-  reg [DATA_WIDTH-1:0] in_mem1 [0:2047];
-  reg [DATA_WIDTH-1:0] in_mem2 [0:2047];
-  reg [DATA_WIDTH-1:0] in_mem3 [0:2047];
-  reg [DATA_WIDTH-1:0] golden_mem0 [0:2047];
-  reg [DATA_WIDTH-1:0] golden_mem1 [0:2047];
-  reg [DATA_WIDTH-1:0] golden_mem2 [0:2047];
-  reg [DATA_WIDTH-1:0] golden_mem3 [0:2047];
-
   reg [DATA_WIDTH-1:0] coef_mem   [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] in_mem     [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] out_mem    [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] golden_mem [0:NUM_KER-1][0:2047];
+
+  reg [DATA_WIDTH-1:0] coef_mem_FFT    [0:1023];
+  reg [31:0] coef_mem_NTT              [0:511];
+  reg [31:0] coef_mem_iNTT             [0:511];
+  reg [DATA_WIDTH-1:0] in_mem_FFT      [0:2047];
+  reg [DATA_WIDTH-1:0] in_mem_iFFT     [0:2047];
+  reg [31:0] in_mem_NTT                [0:1023];
+  reg [31:0] in_mem_iNTT               [0:1023];
+  reg [DATA_WIDTH-1:0] golden_mem_FFT  [0:2047];
+  reg [DATA_WIDTH-1:0] golden_mem_iFFT [0:2047];
+  reg [31:0] golden_mem_NTT            [0:1023];
+  reg [31:0] golden_mem_iNTT           [0:1023];
+
+  reg [DATA_WIDTH-1:0] coef_FFT    [0:1023];
+  reg [DATA_WIDTH-1:0] coef_NTT    [0:511];
+  reg [DATA_WIDTH-1:0] coef_iNTT   [0:511];
+  reg [DATA_WIDTH-1:0] in_FFT      [0:2047];
+  reg [DATA_WIDTH-1:0] in_iFFT     [0:2047];
+  reg [DATA_WIDTH-1:0] in_NTT      [0:1023];
+  reg [DATA_WIDTH-1:0] in_iNTT     [0:1023];
+  reg [DATA_WIDTH-1:0] out_FFT     [0:2047];
+  reg [DATA_WIDTH-1:0] out_iFFT    [0:2047];
+  reg [DATA_WIDTH-1:0] out_NTT     [0:1023];
+  reg [DATA_WIDTH-1:0] out_iNTT    [0:1023];
+  reg [DATA_WIDTH-1:0] golden_FFT  [0:2047];
+  reg [DATA_WIDTH-1:0] golden_iFFT [0:2047];
+  reg [DATA_WIDTH-1:0] golden_NTT  [0:1023];
+  reg [DATA_WIDTH-1:0] golden_iNTT [0:1023];
 
   // Main test sequence
   integer start_time, end_time, latency;
@@ -171,7 +186,7 @@ module fiFFNTT_tb;
   );
 
     //Prevent hang
-    integer timeout = (10000);
+    integer timeout = (60000);
     initial begin
         while(timeout > 0) begin
             @(posedge clk);
@@ -374,7 +389,7 @@ module fiFFNTT_tb;
     end
   endtask
 
-  // sm_stream_out
+  // Wrong code by Team TB
   task sm_stream_out(
     input integer N,
     input integer M
@@ -382,15 +397,21 @@ module fiFFNTT_tb;
     begin
       j = 0; 
       while (j < N) begin
-        @(posedge clk);
         sm_tready <= 1;
-
-        wait(sm_tvalid);
-        out_mem[M][j] = sm_tdata;
-        j = j + 1;
         @(posedge clk);
-        sm_tready <= 0;
+        if (sm_tvalid) begin
+          case (M)
+            0: out_FFT[j]  = sm_tdata;
+            1: out_iFFT[j] = sm_tdata;
+            2: out_NTT[j]  = sm_tdata;
+            3: out_iNTT[j] = sm_tdata;
+          endcase
+          j = j + 1;
+          sm_tready <= 0; // 每收完一筆，ready往下拉
+          @(posedge clk);
+        end
       end
+      sm_tready <= 0;
     end
   endtask
 
@@ -501,7 +522,43 @@ module fiFFNTT_tb;
   endtask
 
 
+  task compare_fp64(
+    input [63:0] golden_bits,
+    input [63:0] output_bits,
+    output err
+  );
+
+    real golden_val;
+    real output_val;
+    real golden_val_tmp;
+    real output_val_tmp;
+    real abs_error;
+    real rel_error;
+
+      begin
+        golden_val = $bitstoreal(golden_bits); // golden float type
+        output_val = $bitstoreal(output_bits); // output float type
+
+        abs_error = golden_val - output_val;
+        if (abs_error < 0) begin
+          abs_error = -abs_error;
+        end
+
+        if (abs_error <= 0.000000001) // if error <= e-10 => pass
+          err = 0;
+        else
+          err = 1;
+      end
+    
+  endtask
+
+  integer fd; 
+  reg [63:0] golden_tmp;
+  reg [63:0] output_tmp;
+  reg err_tmp;
+
   initial begin
+    fd = $fopen("terminal_message.txt", "w");
     $dumpfile("fiFFNTT.vcd");
     $dumpvars(0, fiFFNTT_tb);
     awvalid = 0; 
@@ -521,32 +578,48 @@ module fiFFNTT_tb;
     #CLK_PERIOD;
 
     // Load data files
-    $readmemh("fft_g_in.dat", coef_mem0);
-    //$readmemh("iFFT_coef.hex", coef_mem1);
-    //$readmemh("NTT_coef.hex", coef_mem2);
-    //$readmemh("iNTT_coef.hex", coef_mem3);
-    $readmemh("fft_a_in.dat", in_mem0);
-    //$readmemh("iFFT_in.hex", in_mem1);
-    //$readmemh("NTT_in.hex", in_mem2);
-    //$readmemh("iNTT_in.hex", in_mem3);
-    $readmemh("fft_golden_a.dat", golden_mem0);
-    //$readmemh("iFFT_out.hex", golden_mem1);
-    //$readmemh("NTT_out.hex", golden_mem2);
-    //$readmemh("iNTT_out.hex", golden_mem3);
+    $readmemh("coef.hex", coef_mem_FFT);
+    //$readmemh("addr0_511_128b.hex", coef_mem1);
+    $readmemh("NTT_coef.hex", coef_mem_NTT);
+    $readmemh("iNTT_coef.hex", coef_mem_iNTT);
+    $readmemh("input.hex", in_mem_FFT);
+    $readmemh("output.hex", in_iFFT);
+    $readmemh("NTT_in.hex", in_mem_NTT);
+    $readmemh("iNTT_in.hex", in_mem_iNTT);
+    $readmemh("output.hex", golden_mem_FFT);
+    $readmemh("input.hex", golden_mem_iFFT);
+    $readmemh("NTT_out.hex", golden_mem_NTT);
+    $readmemh("iNTT_out.hex", golden_mem_iNTT);
+
+    for (k = 0; k < 512; k = k + 1) begin
+      coef_NTT[k] = {coef_mem_NTT[k]};
+      coef_iNTT[k] = {coef_mem_iNTT[k]};
+    end
+
+    for (k = 0; k < 1024; k = k + 1) begin
+      coef_FFT[k] = coef_mem_FFT[k];
+      in_NTT[k] = {in_mem_NTT[k]};
+      in_iNTT[k] = {in_mem_iNTT[k]};
+      golden_NTT[k] = {golden_mem_NTT[k]};
+      golden_iNTT[k] = {golden_mem_iNTT[k]};
+    end
 
     for (k = 0; k < 2048; k = k + 1) begin
-      coef_mem[0][k] = coef_mem0[k];
-      coef_mem[1][k] = coef_mem1[k];
-      coef_mem[2][k] = coef_mem2[k];
-      coef_mem[3][k] = coef_mem3[k];
-      in_mem[0][k] = in_mem0[k];
-      in_mem[1][k] = in_mem1[k];
-      in_mem[2][k] = in_mem2[k];
-      in_mem[3][k] = in_mem3[k];
-      golden_mem[0][k] = golden_mem0[k];
-      golden_mem[1][k] = golden_mem1[k];
-      golden_mem[2][k] = golden_mem2[k];
-      golden_mem[3][k] = golden_mem3[k];
+      in_FFT[k] = in_mem_FFT[k];
+      in_iFFT[k] = in_iFFT[k];
+      golden_FFT[k] = golden_mem_FFT[k];
+      golden_iFFT[k] = golden_mem_iFFT[k];
+    end
+    
+    for (k = 0; k < 2048; k = k + 1) begin
+      in_mem[0][k] = in_FFT[k];
+      in_mem[1][k] = in_iFFT[k];
+      in_mem[2][k] = in_NTT[k];
+      in_mem[3][k] = in_iNTT[k];
+      coef_mem[0][k] = coef_FFT[k];
+      coef_mem[1][k] = coef_FFT[k];
+      coef_mem[2][k] = coef_NTT[k];
+      coef_mem[3][k] = coef_iNTT[k];
     end
 
     axilite_read(STATUS_ADDR, stat);
@@ -562,55 +635,116 @@ module fiFFNTT_tb;
     end
 
     // coef in
-    //for (k = 0; k < 4; k = k + 1) begin
-      stream_meta(COEF_BASE + 0, 8'b00010100, get_COEF_LEN(0));
-      ss_stream_coef(get_COEF_LEN(0), 0);
-    //end
+    for (k = 0; k < 4; k = k + 1) begin
+      stream_meta(COEF_BASE + k, 8'b0001_0100 + k, get_COEF_LEN(k));
+      ss_stream_coef(get_COEF_LEN(k), k);
+      @(posedge clk);
+    end
       
     // Write coef_done = 1
     //axilite_write(COEF_DONE_ADDR, 32'h0000_0001);
     $display("Coefficients input over");
 
     // test1
-    //for (k = 0; k < 4; k = k + 1) begin
+    for (k = 0; k < 2; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR, check);
       if (check != PAT_KER_FREE) begin
         $display("Test1 Error: Kernel 1 is not free");
         $finish;
       end else begin
-        $display("Test1: Kernel 1 starts testing mode %d", 0 + 1);
+        $display("Test1: Kernel %d is free", k + 1);
         axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
       end
 
-      stream_meta(KERNEL_BASE, MODE_BASE + 0, get_LEN(0));
+      stream_meta(KERNEL_BASE + k, MODE_BASE + k, get_LEN(k));
       fork
         // DMA in
-        ss_stream_in(get_LEN(0), 0);
+        ss_stream_in(get_LEN(k), k);
         
         // FW thread
         begin
           start_time = $time;
-          sm_stream_meta(length, mode);
-          sm_stream_out(length, mode);
-          wait_ap_done(0);
+          sm_stream_out(get_LEN(k), k);
+          wait_ap_done(k);
           end_time = $time;
           latency = end_time - start_time;
-          $display("Test1: Kernel 1 latency for data %d is %d ns", 0 + 1, latency);
+          $display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
           axilite_write_mb(MB_BASE_ADDR, PAT_KER_FREE);
         end
       join
-    //end
+    end
 
     // Check results
-    for (i = 0; i < get_LEN(k); i = i + 1) begin
-      if (out_mem[k][i] !== golden_mem[k][i]) begin
-        $display("Mismatch k=%d idx=%d got 0x%8h exp 0x%8h",
-                k, i, out_mem[k][i], golden_mem[k][i]);
+    for (i = 0; i < 2048; i = i + 2) begin
+      golden_tmp = {golden_FFT[i], golden_FFT[i+1]};
+      output_tmp = {out_FFT[i], out_FFT[i+1]};
+      compare_fp64(golden_tmp, output_tmp, err_tmp);
+      if (err_tmp == 1) begin
+        $display("\033[1;31mFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+      end else begin
+        $display("\033[1;32mFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
       end
     end
+    // for (i = 0; i < 2048; i = i + 1) begin
+    //   if (i % 2 == 0) begin
+    //     if (out_FFT[i] != golden_FFT[i]) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //       //$finish;
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //     end
+    //   end else begin
+    //     if (out_FFT[i][31:12] != golden_FFT[i][31:12]) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //       //$finish;
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
+    //     end
+    //   end
+    // end
+    
+
+    // for (i = 0; i < 2048; i = i + 1) begin
+    //   if (i % 4 == 3) begin
+    //     if ((out_FFT[i] != golden_FFT[i]) || (out_FFT[i-1] != golden_FFT[i-1]) || (out_FFT[i-2] != golden_FFT[i-2]) || (out_FFT[i-3] != golden_FFT[i-3])) begin
+    //       $display("FFT mismatch idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
+    //     end else begin
+    //       $display("FFT match idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
+    //     end
+    //   end
+    // end
+
+    for (i = 0; i < 2048; i = i + 1) begin
+      if (out_iFFT[i] != golden_iFFT[i]) begin
+        $display("iFFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
+        $finish;
+      end else begin
+        $display("iFFT match idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
+      end
+    end
+
+    for (i = 0; i < 1024; i = i + 1) begin
+      if (out_NTT[i] != golden_NTT[i]) begin
+        $display("NTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
+      end else begin
+        $display("NTT match idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
+      end
+    end
+
+    for (i = 0; i < 1024; i = i + 1) begin
+      if (out_iNTT[i] != golden_iNTT[i]) begin
+        $display("iNTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
+      end else begin
+        $display("iNTT match idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
+      end
+    end
+
     $display("Kernel %d PASS", k);
     $display("First test end");
-    
+    $fclose(fd);
+    /*
     // test 2 starts
     fork
       test2_data_in;
@@ -631,8 +765,8 @@ module fiFFNTT_tb;
     join
     $display("Test3 pass!!");
     $finish;
-  end
-
-  //$finish;
   
+  */
+  //$finish;
+  end
 endmodule

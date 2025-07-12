@@ -13,6 +13,7 @@ module kernel_top
     input  wire                     clk,
     input  wire                     clk_2x,     // for dataRAM (double-speed)
     input  wire                     rstn,
+    input  wire                     rst_mode,
 
     input  wire                     ld_vld,
     output                          ld_rdy,
@@ -41,7 +42,7 @@ module kernel_top
     localparam MODE_INTT = 2'b11;
 
 // =============== mode selection =============== //
-    reg [7:0] mode_state;
+    wire [7:0] mode_state;
     wire use_ntt, use_fft;
 
 // ================= BPE Wires ================= //   
@@ -125,12 +126,13 @@ module kernel_top
 
 // =============== I/O Between FFT / NTT =============== //
     wire ld_rdy_ntt, coef_rdy_ntt, sw_vld_ntt, sw_lst_ntt;
-    wire ld_rdy_fft, coef_rdy_fft, sw_vld_fft, sw_lst_fft;
+    wire ld_rdy_fft, sw_vld_fft, sw_lst_fft;
+    wire [4:0] coef_rdy_fft;
     wire [(pDATA_WIDTH-1):0] sw_dat_ntt, sw_dat_fft;
     wire [4:0] bpe_act_ntt, bpe_act_fft;
 
 // =============== kernel mode control=============== //
-    
+    /*
     always @(posedge clk or negedge rstn) begin
         if (~rstn) begin
             mode_state <= 0;
@@ -138,6 +140,8 @@ module kernel_top
             mode_state <= (decode) ? mode : mode_state;
         end
     end
+    */
+    assign mode_state = mode;
 
     assign use_ntt = (mode_state[1:0] == MODE_NTT) || (mode_state[1:0] == MODE_INTT);
     assign use_fft = (mode_state[1:0] == MODE_FFT) || (mode_state[1:0]== MODE_IFFT);
@@ -154,7 +158,7 @@ module kernel_top
         .sw_vld   (sw_vld_ntt),
         .sw_rdy   (sw_rdy),
         .sw_dat   (sw_dat_ntt),
-        .coef_vld (coef_vld & use_ntt),
+        .coef_vld (coef_vld[0] & use_ntt),
         .coef_rdy (coef_rdy_ntt),
         .coef_dat (coef_dat),
         .bpe_act  (bpe_act_ntt),
@@ -234,7 +238,7 @@ module kernel_top
         .sw_vld   (sw_vld_fft),
         .sw_rdy   (sw_rdy),
         .sw_dat   (sw_dat_fft),
-        .coef_vld (coef_vld & use_fft),
+        .coef_vld (coef_vld & {5{use_fft}}),
         .coef_rdy (coef_rdy_fft),
         .coef_dat (coef_dat),
         .bpe_act  (bpe_act_fft),
@@ -306,9 +310,9 @@ module kernel_top
 // =============== BPE Instance =============== //
     butterfly BPE1 (
         .clk   (clk),
-        .rstn  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE1_i_vld),
+        .rst_n  (rstn),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE1_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE1_i_rdy),
         .o_vld (BPE1_o_vld),
         .o_rdy (BPE1_o_rdy),
@@ -321,9 +325,9 @@ module kernel_top
 
     butterfly BPE2 (
         .clk   (clk),
-        .rstn  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE2_i_vld),
+        .rst_n  (rstn),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE2_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE2_i_rdy),
         .o_vld (BPE2_o_vld),
         .o_rdy (BPE2_o_rdy),
@@ -336,9 +340,9 @@ module kernel_top
 
     butterfly BPE3 (
         .clk   (clk),
-        .rstn  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE3_i_vld),
+        .rst_n  (rstn),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE3_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE3_i_rdy),
         .o_vld (BPE3_o_vld),
         .o_rdy (BPE3_o_rdy),
@@ -351,9 +355,9 @@ module kernel_top
 
     butterfly BPE4 (
         .clk   (clk),
-        .rstn  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE4_i_vld),
+        .rst_n  (rstn),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE4_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE4_i_rdy),
         .o_vld (BPE4_o_vld),
         .o_rdy (BPE4_o_rdy),
@@ -366,9 +370,9 @@ module kernel_top
 
     butterfly BPE5 (
         .clk   (clk),
-        .rstn  (rstn),
-        .mode  (mode_state),
-        .i_vld (BPE5_i_vld),
+        .rst_n  (rstn),
+        .mode  (mode_state[1:0]),
+        .i_vld (BPE5_i_vld || (decode || rst_mode) && use_fft),
         .i_rdy (BPE5_i_rdy),
         .o_vld (BPE5_o_vld),
         .o_rdy (BPE5_o_rdy),
@@ -412,7 +416,7 @@ module kernel_top
 
 // =============== mux =============== //
     assign ld_rdy   = use_ntt ? ld_rdy_ntt   : use_fft ? ld_rdy_fft   : 1'b0;
-    assign coef_rdy = use_ntt ? coef_rdy_ntt : use_fft ? coef_rdy_fft : 1'b0;
+    assign coef_rdy = use_ntt ? {5{coef_rdy_ntt}} : use_fft ? coef_rdy_fft : 1'b0;
     assign sw_vld   = use_ntt ? sw_vld_ntt   : use_fft ? sw_vld_fft   : 1'b0;
     assign sw_dat   = use_ntt ? sw_dat_ntt   : use_fft ? sw_dat_fft   : {pDATA_WIDTH{1'b0}};
     assign sw_lst   = use_ntt ? sw_lst_ntt   : use_fft ? sw_lst_fft   : 1'b0;

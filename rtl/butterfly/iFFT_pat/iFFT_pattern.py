@@ -41,6 +41,15 @@ def extract_components(bits):
 #             Rounding 、 normalization 、 alignment                      #
 ##########################################################################
 
+def overflow_detect(m, e , position_move):
+    m_funct = m
+    e_funct = e
+    lsb_posit = position_move
+    if (m_funct >= (1<< (53 + position_move))):
+        e_funct += 1
+        lsb_posit += 1  
+    return m_funct, e_funct , lsb_posit
+
 def round_to_nearest_even_with_sticky(m, lsb_position): #in hardware LSB is at [52]
     m_funct   = m
     guard     = (m_funct >> (lsb_position-1)) & 1
@@ -70,14 +79,7 @@ def normalize(m, e , position_move):
             e_funct -= 1 
     return m_funct, e_funct
 
-def overflow_detect(m, e , position_move):
-    m_funct = m
-    e_funct = e
-    lsb_posit = position_move
-    if (m_funct >= (1<< (53 + position_move))):
-        e_funct += 1
-        lsb_posit += 1  
-    return m_funct, e_funct , lsb_posit
+
 
 def normalize_fmul1(m, e , position_move):
     m_funct = m
@@ -410,7 +412,55 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         s_num_b_re , e_num_b_re , m_num_b_re = fp64_add(ma_re, m_bg_re, ea_re, e_bg_re , sa_re , s_bg_re_neg)      # re part of a-b*g
         s_num_b_im , e_num_b_im , m_num_b_im = fp64_add(ma_im, m_bg_im, ea_im, e_bg_im , sa_im , s_bg_im_neg )     # im part of a-b*g
         
+        #####################################################################
+        #                  result/2  as  iFFT's  result                     #
+        #####################################################################
         
+        # real part of result a
+        if(e_num_a_re != 0) and (e_num_a_re != 2047 ):
+            if(e_num_a_re == 1) :
+                e_num_a_re = e_num_a_re  - 1
+                m_num_a_re = m_num_a_re >> 1
+            else :
+                e_num_a_re = e_num_a_re  - 1
+        else :
+            if(e_num_a_re == 0) :
+                m_num_a_re = m_num_a_re >> 1 
+        
+        # img part of result a        
+        if(e_num_a_im != 0) and (e_num_a_im != 2047 ):
+            if(e_num_a_im == 1) :
+                e_num_a_im = e_num_a_im  - 1
+                m_num_a_im = m_num_a_im >> 1
+            else :
+                e_num_a_im = e_num_a_im  - 1
+        else :
+            if(e_num_a_im == 0) :
+                m_num_a_im = m_num_a_im >> 1         
+
+        # real part of result b
+        if(e_num_b_re != 0) and (e_num_b_re != 2047 ):
+            if(e_num_b_re == 1) :
+                e_num_b_re = e_num_b_re  - 1
+                m_num_b_re = m_num_b_re >> 1
+            else :
+                e_num_b_re = e_num_b_re  - 1
+        else :
+            if(e_num_b_re == 0) :
+                m_num_b_re = m_num_b_re >> 1         
+                    
+        # img part of result b        
+        if(e_num_b_im != 0) and (e_num_b_im != 2047 ):
+            if(e_num_b_im == 1) :
+                e_num_b_im = e_num_b_im  - 1
+                m_num_b_im = m_num_b_im >> 1
+            else :
+                e_num_b_im = e_num_b_im  - 1
+        else :
+            if(e_num_b_im == 0) :
+                m_num_b_im = m_num_b_im >> 1  
+                    
+        ###########################################################################
         a_re_result_bits = encode_IEEE754 (s_num_a_re , e_num_a_re , m_num_a_re )
         a_im_result_bits = encode_IEEE754 (s_num_a_im , e_num_a_im , m_num_a_im )
         
@@ -464,4 +514,4 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         aout.write(f"{COM_A_result_bits:032X}\n")
         bout.write(f"{COM_B_result_bits:032X}\n")
 
-print (f"{pattern_num} of FFT pattern generated !")
+print (f"{pattern_num} of iFFT pattern generated !")
