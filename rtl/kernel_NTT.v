@@ -2557,4 +2557,11 @@ end
         end
     end
 
+    reg [4:0] o;
+    always @(posedge clk) begin
+        o <= 5'd0;
+    end
+    assign bpe_act = o;
+
+
 endmodule
