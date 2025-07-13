@@ -568,7 +568,7 @@ always @(*) begin
       state_1st_next = (counter_1st == 2103) ? CAL2 : CAL1;
     end
     CAL2: begin
-      state_1st_next = (counter_1st == 2556) ? SAVE : CAL2;
+      state_1st_next = (counter_1st == 2557) ? SAVE : CAL2;
     end
     SAVE: begin
       state_1st_next = (counter_1st == 2584) ? TRANSFER : SAVE;
@@ -966,7 +966,7 @@ always @(*) begin
       BPE1_coef = coef_reg_0;
     end
     RECEIVE_CAL3: begin
-      BPE1_coef = coef_reg_0;
+      BPE1_coef = (counter_1st[1]) ? coef_reg_1 : coef_reg_0;
     end
     RECEIVE_CAL_OUTPUT: begin
       BPE1_coef = (counter_1st[1]) ? coef_reg_1 : coef_reg_0;
