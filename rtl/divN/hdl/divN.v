@@ -3,6 +3,7 @@ module divN #(
 ) (
     input [(pDATA_WIDTH-1) : 0]     in_A,
     input [1:0]                     mode,
+    input                           to_monty,                      
     input                           clk ,
     input                           rst_n,
     input                           in_valid,
@@ -31,8 +32,9 @@ localparam Q = 16'h3001;
 localparam Qn = 17'h1CFFF;              // * negative Q
 localparam N01 = 16'h2FF5;              // * N^-1
 localparam one = 16'h0001;
+localparam R2 = 16'h2AC8;              // * R2 = 2^32 mod q
 //=====================================================================================================================//
-wire [(pDATA_WIDTH-1):0]            in_B = (mode[0] == 1'b1)? {8{N01}}:{8{one}};
+wire [(pDATA_WIDTH-1):0]            in_B = (to_monty) ? {8{R2}}: ((mode[0] == 1'b1)? {8{N01}}:{8{one}});
 //---------------------------------------- mul_16 array  ---------------------------------------------------------------//
 
 wire[2:0]                           array_in_valid   ;
