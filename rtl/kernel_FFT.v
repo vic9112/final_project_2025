@@ -490,13 +490,13 @@ reg [pDATA_WIDTH-1:0] COEF3_0_5th_next, COEF3_1_5th_next, COEF3_2_5th_next, COEF
 // output buffer for 5th BPE
 reg [pDATA_WIDTH:0] output_buffer_w[0:255];
 reg [pDATA_WIDTH:0] output_buffer[0:255]; //
-reg [$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_r; 
-wire[$clog2(DATA_LENGTH)-1:0] output_buf_in_cnt_w; // input counter for output buffer
+reg [15:0] output_buf_in_cnt_r; 
+wire[15:0] output_buf_in_cnt_w; // input counter for output buffer
 //reg [pDATA_WIDTH-1:0] BPE5_dout;
 
 // counters
-reg [$clog2(DATA_LENGTH)-1:0] kern_out_cnt_r; // output counter for kernel
-wire [$clog2(DATA_LENGTH)-1:0] kern_out_cnt_w;
+reg [15:0] kern_out_cnt_r; // output counter for kernel
+wire [15:0] kern_out_cnt_w;
 
 // =================================================================================END OF DECLARATIONS ================================================================================== //
 // ld_rdy
@@ -2029,8 +2029,8 @@ always @(*) begin
 end
 
 // ====================================BPE3 -> BPE4=============================== //
-
-assign enable_output_3rd = (state_3rd == TRANSFER);
+assign enable_output_3rd = ((state_3rd == TRANSFER) & (kern_out_cnt_w + 32 > output_buf_in_cnt_w)) | (|counter_3rd_output);
+//assign enable_output_3rd = (state_3rd == TRANSFER);
 always @(posedge clk or negedge rstn) begin
   if (~rstn | output_done_3rd) begin
     counter_3rd_output <= 0;
@@ -3107,7 +3107,7 @@ assign ld_dat_4th = (enable_output_3rd) ? sram_dout_32 : 0;
     assign kern_out_cnt_w = (sw_vld & sw_rdy) ? kern_out_cnt_r + 1 : kern_out_cnt_r;           
     assign sw_vld = output_buffer[kern_out_cnt_r[0+:8]][pDATA_WIDTH];
     // assign sm_rdy_5th = !output_buffer[output_buf_in_cnt_r[0+:8]][pDATA_WIDTH]; // ready to receive data when empty
-    assign sw_lst = & kern_out_cnt_r;
+    assign sw_lst = & kern_out_cnt_r[8:0];
     assign sw_dat = output_buffer[kern_out_cnt_r[0+:8]][0+:pDATA_WIDTH]; // 128 bit data
 
     reg o, q;
