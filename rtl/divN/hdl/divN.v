@@ -1,8 +1,8 @@
-
 module divN #(
     parameter pDATA_WIDTH = 128 
 ) (
     input [(pDATA_WIDTH-1) : 0]     in_A,
+    input [1:0]                     mode,
     input                           clk ,
     input                           rst_n,
     input                           in_valid,
@@ -30,8 +30,9 @@ localparam Q01 = 16'h2FFF;
 localparam Q = 16'h3001;
 localparam Qn = 17'h1CFFF;              // * negative Q
 localparam N01 = 16'h2FF5;              // * N^-1
+localparam one = 16'h0001;
 //=====================================================================================================================//
-wire [(pDATA_WIDTH-1):0]            in_B = {8{N01}};
+wire [(pDATA_WIDTH-1):0]            in_B = (mode[0] == 1'b1)? {8{N01}}:{8{one}};
 //---------------------------------------- mul_16 array  ---------------------------------------------------------------//
 
 wire[2:0]                           array_in_valid   ;
@@ -180,6 +181,7 @@ CLA33 CLA33_7(.clk(clk), .rst_n(rst_n), .Cin(1'b0), .A({1'b0, mul_16_result_a2[3
 CLA33 CLA33_8(.clk(clk), .rst_n(rst_n), .Cin(1'b0), .A({1'b0, mul_16_result_a3[3]}), .B({1'b0, mul_16_reg[8][(pNTT_WIDTH*16-1):(pNTT_WIDTH*14)]}), .in_valid(array_out_valid[0]), .out_valid(mont_add_valid[7]), .result(mont_add_result[7]));
 // In montgomery mul, will bit33 of result=(T+W)/R=z always 0?
 // I have prove that z <= 2Q(32bit), but this needs the assumption that all of the input data is montgomery representation.
+
 assign mont_R_result[0] = mont_add_result[0][(pNTT_WIDTH*2-1):pNTT_WIDTH];
 assign mont_R_result[1] = mont_add_result[1][(pNTT_WIDTH*2-1):pNTT_WIDTH];
 assign mont_R_result[2] = mont_add_result[2][(pNTT_WIDTH*2-1):pNTT_WIDTH];
@@ -216,6 +218,7 @@ always @(posedge clk or negedge rst_n) begin
         mont_add_reg[1] <= mont_add_reg[0];
     end
 end
+
 
 // mod Q
 assign result_int1 = (mont_n_result[0][(pNTT_WIDTH)] == 1'b0)? mont_n_result[0][(pNTT_WIDTH-1):0] : mont_add_reg[1][(pNTT_WIDTH-1):0];
