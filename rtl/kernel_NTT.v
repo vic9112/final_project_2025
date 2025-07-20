@@ -433,7 +433,7 @@ module kernel_NTT
 
     assign next_coef_idx = (coef_vld && coef_rdy) ? ((coef_idx == 6'd63) ? 0 : coef_idx + 1) : coef_idx;
 
-    assign W0 = (coef_idx == 0) ? coef_dat : W0;
+    assign W0 = (coef_idx == 0 && coef_vld && coef_rdy) ? coef_dat : W0;
     
     always @(posedge clk or negedge rstn) begin
         if (!rstn) begin
