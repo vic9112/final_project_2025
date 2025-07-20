@@ -222,7 +222,7 @@ module fiFFNTT
     assign ap_read = read_ap_stat_tmp;
 
     /*================================================================================================
-    #                                            Data Ram                                            #
+    #                                        Data Input Ram                                          #
     ================================================================================================*/
     // declaration
     wire        data_ram_en;
@@ -383,19 +383,19 @@ module fiFFNTT
 
     always @* begin
       if (coef_mode) begin
-        if (data_length == 1024) begin
+        if (kernal_mode[1] == 0) begin
           data_ram_ain = normal_order_a;
           data_ram_aout = normal_order_a;
         end else begin
           data_ram_ain =  normal_order_a;
-          data_ram_aout =  NTT_COEF_AOUT;
+          data_ram_aout =  normal_order_a;
         end
       end else if (kernal_mode[0]) begin
         if (data_length == 2048) begin
           data_ram_ain = bit_reverse_a512;
           data_ram_aout = normal_order_a;
         end else begin
-          data_ram_ain =  bit_reverse_a1024;
+          data_ram_ain =  normal_order_a;
           data_ram_aout =  {1'b0, NTT_OFFSET_MUX, 2'b0};
         end
       end else begin
@@ -469,6 +469,184 @@ module fiFFNTT
     end
 
     /*================================================================================================
+    #                                        Data Output Ram                                         #
+    ================================================================================================*/
+    // declaration
+    wire        sm_mode;
+    wire        sm_tready2;
+    wire [31:0] sm_tdata2;
+    wire        sm_tvalid2;
+    reg sm_state;
+    reg [11:0] output_length;
+    reg [12:0] output_counter;
+    wire output_counter_en;
+    reg [12:0] stream_out_counter;
+    wire stream_out_counter_en;
+    wire [12:0]output_ram_a;
+    reg [3:0] output_pack_counter;
+    reg [9:0] output_pack_offset;
+    wire output_pack_counter_en;
+    wire output_pack_offset_en;
+    wire [12:0]output_fft_a;
+    wire [12:0]output_ntt_a;
+
+    ////////////////////////
+    // data output length //
+    ////////////////////////
+    
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        output_length <= 12'h400;
+      end else begin
+        output_length <= (output_counter == 1) ? (sm_mode) ? 12'h400 : 12'h800 : output_length;
+      end
+    end
+
+    ////////////////////
+    // output counter //
+    ////////////////////
+
+
+
+    assign output_counter_en = sm_tready2 && sm_tvalid2;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        output_counter <= 12'h0;
+      end else begin
+        if (output_counter == output_length - 1) begin
+          output_counter <= 12'h0; // reset counter if not ready or valid
+        end else if (output_counter_en) begin
+          output_counter <= output_counter + 1;
+        end else begin
+          output_counter <= output_counter;
+        end
+      end
+    end
+
+    ///////////////////////
+    // output pack counter //
+    ///////////////////////
+
+    assign output_pack_counter_en = stream_out_counter_en && output_length == 12'h800;
+    assign output_pack_offset_en = stream_out_counter_en && output_pack_counter == 3 && output_length == 12'h800;
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        output_pack_counter <= 0;
+      end else begin
+        if (output_pack_counter_en) begin
+          output_pack_counter <= (output_pack_counter == 3) ? 0 : output_pack_counter + 1;
+        end else begin
+          output_pack_counter <= output_pack_counter;
+        end
+      end
+    end
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        output_pack_offset <= 0;
+      end else begin
+        if (output_pack_offset_en) begin
+          output_pack_offset <= (output_pack_offset == 511) ? 0 : output_pack_offset + 1;
+        end else begin
+          output_pack_offset <= output_pack_offset;
+        end
+      end
+    end
+
+    //////////////////////////
+    // output state machine //
+    //////////////////////////
+    
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        sm_state <= STREAM_IN;
+      end else begin
+        if (output_counter == output_length - 1) begin
+          sm_state <= ~sm_state; // toggle state when output counter reaches the length
+        end else if (stream_out_counter == output_length - 1) begin
+          sm_state <= ~sm_state;
+        end else begin
+          sm_state <= sm_state; // keep the state if not ready or valid
+        end
+      end
+    end
+
+    //////////////////////
+    // sm2 ctrl signals //
+    //////////////////////
+
+    assign sm_tready2 = !sm_state; 
+
+    //////////////////////
+    // strema out count //
+    //////////////////////
+
+    assign stream_out_counter_en = sm_state && sm_tready && sm_tvalid || stream_out_counter == output_length - 1;
+
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        stream_out_counter <= 0;
+      end else begin
+        if (stream_out_counter_en) begin
+          stream_out_counter <= (stream_out_counter == output_length - 1) ? 0 : stream_out_counter + 1;
+        end else begin
+          stream_out_counter <= stream_out_counter;
+        end
+      end
+    end
+
+    reg sm_tvalid_r;
+    always @ (posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        sm_tvalid_r <= 0;
+      end else begin
+        sm_tvalid_r <= sm_state;
+      end
+    end
+    
+    assign sm_tvalid = sm_tvalid_r;
+
+    ////////////////////////////////////
+    // bit reverse address for output //
+    ////////////////////////////////////
+
+    assign output_fft_a = (output_length == 12'h800) ? 
+                          {output_pack_counter, 2'b00} + 
+                          {1'b0, output_pack_offset[0], output_pack_offset[1], output_pack_offset[2], output_pack_offset[3], output_pack_offset[4], 
+                                  output_pack_offset[5], output_pack_offset[6], output_pack_offset[7], output_pack_offset[8], 4'b0000} : 0;
+
+    assign output_ntt_a = (output_length == 12'h400) ? {2'b00, stream_out_counter[0], stream_out_counter[1], stream_out_counter[2], stream_out_counter[3]
+                                                      ,stream_out_counter[4], stream_out_counter[5], stream_out_counter[6], stream_out_counter[7]
+                                                      ,stream_out_counter[8], stream_out_counter[9], 2'b00} : 0;
+
+    wire [12:0] output_a_mux;
+    assign output_a_mux = (output_length == 12'h400) ? output_ntt_a : (output_length == 12'h800) ? output_fft_a : 0;
+
+    //////////////////////////////
+    // output ram instantiation //
+    //////////////////////////////
+
+
+    assign output_ram_a = (!sm_state) ? {output_counter, 2'b00} : output_a_mux;
+
+    reg l;
+    always @(posedge clk) l <= 1;
+    wire output_ram_en;
+    assign output_ram_en = l;
+
+    bram2048x32 Output_Ram (
+      .CLK  (clk),
+      .WE   ({4{sm_tready2 && sm_tvalid2}}),
+      .EN   (l),
+      .Di   (sm_tdata2),
+      .Do   (sm_tdata),
+      .A    (output_ram_a)
+    );
+
+
+
+    /*================================================================================================
     #                                            IOP                                                 #
     ================================================================================================*/
     stage_top #(
@@ -488,10 +666,11 @@ module fiFFNTT
       .ss_lst      (ss_tlast),
       .ss_rdy      (ss_tready2),
       
-      .sm_rdy      (sm_tready),
-      .sm_vld      (sm_tvalid),
-      .sm_dat      (sm_tdata),
+      .sm_rdy      (sm_tready2),
+      .sm_vld      (sm_tvalid2),
+      .sm_dat      (sm_tdata2),
       .sm_lst      (sm_tlast),
+      .sm_mode     (sm_mode), // new signal to control mode of the output stream
       //---------- kernel 1  ----------//
       .clk1        (clk_k1),
       .rstn1       (rstn),
