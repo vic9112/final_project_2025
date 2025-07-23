@@ -256,13 +256,13 @@ HA HA_lv2_3( .A( wallace_lv1[1][0] )  , .B( wallace_lv1[1][1] )  , .Cout( wallac
 HA HA_lv2_4( .A( wallace_lv1[48][3] ) , .B( wallace_lv1[48][4] ) , .Cout( wallace_lv2[49][2] ) , .Sum( wallace_lv2[48][2] ));
 //----------------------------------------- pass element ---------------------------------------------------//
 generate
-    for (a = 81 ; a<96 ; a=a+1) begin : GEN_WALLACE_LV2_PASS0
+    for (a = 81 ; a<96 ; a=a+1) begin : GEN_WALLACE_LV2_PASS00
         assign wallace_lv2[a][2] = wallace_lv1[a][3];
     end
 endgenerate
 
 generate
-    for(a=33 ; a<48 ; a=a+1)begin : GEN_WALLACE_LV2_PASS0
+    for(a=33 ; a<48 ; a=a+1)begin : GEN_WALLACE_LV2_PASS01
         assign wallace_lv2[a][2] = wallace_lv1[a][3];
     end
 endgenerate
