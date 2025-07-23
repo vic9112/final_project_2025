@@ -121,7 +121,7 @@ def align_exponents(m1, e1, m2, e2,position_move):
         return m1_funct, m2_funct, e2_funct
 
 ####################################################################
-#                   mul 、 add operation (fp)                       #
+#                   mul 、 add operation (fp)                      #
 ####################################################################
 def fp64_mul(ma, mb, ea, eb, sa, sb):
     ###########################################
@@ -163,16 +163,15 @@ def fp64_mul(ma, mb, ea, eb, sa, sb):
         result_s = 1
         
     mul_e = ea + eb 
-    mul_e = mul_e + 1 # folllow hardware's rounder
-    result_m, result_e = normalize_fmul1(result_m, mul_e , position_move=53)
-    result_m = round_to_nearest_even_with_sticky(result_m , lsb_position=53)
+    result_m, result_e , lsb_posi = overflow_detect(result_m, mul_e , position_move=52) 
+    result_m  = round_to_nearest_even_with_sticky(result_m , lsb_position=lsb_posi)
     # after first time rounding , the floating point locate between bit[52:51]
     if result_m != 0 :
         result_m_final , result_e_final = normalize_fmul1(result_m , result_e , position_move = 0 )
     else :
         result_m_final = 0
         result_e_final = -5000
-    # denormal (infinite num 、 zero num)
+    # subnormal (infinite num 、 zero num)
     exp_less = 0
     if result_e_final < -1022 :
         exp_less = -1022 - result_e_final
@@ -186,17 +185,6 @@ def fp64_mul(ma, mb, ea, eb, sa, sb):
         result_e_final = 2047
     
     return result_s , result_e_final , result_m_final
-    # Zero case or inf case               
-    # if result_e_final >= 2047 :
-    #     return result_s , 2047 , 0
-    # elif result_e_final < 0 :
-    #     return 0 , 0 , 0
-    # elif result_e_final == 0 and result_m_final == 0 :
-    #     return 0 , 0 , 0
-    # elif result_e_final == 0 and result_m_final != 0 :
-    #     return result_s , result_e_final , (result_m_final >> 1 ) 
-    # else :
-    #     return result_s, result_e_final, result_m_final
 
 
 def fp64_add(ma, mb, ea, eb, sa, sb):
@@ -266,6 +254,9 @@ def fp64_add(ma, mb, ea, eb, sa, sb):
         return result_s, result_e_final, result_m_final
     
 def fp64_cmul (ma_re , ea_re , sa_re , ma_im , ea_im , sa_im , mb_re , eb_re , sb_re , mb_im , eb_im , sb_im ) :
+    #############################################################################
+    #   DO complex multiply of  ( a_re + j*a_im ) * ( b_re + j*b_im )           #
+    #############################################################################
     s_numa , e_numa , m_numa = fp64_add(mb_re, mb_im, eb_re, eb_im , sb_re, sb_im)       # numa = b_re + b_im
     s_numb , e_numb , m_numb = fp64_add(ma_re, ma_im, ea_re, ea_im , sa_re, (1 -sa_im) ) # numb =  a_re - a_im
     s_numc , e_numc , m_numc = fp64_add(mb_re, mb_im, eb_re, eb_im , sb_re, (1 -sb_im) ) # numc = b_re - b_im
@@ -299,21 +290,21 @@ def ieee754_double_to_hex(sign, exponent, mantissa):
 #                               Generate pattern and  write into .txt                                   #
 #########################################################################################################
 
-pattern_num = 200
-with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat", "w") as gin, open("golden_a.dat", "w") as aout , open("golden_b.dat", "w") as bout ,open("a_float.dat", "w") as ai_fp, open("b_float.dat", "w") as bi_fp, open("golden_float.dat", "w") as gi_fp , open("golden_a_float.dat", "w") as aout_fp , open("golden_b_float.dat", "w") as bout_fp:
+pattern_num = 20000
+with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat", "w") as gin, open("golden_a.dat", "w") as aout , open("golden_b.dat", "w") as bout ,open("a_float.dat", "w") as ai_fp, open("b_float.dat", "w") as bi_fp, open("gin_float.dat", "w") as gi_fp , open("golden_a_float.dat", "w") as aout_fp , open("golden_b_float.dat", "w") as bout_fp:
 
     for i in range(pattern_num):
         ###############################
         #   Generate complex num A    #
         ###############################
-        a0_sign = generate_random_sign()
-        b0_sign = generate_random_sign()
+        a0_sign =  generate_random_sign()
+        b0_sign =  generate_random_sign()
 
         a0_exp =  generate_random_exp()
-        b0_exp = generate_random_exp()
+        b0_exp =  generate_random_exp()
         
-        a0_frac = generate_random_mantissa()
-        b0_frac = generate_random_mantissa()
+        a0_frac =  generate_random_mantissa()
+        b0_frac =  generate_random_mantissa()
 
         a0_val = assemble_float(a0_sign, a0_exp, a0_frac) # a0 = real part of com_A 
         b0_val = assemble_float(b0_sign, b0_exp, b0_frac) # b0 = img  part of com_A
@@ -331,7 +322,7 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         a1_sign = generate_random_sign()
         b1_sign = generate_random_sign()
 
-        a1_exp =  generate_random_exp()
+        a1_exp = generate_random_exp()
         b1_exp = generate_random_exp()
         
         a1_frac = generate_random_mantissa()
@@ -355,7 +346,7 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         g1_sign = generate_random_sign()
 
         g0_exp =  generate_random_exp()
-        g1_exp = generate_random_exp()
+        g1_exp =  generate_random_exp()
         
         g0_frac = generate_random_mantissa()
         g1_frac = generate_random_mantissa()
@@ -385,6 +376,9 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         bi_fp.write(f"{a1_val:.16e}   +  j * {b1_val:.16e}\n")
         gi_fp.write(f"{g0_val:.16e}   +  j * {g1_val:.16e}\n")
         
+        ##################################################
+        #   Extract component of IEEE 754 double format  #
+        ##################################################
         sa_re , ea_re , ma_re = extract_components(int(a0_bits, 2))
         sa_im , ea_im , ma_im = extract_components(int(b0_bits, 2))
         sb_re , eb_re , mb_re = extract_components(int(a1_bits, 2))
@@ -392,80 +386,93 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         
         sg_re , eg_re , mg_re = extract_components(int(g0_bits, 2))
         sg_im , eg_im , mg_im = extract_components(int(g1_bits, 2))
-        
-        #do the mul of b*g    
-        s_bg_re , e_bg_re , m_bg_re , s_bg_im ,e_bg_im , m_bg_im = fp64_cmul (mb_re , eb_re , sb_re , mb_im , eb_im , sb_im , mg_re , eg_re , sg_re  , mg_im , eg_im , sg_im )
 
-        if(s_bg_re == 1) :
-            s_bg_re_neg = 0
-        else:
-            s_bg_re_neg = 1
-            
-        if(s_bg_im == 1) :
-            s_bg_im_neg = 0
-        else:
-            s_bg_im_neg = 1
-                        
-        s_num_a_re , e_num_a_re , m_num_a_re = fp64_add(ma_re, m_bg_re, ea_re, e_bg_re , sa_re , s_bg_re)      # re part of a+b*g
-        s_num_a_im , e_num_a_im , m_num_a_im = fp64_add(ma_im, m_bg_im, ea_im, e_bg_im , sa_im , s_bg_im )     # im part of a+b*g
+        ############################################################################################
+        #                    Calculate complex ( a + b ) 、 ( a - b )                              #                                       
+        ############################################################################################
+        if(sb_re == 1) :
+            sb_re_neg = 0
+        else :
+            sb_re_neg = 1
         
-        s_num_b_re , e_num_b_re , m_num_b_re = fp64_add(ma_re, m_bg_re, ea_re, e_bg_re , sa_re , s_bg_re_neg)      # re part of a-b*g
-        s_num_b_im , e_num_b_im , m_num_b_im = fp64_add(ma_im, m_bg_im, ea_im, e_bg_im , sa_im , s_bg_im_neg )     # im part of a-b*g
+        if(sb_im ==1) :
+            sb_im_neg = 0
+        else :
+            sb_im_neg = 1  
+
+        sa_result_re , ea_result_re , ma_result_re = fp64_add(ma_re, mb_re, ea_re, eb_re , sa_re , sb_re )   # re part of a+b
+        sa_result_im , ea_result_im , ma_result_im = fp64_add(ma_im, mb_im, ea_im, eb_im , sa_im , sb_im )   # im part of a+b
+        
+             
+        
+        s_num_b_re , e_num_b_re , m_num_b_re = fp64_add(ma_re, mb_re, ea_re, eb_re , sa_re , sb_re_neg )  # re part of a-b
+        s_num_b_im , e_num_b_im , m_num_b_im = fp64_add(ma_im, mb_im, ea_im, eb_im , sa_im , sb_im_neg )  # im part of a-b
+
+        if(sg_im == 1) :
+            sg_im_neg = 0
+        else :
+            sg_im_neg = 1
+            
+        ########################################    
+        #  Do  complex mul of (a-b) * conj(w)  #  
+        ########################################
+        sb_result_re , eb_result_re , mb_result_re , sb_result_im ,eb_result_im , mb_result_im = fp64_cmul (m_num_b_re , e_num_b_re , s_num_b_re , m_num_b_im , e_num_b_im , s_num_b_im , mg_re , eg_re , sg_re  , mg_im , eg_im , sg_im_neg )
         
         #####################################################################
         #                  result/2  as  iFFT's  result                     #
         #####################################################################
         
         # real part of result a
-        if(e_num_a_re != 0) and (e_num_a_re != 2047 ):
-            if(e_num_a_re == 1) :
-                e_num_a_re = e_num_a_re  - 1
-                m_num_a_re = m_num_a_re >> 1
+        if(ea_result_re != 0) and (ea_result_re != 2047 ):
+            if(ea_result_re == 1) :
+                ea_result_re = ea_result_re  - 1
+                ma_result_re = ma_result_re >> 1
             else :
-                e_num_a_re = e_num_a_re  - 1
+                ea_result_re = ea_result_re  - 1
         else :
-            if(e_num_a_re == 0) :
-                m_num_a_re = m_num_a_re >> 1 
+            if(ea_result_re == 0) :
+                ma_result_re = ma_result_re >> 1 
         
         # img part of result a        
-        if(e_num_a_im != 0) and (e_num_a_im != 2047 ):
-            if(e_num_a_im == 1) :
-                e_num_a_im = e_num_a_im  - 1
-                m_num_a_im = m_num_a_im >> 1
+        if(ea_result_im != 0) and (ea_result_im != 2047 ):
+            if(ea_result_im == 1) :
+                ea_result_im = ea_result_im  - 1
+                ma_result_im = ma_result_im >> 1
             else :
-                e_num_a_im = e_num_a_im  - 1
+                ea_result_im = ea_result_im  - 1
         else :
-            if(e_num_a_im == 0) :
-                m_num_a_im = m_num_a_im >> 1         
+            if(ea_result_im == 0) :
+                ma_result_im = ma_result_im >> 1         
+
 
         # real part of result b
-        if(e_num_b_re != 0) and (e_num_b_re != 2047 ):
-            if(e_num_b_re == 1) :
-                e_num_b_re = e_num_b_re  - 1
-                m_num_b_re = m_num_b_re >> 1
+        if(eb_result_re != 0) and (eb_result_re != 2047 ):
+            if(eb_result_re == 1) :
+                eb_result_re = eb_result_re  - 1
+                mb_result_re = mb_result_re >> 1
             else :
-                e_num_b_re = e_num_b_re  - 1
+                eb_result_re = eb_result_re  - 1
         else :
-            if(e_num_b_re == 0) :
-                m_num_b_re = m_num_b_re >> 1         
+            if(eb_result_re == 0) :
+                mb_result_re = mb_result_re >> 1         
                     
         # img part of result b        
-        if(e_num_b_im != 0) and (e_num_b_im != 2047 ):
-            if(e_num_b_im == 1) :
-                e_num_b_im = e_num_b_im  - 1
-                m_num_b_im = m_num_b_im >> 1
+        if(eb_result_im != 0) and (eb_result_im != 2047 ):
+            if(eb_result_im == 1) :
+                eb_result_im = eb_result_im  - 1
+                mb_result_im = mb_result_im >> 1
             else :
-                e_num_b_im = e_num_b_im  - 1
+                eb_result_im = eb_result_im  - 1
         else :
-            if(e_num_b_im == 0) :
-                m_num_b_im = m_num_b_im >> 1  
+            if(eb_result_im == 0) :
+                mb_result_im = mb_result_im >> 1  
                     
         ###########################################################################
-        a_re_result_bits = encode_IEEE754 (s_num_a_re , e_num_a_re , m_num_a_re )
-        a_im_result_bits = encode_IEEE754 (s_num_a_im , e_num_a_im , m_num_a_im )
+        a_re_result_bits = encode_IEEE754 (sa_result_re , ea_result_re , ma_result_re )
+        a_im_result_bits = encode_IEEE754 (sa_result_im , ea_result_im , ma_result_im )
         
-        b_re_result_bits = encode_IEEE754 (s_num_b_re , e_num_b_re , m_num_b_re )
-        b_im_result_bits = encode_IEEE754 (s_num_b_im , e_num_b_im , m_num_b_im )
+        b_re_result_bits = encode_IEEE754 (sb_result_re , eb_result_re , mb_result_re )
+        b_im_result_bits = encode_IEEE754 (sb_result_im , eb_result_im , mb_result_im )
         
         
         a_result_re   = (a_re_result_bits) << 64 
@@ -483,12 +490,12 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         ###################################################################
         #       Write floating point format of result a  for debugging    #
         ###################################################################   
-        if e_num_a_re == 2047 and m_num_a_re != 0 :
-            if(e_num_a_im == 2047 and m_num_a_im != 0):    
+        if ea_result_re == 2047 and ma_result_re != 0 :
+            if(ea_result_im == 2047 and ma_result_im != 0):    
                 aout_fp.write(f"NaN  +  j *  NaN \n")
             else :
                 aout_fp.write(f"NaN  +  j * {a_result_im_val:.16e} \n")
-        elif e_num_a_im == 2047 and m_num_a_im != 0 :   
+        elif ea_result_im == 2047 and ma_result_im != 0 :   
             aout_fp.write(f"{a_result_re_val:.16e}  +  j * NaN \n")
         else :       
             aout_fp.write(f"{a_result_re_val:.16e}  +  j * {a_result_im_val:.16e} \n")
@@ -496,12 +503,12 @@ with open("a_in.dat", "w") as ain, open("b_in.dat", "w") as bii , open("g_in.dat
         ##################################################################
         #       Write floating point format of result b  for debugging   #
         ##################################################################    
-        if e_num_b_re == 2047 and m_num_b_re != 0 :
-            if(e_num_b_im == 2047 and m_num_b_im != 0):    
+        if eb_result_re == 2047 and mb_result_re != 0 :
+            if(eb_result_im == 2047 and mb_result_im != 0):    
                 bout_fp.write(f"NaN  +  j *  NaN \n")
             else :
                 bout_fp.write(f"NaN  +  j * {b_result_im_val:.16e} \n")
-        elif e_num_b_im == 2047 and m_num_b_im != 0 :   
+        elif eb_result_im == 2047 and mb_result_im != 0 :   
             bout_fp.write(f"{b_result_re_val:.16e}  +  j * NaN \n")
         else :       
             bout_fp.write(f"{b_result_re_val:.16e}  +  j * {b_result_im_val:.16e} \n")
