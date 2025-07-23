@@ -10,7 +10,7 @@ module stage_top
 
   //input   wire               [1:0] in1_sw,  // not used for now
   output   wire             [31:0] ap_ctrl,
-  output   wire             [31:0] coef_ctrl,
+  //output   wire             [31:0] coef_ctrl,
   input   wire                     ap_read,
   // SS/SM interface:
   // FFT/iFFT SS: concat 4 32-bit data to 128-bit
@@ -3124,19 +3124,19 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     reg [3:0] ap_idle4_r;
     reg [3:0] ap_idle4_next;
 
-    reg coef_ctrl_r;
-    reg coef_ctrl_next;
+    // reg coef_ctrl_r;
+    // reg coef_ctrl_next;
 
-    assign coef_ctrl = coef_ctrl_r;
+    //assign coef_ctrl = coef_ctrl_r;
     assign ap_ctrl = {ap_idle4_r, ap_done4_r, ap_idle3_r, ap_done3_r, ap_idle2_r, ap_done2_r, ap_idle1_r, ap_done1_r};
 
     always @(*) begin
         // coef_ctrl
-        if ((meta_counter == data_length) && ss_rdy && (destination == COEF)) begin
-            coef_ctrl_next = 1;
-        end else begin
-            coef_ctrl_next = coef_ctrl_r;
-        end
+        // if ((meta_counter == data_length) && ss_rdy && (destination == COEF)) begin
+        //     coef_ctrl_next = 1;
+        // end else begin
+        //     coef_ctrl_next = coef_ctrl_r;
+        // end
         // ap_idle1
         if (meta_decode == 1 && destination == KERNEL_1) begin
             ap_idle1_next = 0;
@@ -3205,7 +3205,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
 
     always @(posedge clk or negedge rstn) begin
       if (!rstn) begin
-        coef_ctrl_r <= 0;
+        //coef_ctrl_r <= 0;
         ap_idle1_r <= 1;
         ap_idle2_r <= 1;
         ap_idle3_r <= 1;
@@ -3215,7 +3215,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
         ap_done3_r <= 0;
         ap_done4_r <= 0;
       end else begin
-        coef_ctrl_r <= coef_ctrl_next;
+        //coef_ctrl_r <= coef_ctrl_next;
         ap_idle1_r <= ap_idle1_next;
         ap_idle2_r <= ap_idle2_next;
         ap_idle3_r <= ap_idle3_next;
