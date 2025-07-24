@@ -24,7 +24,7 @@ module mailbox #(
   // AXI-Lite read data channel
   output reg [DATA_WIDTH-1:0]   rdata,
   output reg                    rvalid,
-  input  wire                   rready,
+  input  wire                   rready
 );
 
   localparam BASE_ADDR = 32'h3000_2000;
@@ -66,10 +66,10 @@ module mailbox #(
     end else begin
       if (wvalid && wready) begin
         case (addr_in - BASE_ADDR)
-          32'd0: mb_reg[0] <= WDATA;
-          32'd4: mb_reg[1] <= WDATA;
-          32'd8: mb_reg[2] <= WDATA;
-          32'd12: mb_reg[3] <= WDATA;
+          32'd0: mb_reg[0] <= wdata;
+          32'd4: mb_reg[1] <= wdata;
+          32'd8: mb_reg[2] <= wdata;
+          32'd12: mb_reg[3] <= wdata;
           default: begin
             mb_reg[0] <= mb_reg[0];
             mb_reg[1] <= mb_reg[1];
