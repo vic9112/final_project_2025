@@ -16,7 +16,7 @@
 // Revision History:
 // Date          by         Version       Change Description
 // 2025.7.23    hsuanjung      x          change ifft's operation to follow falcon ifft
-// 
+// 2025.7.24    Jesse          x          change intt's operation to follow falcon intt
 //
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -48,6 +48,7 @@ module butterfly
 localparam NTT_MUL_LATENCY = 17;
 localparam FFT_MUL_LATENCY = 21;
 localparam FP_ADD_LATENCY  = 5 ;
+localparam NTT_ADD_LATENCY = 4 ;
 
 localparam NTT_LATENCY     = 22;
 localparam iNTT_LATENCY    = 22;//?
@@ -107,6 +108,14 @@ wire                        cmul_valid_i[0:1];
 wire                        cmul_valid_o[0:3];
 wire                        mont_add_valid_o0[0:7];
 wire                        mont_add_valid_o1[0:7];
+
+wire [(pNTT_WTDTH-1):0]     mont_add_inA[0:7];
+wire [(pNTT_WTDTH-1):0]     mont_add_inB[0:7];
+wire [(pNTT_WTDTH-1):0]     mont_sub_inA[0:7];
+wire [(pNTT_WTDTH-1):0]     mont_sub_inB[0:7];
+reg                         mont_add_ivld;
+reg                         mont_sub_ivld;
+
 wire [(pDATA_WIDTH-1):0]    mont_add_result;
 wire [(pDATA_WIDTH-1):0]    mont_sub_result;
 reg  [(pNTT_WTDTH-1):0]     mont_add_intt[0:7];
@@ -118,7 +127,7 @@ wire [(pFP_WIDTH-1):0]      fp_add_in_01[0:1] ;
 wire [(pFP_WIDTH-1):0]      fp_add_in_02[0:1] ;
 wire [(pFP_WIDTH-1):0]      fp_add_in_11[0:1] ;
 wire [(pFP_WIDTH-1):0]      fp_add_in_12[0:1] ;
-wire                        fp_add_in_valid   ;
+reg                         fp_add_in_valid   ;
 wire [3:0]                  fp_add_out_valid  ;
 wire [(pFP_WIDTH*2-1):0]    fp_add_result[0:1];
 //------------------------------ ifft result ---------------------------------------//
@@ -275,11 +284,12 @@ end
 // 1. MUL_FIFO :                                                                                                                                                       //
 //    * Use to store the ain while doing FFT's complex mul .                                                                                                           //
 //    * Use to store the (ain+bin) from fp_add while doing iFFT's complex mul .                                                                                        //
-//    * Use to store the ain while doing NTT's operation .                                                                                                             //
+//    * Use to store the ain while doing NTT's operation .    
+//    * Use to store the montadd(ain + bin) from mont_add while doing iNTT's montmul .                                                                                                         //
 //                                                                                                                                                                     //
 // 2. ADD_FIFO :                                                                                                                                                       //
 //    * Use to store the twiddle factor while doing iFFT's  floating point add .                                                                                       //
-//                                                                                                                                                                     //
+//    * Use to store the twiddle factor while doing iNTT's  montadd .                                                                                                                                                                  //
 //=====================================================================================================================================================================//
 integer i;
 always @(posedge clk or negedge rst_n) begin
@@ -287,8 +297,8 @@ always @(posedge clk or negedge rst_n) begin
         for (i = 0; i < FFT_MUL_LATENCY; i = i + 1) begin
           MUL_FIFO[i] <= {(pDATA_WIDTH){1'b0}};
         end
-    end else begin
-        MUL_FIFO[0] <= (mode_state ==  mode_iFFT)? fp_add_result[0] : buf_ai;
+    end else begin // * FFT:00, iFFT:01, NTT:10, iNTT:11
+        MUL_FIFO[0] <= (mode_state[0] ==  1'b0)? buf_ai : (mode_state == mode_iFFT)? fp_add_result[0] : mont_add_result;
         for (i = 1; i < FFT_MUL_LATENCY; i = i + 1) begin
           MUL_FIFO[i] <= MUL_FIFO[i-1];
         end
@@ -302,7 +312,7 @@ always @(posedge clk or negedge rst_n) begin
         end
     end else begin
         // * CONJ (W)
-        ADD_FIFO[0] <=  {buf_gm[(pFP_WIDTH*2-1) : pFP_WIDTH]  , (~buf_gm[pFP_WIDTH-1]) , buf_gm[(pFP_WIDTH-2):0]};
+        ADD_FIFO[0] <=  {buf_gm};
         for (i = 1; i < FP_ADD_LATENCY; i = i + 1) begin
           ADD_FIFO[i] <= ADD_FIFO[i-1];
         end
@@ -314,11 +324,16 @@ end
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //=====================================================================================================================================================================//
 // * If  FFT mode , do bi * gm .                                                                                                                                       //
-// * If IFFT mode , do (ao-bi)*gm                                                                                                                                      //
+// * If IFFT mode , do (ao-bi)*gm    
+// * If  NTT mode , do montmul(bi * gm)
+// * If iNTT mode , do montmul(montsub(ai - bi) * gm)                                                                                                                                 //
 //=====================================================================================================================================================================//
-assign mul_in1       = (mode_state == mode_iFFT )?          fp_add_result[1]     : buf_bi ;
-assign mul_in2       = (mode_state == mode_iFFT )?    ADD_FIFO[FP_ADD_LATENCY-1] : buf_gm ;
-assign mul_in_valid  = (mode_state == mode_iFFT )?       fp_add_out_valid[0]     : (buf_i_vld & i_vld_en);
+assign mul_in1       = (mode_state[0] == 1'b0)? buf_bi : (mode_state == mode_iFFT)? fp_add_result[1] : mont_sub_result;
+//assign mul_in1       = (mode_state == mode_iFFT )?          fp_add_result[1]     : buf_bi ;
+assign mul_in2       = (mode_state[0] == 1'b0)? buf_gm : (mode_state == mode_iFFT)? ADD_FIFO[FP_ADD_LATENCY-1] : ADD_FIFO[NTT_ADD_LATENCY-1];
+//assign mul_in2       = (mode_state == mode_iFFT )?    ADD_FIFO[FP_ADD_LATENCY-1] : buf_gm ;
+assign mul_in_valid  = (mode_state == mode_NTT | mode_state == mode_FFT)? (buf_i_vld & i_vld_en) : (mode_state == mode_iFFT)? fp_add_out_valid[0] : mont_add_valid_o0[0];
+//assign mul_in_valid  = (mode_state == mode_iFFT )?       fp_add_out_valid[0]     : (buf_i_vld & i_vld_en);
 
 mul mul1(
     .in_A(mul_in1),
@@ -355,7 +370,14 @@ assign fp_add_in_11[1] = (mode_state == mode_iFFT)?   {(~buf_bi[pFP_WIDTH-1]) , 
 assign fp_add_in_12[0] = (mode_state == mode_iFFT)?                              buf_ai[(pFP_WIDTH*2-1) : pFP_WIDTH]  : a_result[(pFP_WIDTH*2-1):(pFP_WIDTH)]       ;
 assign fp_add_in_12[1] = (mode_state == mode_iFFT)?  {(~buf_bi[pFP_WIDTH*2-1]) , buf_bi[(pFP_WIDTH*2-2) : pFP_WIDTH]} : mul_result_inv[(pFP_WIDTH*2-1):(pFP_WIDTH)] ;
 
-assign fp_add_in_valid = (mode_state == mode_iFFT)?  (buf_i_vld & i_vld_en) : mul_out_valid[0] ;
+//assign fp_add_in_valid = (mode_state == mode_iFFT)?  (buf_i_vld & i_vld_en) : mul_out_valid[0] ;
+always @(*) begin
+    case (mode_state)
+        mode_FFT:   fp_add_in_valid = mul_out_valid[0];
+        mode_iFFT:  fp_add_in_valid = (buf_i_vld & i_vld_en);
+        default:    fp_add_in_valid = 1'b0; // safe default
+    endcase
+end
 
 //* In FFT  mode these two fp_add do (  ain + b_in*g  ) 
 //* In IFFT mode these two fp_add do (  ain + bin     )
@@ -395,23 +417,77 @@ assign cmul_result_ifft[1]    = {mul_result[(pFP_WIDTH*2-1)]                  , 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                  MONT_ADD in NTT/iNTT                                                                               //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-mont_add mont_add_01(.in_A(mul_result[(pNTT_WTDTH-1):0])               , .in_B(a_result[(pNTT_WTDTH-1)  :0])                , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o0[0]));
-mont_add mont_add_02(.in_A(mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])  , .in_B(a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])     , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o0[1]));
-mont_add mont_add_03(.in_A(mul_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*3-1):(pNTT_WTDTH*2)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2)]), .out_valid(mont_add_valid_o0[2]));
-mont_add mont_add_04(.in_A(mul_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*4-1):(pNTT_WTDTH*3)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3)]), .out_valid(mont_add_valid_o0[3]));
-mont_add mont_add_05(.in_A(mul_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*5-1):(pNTT_WTDTH*4)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4)]), .out_valid(mont_add_valid_o0[4]));
-mont_add mont_add_06(.in_A(mul_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*6-1):(pNTT_WTDTH*5)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5)]), .out_valid(mont_add_valid_o0[5]));
-mont_add mont_add_07(.in_A(mul_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*7-1):(pNTT_WTDTH*6)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6)]), .out_valid(mont_add_valid_o0[6]));
-mont_add mont_add_08(.in_A(mul_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)]), .in_B(a_result[(pNTT_WTDTH*8-1):(pNTT_WTDTH*7)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[0]), .result(mont_add_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7)]), .out_valid(mont_add_valid_o0[7]));
+assign mont_add_inA[0] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH-1):0]                : mul_result[(pNTT_WTDTH-1):0];
+assign mont_add_inA[1] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*2-1):(pNTT_WTDTH)]   : mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)];
+assign mont_add_inA[2] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)];
+assign mont_add_inA[3] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)];
+assign mont_add_inA[4] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)];
+assign mont_add_inA[5] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)];
+assign mont_add_inA[6] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)];
+assign mont_add_inA[7] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)];
 
-mont_sub mont_sub_11(.in_A(a_result[(pNTT_WTDTH-1)  :0])               , .in_B(mul_result[(pNTT_WTDTH-1):0])                , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o1[0]));
-mont_sub mont_sub_12(.in_A(a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])    , .in_B(mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)])   , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o1[1]));
-mont_sub mont_sub_13(.in_A(a_result[(pNTT_WTDTH*3-1):(pNTT_WTDTH*2)])  , .in_B(mul_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2)]), .out_valid(mont_add_valid_o1[2]));
-mont_sub mont_sub_14(.in_A(a_result[(pNTT_WTDTH*4-1):(pNTT_WTDTH*3)])  , .in_B(mul_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3)]), .out_valid(mont_add_valid_o1[3]));
-mont_sub mont_sub_15(.in_A(a_result[(pNTT_WTDTH*5-1):(pNTT_WTDTH*4)])  , .in_B(mul_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4)]), .out_valid(mont_add_valid_o1[4]));
-mont_sub mont_sub_16(.in_A(a_result[(pNTT_WTDTH*6-1):(pNTT_WTDTH*5)])  , .in_B(mul_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5)]), .out_valid(mont_add_valid_o1[5]));
-mont_sub mont_sub_17(.in_A(a_result[(pNTT_WTDTH*7-1):(pNTT_WTDTH*6)])  , .in_B(mul_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6)]), .out_valid(mont_add_valid_o1[6]));
-mont_sub mont_sub_18(.in_A(a_result[(pNTT_WTDTH*8-1):(pNTT_WTDTH*7)])  , .in_B(mul_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)]) , .clk(clk), .rst_n(rst_n), .in_valid(mul_out_valid[1]), .result(mont_sub_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7)]), .out_valid(mont_add_valid_o1[7]));
+assign mont_add_inB[0] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH-1):0]                : a_result[(pNTT_WTDTH-1):0];
+assign mont_add_inB[1] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*2-1):(pNTT_WTDTH)]   : a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)];
+assign mont_add_inB[2] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)];
+assign mont_add_inB[3] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)];
+assign mont_add_inB[4] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)];
+assign mont_add_inB[5] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)];
+assign mont_add_inB[6] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)];
+assign mont_add_inB[7] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)];
+
+//assign mont_add_ivld = (mode_state == mode_iNTT)? buf_i_vld & i_vld_en : mul_out_valid[0];
+always @(*) begin
+    case (mode_state)
+        mode_NTT:   mont_add_ivld = mul_out_valid[0];
+        mode_iNTT:  mont_add_ivld = (buf_i_vld & i_vld_en);
+        default:    mont_add_ivld = 1'b0; // safe default
+    endcase
+end
+
+mont_add mont_add_01(.in_A(mont_add_inA[0]), .in_B(mont_add_inB[0]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o0[0]));
+mont_add mont_add_02(.in_A(mont_add_inA[1]), .in_B(mont_add_inB[1]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o0[1]));
+mont_add mont_add_03(.in_A(mont_add_inA[2]), .in_B(mont_add_inB[2]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2)]), .out_valid(mont_add_valid_o0[2]));
+mont_add mont_add_04(.in_A(mont_add_inA[3]), .in_B(mont_add_inB[3]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3)]), .out_valid(mont_add_valid_o0[3]));
+mont_add mont_add_05(.in_A(mont_add_inA[4]), .in_B(mont_add_inB[4]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4)]), .out_valid(mont_add_valid_o0[4]));
+mont_add mont_add_06(.in_A(mont_add_inA[5]), .in_B(mont_add_inB[5]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5)]), .out_valid(mont_add_valid_o0[5]));
+mont_add mont_add_07(.in_A(mont_add_inA[6]), .in_B(mont_add_inB[6]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6)]), .out_valid(mont_add_valid_o0[6]));
+mont_add mont_add_08(.in_A(mont_add_inA[7]), .in_B(mont_add_inB[7]), .clk(clk), .rst_n(rst_n), .in_valid(mont_add_ivld), .result(mont_add_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7)]), .out_valid(mont_add_valid_o0[7]));
+
+assign mont_sub_inA[0] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH-1):0]                : a_result[(pNTT_WTDTH-1):0];
+assign mont_sub_inA[1] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*2-1):(pNTT_WTDTH)]   : a_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)];
+assign mont_sub_inA[2] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)];
+assign mont_sub_inA[3] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)];
+assign mont_sub_inA[4] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)];
+assign mont_sub_inA[5] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)];
+assign mont_sub_inA[6] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)];
+assign mont_sub_inA[7] = (mode_state == mode_iNTT)? buf_ai[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)] : a_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)];
+
+assign mont_sub_inB[0] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH-1):0]                : mul_result[(pNTT_WTDTH-1):0];
+assign mont_sub_inB[1] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*2-1):(pNTT_WTDTH)]   : mul_result[(pNTT_WTDTH*2-1):(pNTT_WTDTH)];
+assign mont_sub_inB[2] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*3-1):(2*pNTT_WTDTH)];
+assign mont_sub_inB[3] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*4-1):(3*pNTT_WTDTH)];
+assign mont_sub_inB[4] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*5-1):(4*pNTT_WTDTH)];
+assign mont_sub_inB[5] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*6-1):(5*pNTT_WTDTH)];
+assign mont_sub_inB[6] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*7-1):(6*pNTT_WTDTH)];
+assign mont_sub_inB[7] = (mode_state == mode_iNTT)? buf_bi[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)] : mul_result[(pNTT_WTDTH*8-1):(7*pNTT_WTDTH)];
+
+//assign mont_sub_ivld = (mode_state == mode_iNTT)? buf_i_vld & i_vld_en : mul_out_valid[0];
+always @(*) begin
+    case (mode_state)
+        mode_NTT:   mont_sub_ivld = mul_out_valid[0];
+        mode_iNTT:  mont_sub_ivld = (buf_i_vld & i_vld_en);
+        default:    mont_sub_ivld = 1'b0; // safe default
+    endcase
+end
+
+mont_sub mont_sub_11(.in_A(mont_sub_inA[0]), .in_B(mont_sub_inB[0]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH-1)    :0])             , .out_valid(mont_add_valid_o1[0]));
+mont_sub mont_sub_12(.in_A(mont_sub_inA[1]), .in_B(mont_sub_inB[1]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*2-1)  :(pNTT_WTDTH)])  , .out_valid(mont_add_valid_o1[1]));
+mont_sub mont_sub_13(.in_A(mont_sub_inA[2]), .in_B(mont_sub_inB[2]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*3-1)  :(pNTT_WTDTH*2)]), .out_valid(mont_add_valid_o1[2]));
+mont_sub mont_sub_14(.in_A(mont_sub_inA[3]), .in_B(mont_sub_inB[3]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*4-1)  :(pNTT_WTDTH*3)]), .out_valid(mont_add_valid_o1[3]));
+mont_sub mont_sub_15(.in_A(mont_sub_inA[4]), .in_B(mont_sub_inB[4]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*5-1)  :(pNTT_WTDTH*4)]), .out_valid(mont_add_valid_o1[4]));
+mont_sub mont_sub_16(.in_A(mont_sub_inA[5]), .in_B(mont_sub_inB[5]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*6-1)  :(pNTT_WTDTH*5)]), .out_valid(mont_add_valid_o1[5]));
+mont_sub mont_sub_17(.in_A(mont_sub_inA[6]), .in_B(mont_sub_inB[6]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*7-1)  :(pNTT_WTDTH*6)]), .out_valid(mont_add_valid_o1[6]));
+mont_sub mont_sub_18(.in_A(mont_sub_inA[7]), .in_B(mont_sub_inB[7]), .clk(clk), .rst_n(rst_n), .in_valid(mont_sub_ivld), .result(mont_sub_result[(pNTT_WTDTH*8-1)  :(pNTT_WTDTH*7)]), .out_valid(mont_add_valid_o1[7]));
 
 // always @(*) begin
 //     mont_add_intt[0] = {1'b0, mont_add_result[(pNTT_WTDTH-1)    :1]};
@@ -454,12 +530,26 @@ always @(*) begin
         bo_buf[0] = mont_sub_result;
     end
     mode_iNTT: begin //div N in the last stage
-        ao_buf[0] = mont_add_result;
-        bo_buf[0] = mont_sub_result;
+        ao_buf[0] = MUL_FIFO[NTT_MUL_LATENCY-1];
+        bo_buf[0] = mul_result;
     end
     endcase
-    o_vld_buf[0] = (mode_state[1] == 1'b0)? ((mode_state[0])?   mul_out_valid[0] : (fp_add_out_valid[0])) : mont_add_valid_o0[0] ;
+    //o_vld_buf[0] = (mode_state[0] == 1'b1)? mul_out_valid[0] : (mode_state == mode_FFT)? fp_add_out_valid[0] : mont_add_valid_o0[0];
+    // o_vld_buf[0] = (mode_state[1] == 1'b0)? 
+    //                   ((mode_state[0])?   mul_out_valid[0]: (fp_add_out_valid[0])) 
+    //                       : mont_add_valid_o0[0] ;
 end
+
+always @(*) begin
+    case (mode_state)
+        mode_FFT:   o_vld_buf[0] = fp_add_out_valid[0];
+        mode_iFFT:  o_vld_buf[0] = mul_out_valid[0];
+        mode_NTT:   o_vld_buf[0] = mont_add_valid_o0[0];
+        mode_iNTT:  o_vld_buf[0] = mul_out_valid[0];
+        default:    o_vld_buf[0] = 1'b0; // safe default
+    endcase
+end
+
 
 always @(posedge clk or negedge rst_n) begin
   if (!rst_n) begin
