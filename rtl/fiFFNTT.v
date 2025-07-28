@@ -396,7 +396,8 @@ module fiFFNTT
           data_ram_aout = normal_order_a;
         end else begin
           data_ram_ain =  normal_order_a;
-          data_ram_aout =  {1'b0, NTT_OFFSET_MUX, 2'b0};
+          // data_ram_aout =  {1'b0, NTT_OFFSET_MUX, 2'b0};
+          data_ram_aout =  normal_order_a;
         end
       end else begin
         if (data_length == 2048) begin
@@ -404,7 +405,8 @@ module fiFFNTT
           data_ram_aout =  normal_order_a;
         end else begin
           data_ram_ain = normal_order_a;
-          data_ram_aout = {1'b0, NTT_OFFSET_MUX, 2'b0};
+          // data_ram_aout = {1'b0, NTT_OFFSET_MUX, 2'b0};
+          data_ram_aout =  normal_order_a;
         end
       end
     end 
@@ -582,7 +584,7 @@ module fiFFNTT
     // strema out count //
     //////////////////////
 
-    assign stream_out_counter_en = sm_state && sm_tready && sm_tvalid || stream_out_counter == output_length - 1;
+    assign stream_out_counter_en = sm_state && sm_tready && sm_state || stream_out_counter == output_length - 1;
 
     always @ (posedge clk or negedge rstn) begin
       if (!rstn) begin
@@ -601,11 +603,11 @@ module fiFFNTT
       if (!rstn) begin
         sm_tvalid_r <= 0;
       end else begin
-        sm_tvalid_r <= sm_state;
+        sm_tvalid_r <= stream_out_counter != 0;
       end
     end
     
-    assign sm_tvalid = sm_tvalid_r;
+    assign sm_tvalid = sm_tvalid_r || stream_out_counter == 1;
 
     ////////////////////////////////////
     // bit reverse address for output //
@@ -613,12 +615,16 @@ module fiFFNTT
 
     assign output_fft_a = (output_length == 12'h800) ? 
                           {output_pack_counter, 2'b00} + 
-                          {1'b0, output_pack_offset[0], output_pack_offset[1], output_pack_offset[2], output_pack_offset[3], output_pack_offset[4], 
-                                  output_pack_offset[5], output_pack_offset[6], output_pack_offset[7], output_pack_offset[8], 4'b0000} : 0;
+                          {1'b0, output_pack_offset[8], output_pack_offset[7], output_pack_offset[6], output_pack_offset[5], output_pack_offset[4], 
+                                  output_pack_offset[3], output_pack_offset[2], output_pack_offset[1], output_pack_offset[0], 4'b0000} : 0;
 
-    assign output_ntt_a = (output_length == 12'h400) ? {2'b00, stream_out_counter[0], stream_out_counter[1], stream_out_counter[2], stream_out_counter[3]
-                                                      ,stream_out_counter[4], stream_out_counter[5], stream_out_counter[6], stream_out_counter[7]
-                                                      ,stream_out_counter[8], stream_out_counter[9], 2'b00} : 0;
+    // assign output_ntt_a = (output_length == 12'h400) ? {2'b00, stream_out_counter[0], stream_out_counter[1], stream_out_counter[2], stream_out_counter[3]
+    //                                                   ,stream_out_counter[4], stream_out_counter[5], stream_out_counter[6], stream_out_counter[7]
+    //                                                   ,stream_out_counter[8], stream_out_counter[9], 2'b00} : 0;
+
+    assign output_ntt_a = (output_length == 12'h400) ? {2'b00, stream_out_counter[9], stream_out_counter[8], stream_out_counter[7], stream_out_counter[6]
+                                                      ,stream_out_counter[5], stream_out_counter[4], stream_out_counter[3], stream_out_counter[2]
+                                                      ,stream_out_counter[1], stream_out_counter[0], 2'b00} : 0;
 
     wire [12:0] output_a_mux;
     assign output_a_mux = (output_length == 12'h400) ? output_ntt_a : (output_length == 12'h800) ? output_fft_a : 0;
