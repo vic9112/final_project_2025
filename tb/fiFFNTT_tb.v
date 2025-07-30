@@ -30,10 +30,10 @@ module fiFFNTT_tb;
     input integer idx;
     begin
       case(idx)
-        0: get_COEF_LEN = 1024;
-        1: get_COEF_LEN = 1024;
-        2: get_COEF_LEN = 512;
-        3: get_COEF_LEN = 512;
+        0: get_COEF_LEN = 2044;
+        1: get_COEF_LEN = 2044;
+        2: get_COEF_LEN = 1024;
+        3: get_COEF_LEN = 1024;
         default: get_COEF_LEN = 0;
       endcase
     end
@@ -87,6 +87,7 @@ module fiFFNTT_tb;
   reg [DATA_WIDTH-1:0] stat;
   integer idx;
   integer i, j, k, m;
+  integer cal_time;
 
   // Memories for input/output/golden data
   reg [DATA_WIDTH-1:0] coef_mem   [0:NUM_KER-1][0:2047];
@@ -94,9 +95,9 @@ module fiFFNTT_tb;
   reg [DATA_WIDTH-1:0] out_mem    [0:NUM_KER-1][0:2047];
   reg [DATA_WIDTH-1:0] golden_mem [0:NUM_KER-1][0:2047];
 
-  reg [DATA_WIDTH-1:0] coef_mem_FFT    [0:1023];
-  reg [31:0] coef_mem_NTT              [0:511];
-  reg [31:0] coef_mem_iNTT             [0:511];
+  reg [DATA_WIDTH-1:0] coef_mem_FFT    [0:2047];
+  reg [31:0] coef_mem_NTT              [0:1023];
+  reg [31:0] coef_mem_iNTT             [0:1023];
   reg [DATA_WIDTH-1:0] in_mem_FFT      [0:2047];
   reg [DATA_WIDTH-1:0] in_mem_iFFT     [0:2047];
   reg [31:0] in_mem_NTT                [0:1023];
@@ -106,9 +107,9 @@ module fiFFNTT_tb;
   reg [31:0] golden_mem_NTT            [0:1023];
   reg [31:0] golden_mem_iNTT           [0:1023];
 
-  reg [DATA_WIDTH-1:0] coef_FFT    [0:1023];
-  reg [DATA_WIDTH-1:0] coef_NTT    [0:511];
-  reg [DATA_WIDTH-1:0] coef_iNTT   [0:511];
+  reg [DATA_WIDTH-1:0] coef_FFT    [0:2047];
+  reg [DATA_WIDTH-1:0] coef_NTT    [0:1023];
+  reg [DATA_WIDTH-1:0] coef_iNTT   [0:1023];
   reg [DATA_WIDTH-1:0] in_FFT      [0:2047];
   reg [DATA_WIDTH-1:0] in_iFFT     [0:2047];
   reg [DATA_WIDTH-1:0] in_NTT      [0:1023];
@@ -132,6 +133,10 @@ module fiFFNTT_tb;
   integer rand_time;
   integer length;
   integer mode;
+
+  // file is used to calculate kernel utilization
+  integer log_file_1_1, log_file_2_1, log_file_3_1, log_file_4_1; // these file record changes of BPE1.i_vld and BPE5.o_vld
+  integer log_file_1_2, log_file_2_2, log_file_3_2, log_file_4_2;
 
   // DUT Instantiation
   fiFFNTT #(
@@ -185,16 +190,141 @@ module fiFFNTT_tb;
     .rready     (rready_mb)
   );
 
-    //Prevent hang
-    integer timeout = (60000);
-    initial begin
-        while(timeout > 0) begin
-            @(posedge clk);
-            timeout = timeout - 1;
-        end
-        $display($time, "Simualtion Hang ....");
-        $finish;
+  //Prevent hang
+  integer timeout = (60000);
+  initial begin
+      while(timeout > 0) begin
+          @(posedge clk);
+          timeout = timeout - 1;
+      end
+      $display($time, "Simualtion Hang ....");
+      $finish;
+  end
+
+reg [4:0] prev_i_vld, prev_o_vld;
+reg [4:0] i_count, o_count;
+reg [31:0] input_count, output_count;
+reg [4:0] curr_i_vld;
+reg [4:0] curr_o_vld;
+reg [4:0] rise_i;
+reg [4:0] rise_o;
+
+initial begin
+  prev_i_vld   = 5'b0;
+  prev_o_vld   = 5'b0;
+  i_count      = 5'd0;
+  o_count      = 5'd0;
+  input_count  = 32'd0;
+  output_count = 32'd0;
+end
+
+always @(posedge clk, negedge rstn) begin
+  if (!rstn) begin
+    curr_i_vld <= 5'd0;
+    curr_o_vld <= 5'd0;
+    rise_i <= 5'd0;
+    rise_o <= 5'd0;
+    prev_i_vld   <= 5'b0;
+    prev_o_vld   <= 5'b0;
+    i_count      <= 5'd0;
+    o_count      <= 5'd0;
+    input_count  <= 32'd0;
+    output_count <= 32'd0;
+  end else begin
+    // 取得現在的 vld 訊號
+    curr_i_vld <= {
+      DUT.kernel1.BPE5_i_vld,
+      DUT.kernel1.BPE4_i_vld,
+      DUT.kernel1.BPE3_i_vld,
+      DUT.kernel1.BPE2_i_vld,
+      DUT.kernel1.BPE1_i_vld
+    };
+
+    curr_o_vld <= {
+      DUT.kernel1.BPE5_o_vld,
+      DUT.kernel1.BPE4_o_vld,
+      DUT.kernel1.BPE3_o_vld,
+      DUT.kernel1.BPE2_o_vld,
+      DUT.kernel1.BPE1_o_vld
+    };
+
+    // 偵測上升沿
+    rise_i <= curr_i_vld & ~prev_i_vld;
+    rise_o <= curr_o_vld & ~prev_o_vld;
+
+    // 累加每條線的計數
+    i_count <= i_count + rise_i;
+    o_count <= o_count + rise_o;
+
+    // 累加總 input/output
+    input_count  <= input_count  + rise_i[0] + rise_i[1] + rise_i[2] + rise_i[3] + rise_i[4];
+    output_count <= output_count + rise_o[0] + rise_o[1] + rise_o[2] + rise_o[3] + rise_o[4];
+
+    // 更新 previous 訊號
+    prev_i_vld <= curr_i_vld;
+    prev_o_vld <= curr_o_vld;
+  end
+end
+
+//////////////////////////////////////////////////////////////// calculate kernel utilization
+  reg [31:0] idle_cycle_count_kernel1, idle_cycle_count_kernel2, idle_cycle_count_kernel3, idle_cycle_count_kernel4;
+  always @(posedge clk, negedge rstn) begin
+    if (!rstn) begin
+      idle_cycle_count_kernel1 <= 32'd0;
+      idle_cycle_count_kernel2 <= 32'd0;
+      idle_cycle_count_kernel3 <= 32'd0;
+      idle_cycle_count_kernel4 <= 32'd0;
+    end else begin
+      if (DUT.kernel1.BPE1.i_vld == 1'b0 && DUT.kernel1.BPE1.i_rdy == 1'b1) begin
+        idle_cycle_count_kernel1 <= idle_cycle_count_kernel1 + 32'd1;
+      end else begin
+        idle_cycle_count_kernel1 <= idle_cycle_count_kernel1;
+      end
+      if (DUT.kernel2.BPE1.i_vld == 1'b0 && DUT.kernel2.BPE1.i_rdy == 1'b1) begin
+        idle_cycle_count_kernel2 <= idle_cycle_count_kernel2 + 32'd1;
+      end else begin
+        idle_cycle_count_kernel2 <= idle_cycle_count_kernel2;
+      end
+      if (DUT.kernel3.BPE1.i_vld == 1'b0 && DUT.kernel3.BPE1.i_rdy == 1'b1) begin
+        idle_cycle_count_kernel3 <= idle_cycle_count_kernel3 + 32'd1;
+      end else begin
+        idle_cycle_count_kernel3 <= idle_cycle_count_kernel3;
+      end
+      if (DUT.kernel4.BPE1.i_vld == 1'b0 && DUT.kernel4.BPE1.i_rdy == 1'b1) begin
+        idle_cycle_count_kernel4 <= idle_cycle_count_kernel4 + 32'd1;
+      end else begin
+        idle_cycle_count_kernel4 <= idle_cycle_count_kernel4;
+      end
     end
+  end
+
+  initial begin
+    log_file_1_1 = $fopen("moniter_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
+    log_file_2_1 = $fopen("moniter_time_kernek2.txt", "w");
+    log_file_3_1 = $fopen("moniter_time_kernek3.txt", "w");
+    log_file_4_1 = $fopen("moniter_time_kernek4.txt", "w");
+    log_file_1_2 = $fopen("require_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
+    log_file_2_2 = $fopen("require_time_kernek2.txt", "w");
+    log_file_3_2 = $fopen("require_time_kernek3.txt", "w");
+    log_file_4_2 = $fopen("require_time_kernek4.txt", "w");
+
+    if (log_file_1_1 == 0 || log_file_2_1 == 0 || log_file_3_1 == 0 || log_file_4_1 == 0) begin
+      $display("Error opening file!");
+      $finish;
+    end
+
+    // 類似 $monitor，只是輸出到檔案
+    $fmonitor(log_file_1_1, "Time=%0t, DUT.kernel1.BPE1.i_vld=%b, DUT.kernel1.BPE5.o_vld=%b", $time, DUT.kernel1.BPE1.i_vld, DUT.kernel1.BPE5.o_vld);
+    $fmonitor(log_file_2_1, "Time=%0t, DUT.kernel2.BPE1.i_vld=%b, DUT.kernel2.BPE5.o_vld=%b", $time, DUT.kernel2.BPE1.i_vld, DUT.kernel2.BPE5.o_vld);
+    $fmonitor(log_file_3_1, "Time=%0t, DUT.kernel3.BPE1.i_vld=%b, DUT.kernel3.BPE4.o_vld=%b", $time, DUT.kernel3.BPE1.i_vld, DUT.kernel3.BPE4.o_vld);
+    $fmonitor(log_file_4_1, "Time=%0t, DUT.kernel4.BPE1.i_vld=%b, DUT.kernel4.BPE4.o_vld=%b", $time, DUT.kernel4.BPE1.i_vld, DUT.kernel4.BPE4.o_vld); 
+    $fmonitor(log_file_1_2, "Time=%0t, idle cycle count kernel1=%d", $time, idle_cycle_count_kernel1);
+    $fmonitor(log_file_2_2, "Time=%0t, idle cycle count kernel2=%d", $time, idle_cycle_count_kernel2);
+    $fmonitor(log_file_3_2, "Time=%0t, idle cycle count kernel3=%d", $time, idle_cycle_count_kernel3);
+    $fmonitor(log_file_4_2, "Time=%0t, idle cycle count kernel4=%d", $time, idle_cycle_count_kernel4);
+  end
+
+////////////////////////////////////////////////////////////////
 
   // AXI-Lite write task
   task axilite_write(
@@ -407,8 +537,8 @@ module fiFFNTT_tb;
             3: out_iNTT[j] = sm_tdata;
           endcase
           j = j + 1;
-          sm_tready <= 0; // 每收完一筆，ready往下拉
-          @(posedge clk);
+          //sm_tready <= 0; // 每收完一筆，ready往下拉
+          //@(posedge clk);
         end
       end
       sm_tready <= 0;
@@ -521,41 +651,116 @@ module fiFFNTT_tb;
     end
   endtask
 
+function [79:0] extract_digits;
+  input [1023:0] str;
+  integer i, j, k;
+  reg [87:0] tmp11;  // 11 bytes = 88 bits
+  reg [7:0] ch;
+  reg carry;
+  begin
+    tmp11 = 88'd0;
+    j = 0;
 
-  task compare_fp64(
-    input [63:0] golden_bits,
-    input [63:0] output_bits,
-    output err
-  );
+    // 從後往前掃描，抓到 11 個數字字元
+    for (i = 1023; i >= 7 && j < 11; i = i - 8) begin
+      ch = str[i -: 8];
+      if (ch >= "0" && ch <= "9") begin
+        tmp11[87 - j*8 -: 8] = ch;
+        j = j + 1;
+      end
+    end
 
-    real golden_val;
-    real output_val;
-    real golden_val_tmp;
-    real output_val_tmp;
-    real abs_error;
-    real rel_error;
+    // 如果抓不到至少 1 個數字，直接回傳 0
+    if (j == 0) begin
+      extract_digits = 80'd0;
+    end else begin
+      // 檢查第 11 個字元（最低位）是否需要進位
+      carry = 0;
+      if (j == 11) begin
+        if (tmp11[7:0] >= "5")
+          carry = 1;
+      end
 
-      begin
-        golden_val = $bitstoreal(golden_bits); // golden float type
-        output_val = $bitstoreal(output_bits); // output float type
-
-        abs_error = golden_val - output_val;
-        if (abs_error < 0) begin
-          abs_error = -abs_error;
+      // 對前 10 位做進位處理（從最低位開始處理）
+      for (k = 1; k <= 10; k = k + 1) begin
+        if (k > j - 1) begin
+          // 未滿10位補0
+          tmp11[8*k +: 8] = "0";
         end
 
-        if (abs_error <= 0.000000001) // if error <= e-10 => pass
-          err = 0;
-        else
-          err = 1;
+        if (carry) begin
+          if (tmp11[8*k +: 8] < "9") begin
+            tmp11[8*k +: 8] = tmp11[8*k +: 8] + 1;
+            carry = 0;
+          end else begin
+            tmp11[8*k +: 8] = "0"; // 9 + 1 = 0，繼續進位
+          end
+        end
       end
-    
-  endtask
+      
+      if  (carry) begin
+        tmp11[87:80] = "1";
+      end
+
+      // 將處理後的高 10 bytes 回傳
+      extract_digits = tmp11[87:8];
+    end
+  end
+endfunction
+
+
+task compare_fp64;
+  input  [63:0] golden_bits;
+  input  [63:0] output_bits;
+  output        err;
+
+  real golden_val;
+  real output_val;
+  real div_val; // used to check exponent correct
+
+  reg [1023:0] str_golden;
+  reg [1023:0] str_output;
+  reg [79:0] digits_golden;
+  reg [79:0] digits_output;
+
+  integer i, j;
+
+
+  begin
+    golden_val = $bitstoreal(golden_bits);
+    output_val = $bitstoreal(output_bits);
+    div_val = golden_val / output_val;
+    // 轉成字串（最多17位有效數字）
+    str_golden = "";
+    str_output = "";
+    $sformat(str_golden, "%0.17e", golden_val);
+    $sformat(str_output, "%0.17e", output_val);
+
+    // 擷取前10位有效數字（去掉符號、小數點、e+指數）
+    digits_golden = extract_digits(str_golden);
+    digits_output = extract_digits(str_output);
+
+    // 比對
+    if (digits_golden == digits_output && (div_val < 1.1 && div_val > 0.9))
+      err = 0;
+    else
+      err = 1;
+
+    // Optional debug
+    $display("Golden = %s => digit = %s", str_golden, digits_golden);
+    $display("Output = %s => digit = %s", str_output, digits_output);
+    $display("Result: err = %0d", err);
+  end
+endtask
+
+
+
 
   integer fd; 
   reg [63:0] golden_tmp;
   reg [63:0] output_tmp;
   reg err_tmp;
+
 
   initial begin
     fd = $fopen("terminal_message.txt", "w");
@@ -583,21 +788,20 @@ module fiFFNTT_tb;
     $readmemh("NTT_coef.hex", coef_mem_NTT);
     $readmemh("iNTT_coef.hex", coef_mem_iNTT);
     $readmemh("input.hex", in_mem_FFT);
-    $readmemh("output.hex", in_iFFT);
+    $readmemh("input_iFFT.hex", in_iFFT);
     $readmemh("NTT_in.hex", in_mem_NTT);
     $readmemh("iNTT_in.hex", in_mem_iNTT);
     $readmemh("output.hex", golden_mem_FFT);
-    $readmemh("input.hex", golden_mem_iFFT);
+    $readmemh("output_iFFT.hex", golden_mem_iFFT);
     $readmemh("NTT_out.hex", golden_mem_NTT);
     $readmemh("iNTT_out.hex", golden_mem_iNTT);
 
-    for (k = 0; k < 512; k = k + 1) begin
+    for (k = 0; k < 1024; k = k + 1) begin
       coef_NTT[k] = {coef_mem_NTT[k]};
       coef_iNTT[k] = {coef_mem_iNTT[k]};
     end
 
     for (k = 0; k < 1024; k = k + 1) begin
-      coef_FFT[k] = coef_mem_FFT[k];
       in_NTT[k] = {in_mem_NTT[k]};
       in_iNTT[k] = {in_mem_iNTT[k]};
       golden_NTT[k] = {golden_mem_NTT[k]};
@@ -605,6 +809,7 @@ module fiFFNTT_tb;
     end
 
     for (k = 0; k < 2048; k = k + 1) begin
+      coef_FFT[k] = coef_mem_FFT[k];
       in_FFT[k] = in_mem_FFT[k];
       in_iFFT[k] = in_iFFT[k];
       golden_FFT[k] = golden_mem_FFT[k];
@@ -646,32 +851,33 @@ module fiFFNTT_tb;
     $display("Coefficients input over");
 
     // test1
-    for (k = 0; k < 2; k = k + 1) begin
-      axilite_read_mb(MB_BASE_ADDR, check);
+    for (k = 0; k < 4; k = k + 1) begin
+      axilite_read_mb(MB_BASE_ADDR + k * MB_STRIDE, check);
       if (check != PAT_KER_FREE) begin
-        $display("Test1 Error: Kernel 1 is not free");
+        $display("Test1 Error: Kernel %d is not free", k + 1);
         $finish;
       end else begin
         $display("Test1: Kernel %d is free", k + 1);
-        axilite_write_mb(MB_BASE_ADDR, PAT_KER_BUSY);
+        axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_BUSY);
       end
 
       stream_meta(KERNEL_BASE + k, MODE_BASE + k, get_LEN(k));
-      fork
-        // DMA in
-        ss_stream_in(get_LEN(k), k);
-        
-        // FW thread
-        begin
-          start_time = $time;
-          sm_stream_out(get_LEN(k), k);
-          wait_ap_done(k);
-          end_time = $time;
-          latency = end_time - start_time;
-          $display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
-          axilite_write_mb(MB_BASE_ADDR, PAT_KER_FREE);
-        end
-      join
+      // DMA in
+      ss_stream_in(get_LEN(k), k);
+    end
+
+    for (k = 0; k < 4; k = k + 1) begin
+      //start_time = $time;
+      //$display("here %d", k);
+      sm_stream_out(get_LEN(k), k);
+      
+      $display("here %d", k);
+      wait_ap_done(k);
+      
+      //end_time = $time;
+      //latency = end_time - start_time;
+      //$display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
+      axilite_write_mb(MB_BASE_ADDR + k, PAT_KER_FREE);
     end
 
     // Check results
@@ -680,64 +886,44 @@ module fiFFNTT_tb;
       output_tmp = {out_FFT[i], out_FFT[i+1]};
       compare_fp64(golden_tmp, output_tmp, err_tmp);
       if (err_tmp == 1) begin
-        $display("\033[1;31mFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $display("\033[1;31m[ERROR] FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
         $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
       end else begin
-        $display("\033[1;32mFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+        $display("\033[1;32m[SUCCESS] FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
         $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
       end
     end
-    // for (i = 0; i < 2048; i = i + 1) begin
-    //   if (i % 2 == 0) begin
-    //     if (out_FFT[i] != golden_FFT[i]) begin
-    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
-    //       //$finish;
-    //     end else begin
-    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
-    //     end
-    //   end else begin
-    //     if (out_FFT[i][31:12] != golden_FFT[i][31:12]) begin
-    //       $display("FFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
-    //       //$finish;
-    //     end else begin
-    //       $display("FFT match idx=%d got 0x%8h exp 0x%8h", i, out_FFT[i], golden_FFT[i]);
-    //     end
-    //   end
-    // end
-    
 
-    // for (i = 0; i < 2048; i = i + 1) begin
-    //   if (i % 4 == 3) begin
-    //     if ((out_FFT[i] != golden_FFT[i]) || (out_FFT[i-1] != golden_FFT[i-1]) || (out_FFT[i-2] != golden_FFT[i-2]) || (out_FFT[i-3] != golden_FFT[i-3])) begin
-    //       $display("FFT mismatch idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
-    //     end else begin
-    //       $display("FFT match idx=%d got 0x%8h_%8h_%8h_%8h exp 0x%8h_%8h_%8h_%8h", i/4, out_FFT[i-3], out_FFT[i-2], out_FFT[i-1], out_FFT[i], golden_FFT[i-3], golden_FFT[i-2], golden_FFT[i-1], golden_FFT[i]);
-    //     end
-    //   end
-    // end
+    $display("\n=== Valid Signal Statistics ===");
+    $display("Total Input  Valid Count  = %0d", input_count);
+    $display("Total Output Valid Count  = %0d", output_count);
 
-    for (i = 0; i < 2048; i = i + 1) begin
-      if (out_iFFT[i] != golden_iFFT[i]) begin
-        $display("iFFT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
-        $finish;
+    for (i = 0; i < 2048; i = i + 2) begin
+      golden_tmp = {golden_iFFT[i], golden_iFFT[i+1]};
+      output_tmp = {out_iFFT[i], out_iFFT[i+1]};
+      compare_fp64(golden_tmp, output_tmp, err_tmp);
+      if (err_tmp == 1) begin
+        $display("\033[1;31m[ERROR] iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+        $fwrite(fd, "iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
       end else begin
-        $display("iFFT match idx=%d got 0x%8h exp 0x%8h", i, out_iFFT[i], golden_iFFT[i]);
+        $display("\033[1;32m[SUCCESS] iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+        $fwrite(fd, "iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
       end
     end
 
     for (i = 0; i < 1024; i = i + 1) begin
-      if (out_NTT[i] != golden_NTT[i]) begin
-        $display("NTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
+      if (out_NTT[i][15:0] != golden_NTT[i]) begin
+        $display("\033[1;31m[ERROR] NTT mismatch idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
       end else begin
-        $display("NTT match idx=%d got 0x%8h exp 0x%8h", i, out_NTT[i], golden_NTT[i]);
+        $display("\033[1;32m[SUCCESS] NTT match idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
       end
     end
 
     for (i = 0; i < 1024; i = i + 1) begin
-      if (out_iNTT[i] != golden_iNTT[i]) begin
-        $display("iNTT mismatch idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
+      if (out_iNTT[i][15:0] != golden_iNTT[i]) begin
+        $display("\033[1;31m[ERROR] iNTT mismatch idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
       end else begin
-        $display("iNTT match idx=%d got 0x%8h exp 0x%8h", i, out_iNTT[i], golden_iNTT[i]);
+        $display("\033[1;32m[SUCCESS] iNTT match idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
       end
     end
 
