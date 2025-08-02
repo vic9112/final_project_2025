@@ -2194,10 +2194,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   wire k3_push_ntt;
   wire k4_push_ntt;
 
-  assign k1_push_ntt = (k1_bpe_act[0] || decode1) && k1_mode == 2;
-  assign k2_push_ntt = (k2_bpe_act[0] || decode2) && k2_mode == 2;
-  assign k3_push_ntt = (k3_bpe_act[0] || decode3) && k3_mode == 2;
-  assign k4_push_ntt = (k4_bpe_act[0] || decode4) && k4_mode == 2;
+  assign k1_push_ntt = (k1_bpe_act[0]) && k1_mode == 2;
+  assign k2_push_ntt = (k2_bpe_act[0]) && k2_mode == 2;
+  assign k3_push_ntt = (k3_bpe_act[0]) && k3_mode == 2;
+  assign k4_push_ntt = (k4_bpe_act[0]) && k4_mode == 2;
 
   wire push_ntt;
   assign push_ntt = k1_push_ntt || k2_push_ntt || k3_push_ntt || k4_push_ntt;
@@ -2216,10 +2216,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
       acted_table_ntt[2] <= 0;
       acted_table_ntt[3] <= 0;
     end else begin
-      acted_table_ntt[0] <= ((k1_bpe_act[0] || decode1) && k1_mode == 2) ? 1 : (k1_pop_ntt) ? 0 : acted_table_ntt[0];
-      acted_table_ntt[1] <= ((k2_bpe_act[0] || decode2) && k2_mode == 2) ? 1 : (k2_pop_ntt) ? 0 : acted_table_ntt[1];
-      acted_table_ntt[2] <= ((k3_bpe_act[0] || decode3) && k3_mode == 2) ? 1 : (k3_pop_ntt) ? 0 : acted_table_ntt[2];
-      acted_table_ntt[3] <= ((k4_bpe_act[0] || decode4) && k4_mode == 2) ? 1 : (k4_pop_ntt) ? 0 : acted_table_ntt[3];
+      acted_table_ntt[0] <= ((k1_bpe_act[0] ) && k1_mode == 2) ? 1 : (k1_pop_ntt) ? 0 : acted_table_ntt[0];
+      acted_table_ntt[1] <= ((k2_bpe_act[0] ) && k2_mode == 2) ? 1 : (k2_pop_ntt) ? 0 : acted_table_ntt[1];
+      acted_table_ntt[2] <= ((k3_bpe_act[0] ) && k3_mode == 2) ? 1 : (k3_pop_ntt) ? 0 : acted_table_ntt[2];
+      acted_table_ntt[3] <= ((k4_bpe_act[0] ) && k4_mode == 2) ? 1 : (k4_pop_ntt) ? 0 : acted_table_ntt[3];
     end
   end
 
@@ -2230,13 +2230,13 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   reg [2:0] fetching_kernal_ntt;
   always @* begin
     if (isempty_ntt) begin
-      if          ((k1_bpe_act[0] || decode1) && k1_mode == 2) begin
+      if          ((k1_bpe_act[0]) && k1_mode == 2) begin
         fetching_kernal_next_ntt = 1;
-      end else if ((k2_bpe_act[0] || decode2) && k2_mode == 2) begin
+      end else if ((k2_bpe_act[0]) && k2_mode == 2) begin
         fetching_kernal_next_ntt = 2;
-      end else if ((k3_bpe_act[0] || decode3) && k3_mode == 2) begin
+      end else if ((k3_bpe_act[0]) && k3_mode == 2) begin
         fetching_kernal_next_ntt = 3;
-      end else if ((k4_bpe_act[0] || decode4) && k4_mode == 2) begin
+      end else if ((k4_bpe_act[0]) && k4_mode == 2) begin
         fetching_kernal_next_ntt = 4;
       end else begin
         fetching_kernal_next_ntt = 0;
@@ -2292,13 +2292,13 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k1_sw_lst || k1_push_ntt) begin
       ntt_kernal1_a_gen <= 0;
     end else if (k1_mode_r == 2) begin
-      ntt_kernal1_a_gen <= (ntt_kernal1_a_gen == 64) ? ntt_kernal1_a_gen : ntt_kernal1_a_gen + 1;
+      ntt_kernal1_a_gen <= (ntt_kernal1_a_gen == 32) ? ntt_kernal1_a_gen : ntt_kernal1_a_gen + 1;
     end else begin
       ntt_kernal1_a_gen <= 0;
     end
   end
   
-  assign k1_pop_ntt = (ntt_kernal1_a_gen == 63);
+  assign k1_pop_ntt = (ntt_kernal1_a_gen == 31);
 
   reg k1_coef_en_ntt;
   always @(posedge clk or negedge rstn) begin
@@ -2325,7 +2325,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   end
 
   wire [12:0] ntt_kernal1_a;
-  assign ntt_kernal1_a = (k1_coef_en_ntt) ? ((ntt_coef1_a_offset == 2) ? {ntt_kernal1_a_gen[10:0] + 64 , 2'b00} : {ntt_kernal1_a_gen[10:0], 2'b00}) : 0;
+  assign ntt_kernal1_a = (k1_coef_en_ntt) ? {ntt_kernal1_a_gen[10:0] + 32*(ntt_coef1_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 2 //
   //////////////
@@ -2348,12 +2348,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k2_sw_lst || k2_push_ntt) begin
       ntt_kernal2_a_gen <= 0;
     end else if (k2_mode_r == 2) begin
-      ntt_kernal2_a_gen <= (ntt_kernal2_a_gen == 64) ? ntt_kernal2_a_gen : ntt_kernal2_a_gen + 1;
+      ntt_kernal2_a_gen <= (ntt_kernal2_a_gen == 32) ? ntt_kernal2_a_gen : ntt_kernal2_a_gen + 1;
     end else begin
       ntt_kernal2_a_gen <= 0;
     end
   end
-  assign k2_pop_ntt = (ntt_kernal2_a_gen == 63);
+  assign k2_pop_ntt = (ntt_kernal2_a_gen == 31);
 
   reg k2_coef_en_ntt;
   always @(posedge clk or negedge rstn) begin
@@ -2379,7 +2379,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] ntt_kernal2_a;
-  assign ntt_kernal2_a = (k2_coef_en_ntt) ? ((ntt_coef2_a_offset == 2) ? {ntt_kernal2_a_gen[10:0] + 64 , 2'b00} : {ntt_kernal2_a_gen[10:0], 2'b00}) : 0;
+  assign ntt_kernal2_a = (k2_coef_en_ntt) ? {ntt_kernal2_a_gen[10:0] + 32*(ntt_coef2_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 3 //
   //////////////
@@ -2402,10 +2402,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k3_sw_lst || k3_push_ntt) begin
       ntt_kernal3_a_gen <= 0;
     end else if (k3_mode_r == 2) begin
-      ntt_kernal3_a_gen <= (ntt_kernal3_a_gen == 64) ? ntt_kernal3_a_gen : ntt_kernal3_a_gen + 1;
+      ntt_kernal3_a_gen <= (ntt_kernal3_a_gen == 32) ? ntt_kernal3_a_gen : ntt_kernal3_a_gen + 1;
     end
   end
-  assign k3_pop_ntt = (ntt_kernal3_a_gen == 63);
+  assign k3_pop_ntt = (ntt_kernal3_a_gen == 31);
   reg k3_coef_en_ntt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2430,7 +2430,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] ntt_kernal3_a;
-  assign ntt_kernal3_a = (k3_coef_en_ntt) ? ((ntt_coef3_a_offset == 2) ? {ntt_kernal3_a_gen[10:0] + 64 , 2'b00} : {ntt_kernal3_a_gen[10:0], 2'b00}) : 0;
+  assign ntt_kernal3_a = (k3_coef_en_ntt) ? {ntt_kernal3_a_gen[10:0] + 32*(ntt_coef3_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 4 //
   //////////////
@@ -2453,12 +2453,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k4_sw_lst || k4_push_ntt) begin
       ntt_kernal4_a_gen <= 0;
     end else if (k4_mode_r == 2) begin
-      ntt_kernal4_a_gen <= (ntt_kernal4_a_gen == 64) ? ntt_kernal4_a_gen : ntt_kernal4_a_gen + 1;
+      ntt_kernal4_a_gen <= (ntt_kernal4_a_gen == 32) ? ntt_kernal4_a_gen : ntt_kernal4_a_gen + 1;
     end else begin
       ntt_kernal4_a_gen <= 0;
     end
   end
-  assign k4_pop_ntt = (ntt_kernal4_a_gen == 63);
+  assign k4_pop_ntt = (ntt_kernal4_a_gen == 31);
   reg k4_coef_en_ntt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2482,7 +2482,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] ntt_kernal4_a;
-  assign ntt_kernal4_a = (k4_coef_en_ntt) ? ((ntt_coef4_a_offset == 2) ? {ntt_kernal4_a_gen[10:0] + 64 , 2'b00} : {ntt_kernal4_a_gen[10:0], 2'b00}) : 0;
+  assign ntt_kernal4_a = (k4_coef_en_ntt) ? {ntt_kernal4_a_gen[10:0] + 32*(ntt_coef4_a_offset - 1), 2'b00} : 0;
 
 
   /////////////////////////////////
@@ -2505,10 +2505,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   wire k2_push_intt;
   wire k3_push_intt;
   wire k4_push_intt;
-  assign k1_push_intt = (k1_bpe_act[0] || decode1) && k1_mode == 3;
-  assign k2_push_intt = (k2_bpe_act[0] || decode2) && k2_mode == 3;
-  assign k3_push_intt = (k3_bpe_act[0] || decode3) && k3_mode == 3;
-  assign k4_push_intt = (k4_bpe_act[0] || decode4) && k4_mode == 3;
+  assign k1_push_intt = (k1_bpe_act[0]) && k1_mode == 3;
+  assign k2_push_intt = (k2_bpe_act[0]) && k2_mode == 3;
+  assign k3_push_intt = (k3_bpe_act[0]) && k3_mode == 3;
+  assign k4_push_intt = (k4_bpe_act[0]) && k4_mode == 3;
   wire push_intt;
   assign push_intt = k1_push_intt || k2_push_intt || k3_push_intt || k4_push_intt;
   wire pop_intt;
@@ -2524,10 +2524,10 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
       acted_table_intt[2] <= 0;
       acted_table_intt[3] <= 0;
     end else begin
-      acted_table_intt[0] <= ((k1_bpe_act[0] || decode1) && k1_mode == 3) ? 1 : (k1_pop_intt) ? 0 : acted_table_intt[0];
-      acted_table_intt[1] <= ((k2_bpe_act[0] || decode2) && k2_mode == 3) ? 1 : (k2_pop_intt) ? 0 : acted_table_intt[1];
-      acted_table_intt[2] <= ((k3_bpe_act[0] || decode3) && k3_mode == 3) ? 1 : (k3_pop_intt) ? 0 : acted_table_intt[2];
-      acted_table_intt[3] <= ((k4_bpe_act[0] || decode4) && k4_mode == 3) ? 1 : (k4_pop_intt) ? 0 : acted_table_intt[3];
+      acted_table_intt[0] <= ((k1_bpe_act[0]) && k1_mode == 3) ? 1 : (k1_pop_intt) ? 0 : acted_table_intt[0];
+      acted_table_intt[1] <= ((k2_bpe_act[0]) && k2_mode == 3) ? 1 : (k2_pop_intt) ? 0 : acted_table_intt[1];
+      acted_table_intt[2] <= ((k3_bpe_act[0]) && k3_mode == 3) ? 1 : (k3_pop_intt) ? 0 : acted_table_intt[2];
+      acted_table_intt[3] <= ((k4_bpe_act[0]) && k4_mode == 3) ? 1 : (k4_pop_intt) ? 0 : acted_table_intt[3];
     end
   end
   wire isempty_intt;
@@ -2536,13 +2536,13 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
   reg [2:0] fetching_kernal_intt;
   always @* begin
     if (isempty_intt) begin
-      if          ((k1_bpe_act[0] || decode1) && k1_mode == 3) begin
+      if          ((k1_bpe_act[0]) && k1_mode == 3) begin
         fetching_kernal_next_intt = 1;
-      end else if ((k2_bpe_act[0] || decode2) && k2_mode == 3) begin
+      end else if ((k2_bpe_act[0]) && k2_mode == 3) begin
         fetching_kernal_next_intt = 2;
-      end else if ((k3_bpe_act[0] || decode3) && k3_mode == 3) begin
+      end else if ((k3_bpe_act[0]) && k3_mode == 3) begin
         fetching_kernal_next_intt = 3;
-      end else if ((k4_bpe_act[0] || decode4) && k4_mode == 3) begin
+      end else if ((k4_bpe_act[0]) && k4_mode == 3) begin
         fetching_kernal_next_intt = 4;
       end else begin
         fetching_kernal_next_intt = 0;
@@ -2593,12 +2593,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k1_sw_lst || k1_push_intt) begin
       intt_kernal1_a_gen <= 0;
     end else if (k1_mode_r == 3) begin
-      intt_kernal1_a_gen <= (intt_kernal1_a_gen == 64) ? intt_kernal1_a_gen : intt_kernal1_a_gen + 1;
+      intt_kernal1_a_gen <= (intt_kernal1_a_gen == 32) ? intt_kernal1_a_gen : intt_kernal1_a_gen + 1;
     end else begin
       intt_kernal1_a_gen <= 0;
     end
   end
-  assign k1_pop_intt = (intt_kernal1_a_gen == 63);
+  assign k1_pop_intt = (intt_kernal1_a_gen == 31);
   reg k1_coef_en_intt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2622,7 +2622,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] intt_kernal1_a;
-  assign intt_kernal1_a = (k1_coef_en_intt) ? ((intt_coef1_a_offset == 2) ? {intt_kernal1_a_gen[10:0] + 64 , 2'b00} : {intt_kernal1_a_gen[10:0], 2'b00}) : 0;
+  assign intt_kernal1_a = (k1_coef_en_intt) ? {intt_kernal1_a_gen[10:0] + 32*(intt_coef1_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 2 //
   //////////////
@@ -2645,12 +2645,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k2_sw_lst || k2_push_intt) begin
       intt_kernal2_a_gen <= 0;
     end else if (k2_mode_r == 3) begin
-      intt_kernal2_a_gen <= (intt_kernal2_a_gen == 64) ? intt_kernal2_a_gen : intt_kernal2_a_gen + 1;
+      intt_kernal2_a_gen <= (intt_kernal2_a_gen == 32) ? intt_kernal2_a_gen : intt_kernal2_a_gen + 1;
     end else begin
       intt_kernal2_a_gen <= 0;
     end
   end
-  assign k2_pop_intt = (intt_kernal2_a_gen == 63);
+  assign k2_pop_intt = (intt_kernal2_a_gen == 31);
   reg k2_coef_en_intt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2674,7 +2674,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] intt_kernal2_a;
-  assign intt_kernal2_a = (k2_coef_en_intt) ? ((intt_coef2_a_offset == 2) ? {intt_kernal2_a_gen[10:0] + 64 , 2'b00} : {intt_kernal2_a_gen[10:0], 2'b00}) : 0;
+  assign intt_kernal2_a = (k2_coef_en_intt) ? {intt_kernal2_a_gen[10:0] + 32*(intt_coef2_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 3 //
   //////////////
@@ -2697,12 +2697,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k3_sw_lst || k3_push_intt) begin
       intt_kernal3_a_gen <= 0;
     end else if (k3_mode_r == 3) begin
-      intt_kernal3_a_gen <= (intt_kernal3_a_gen == 64) ? intt_kernal3_a_gen : intt_kernal3_a_gen + 1;
+      intt_kernal3_a_gen <= (intt_kernal3_a_gen == 32) ? intt_kernal3_a_gen : intt_kernal3_a_gen + 1;
     end else begin
       intt_kernal3_a_gen <= 0;
     end
   end
-  assign k3_pop_intt = (intt_kernal3_a_gen == 63);
+  assign k3_pop_intt = (intt_kernal3_a_gen == 31);
   reg k3_coef_en_intt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2726,7 +2726,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] intt_kernal3_a;
-  assign intt_kernal3_a = (k3_coef_en_intt) ? ((intt_coef3_a_offset == 2) ? {intt_kernal3_a_gen[10:0] + 64 , 2'b00} : {intt_kernal3_a_gen[10:0], 2'b00}) : 0;
+  assign intt_kernal3_a = (k3_coef_en_intt) ? {intt_kernal3_a_gen[10:0] + 32*(intt_coef3_a_offset - 1), 2'b00} : 0;
   //////////////
   // kernal 4 //
   //////////////
@@ -2749,12 +2749,12 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end else if (k4_sw_lst || k4_push_intt) begin
       intt_kernal4_a_gen <= 0;
     end else if (k4_mode_r == 3) begin
-      intt_kernal4_a_gen <= (intt_kernal4_a_gen == 64) ? intt_kernal4_a_gen : intt_kernal4_a_gen + 1;
+      intt_kernal4_a_gen <= (intt_kernal4_a_gen == 32) ? intt_kernal4_a_gen : intt_kernal4_a_gen + 1;
     end else begin
       intt_kernal4_a_gen <= 0;
     end
   end
-  assign k4_pop_intt = (intt_kernal4_a_gen == 63);
+  assign k4_pop_intt = (intt_kernal4_a_gen == 31);
   reg k4_coef_en_intt;
   always @(posedge clk or negedge rstn) begin
     if (!rstn) begin
@@ -2778,7 +2778,7 @@ assign k4_coef_en5 = (isempty && push || pop) && fetching_kernal_next == 5'd20 |
     end
   end
   wire [12:0] intt_kernal4_a;
-  assign intt_kernal4_a = (k4_coef_en_intt) ? ((intt_coef4_a_offset == 2) ? {intt_kernal4_a_gen[10:0] + 64 , 2'b00} : {intt_kernal4_a_gen[10:0], 2'b00}) : 0;
+  assign intt_kernal4_a = (k4_coef_en_intt) ? {intt_kernal4_a_gen[10:0] + 32*(intt_coef4_a_offset - 1), 2'b00} : 0;
   /////////////////////////////////
   // coef ram mux for intt kernal //
   /////////////////////////////////
