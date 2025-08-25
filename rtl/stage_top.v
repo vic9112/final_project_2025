@@ -6,6 +6,7 @@ module stage_top
 )
 (
   input   wire                     clk,
+  input   wire                     clk_s,
   input   wire                     rstn,
 
   //input   wire               [1:0] in1_sw,  // not used for now
@@ -21,81 +22,9 @@ module stage_top
   output  wire                     ss_rdy, 
   input   wire                     sm_rdy, 
   output  wire                     sm_vld, 
-  output  wire [(pSS_WIDTH-1):0]   sm_dat, 
+  output  reg  [(pSS_WIDTH-1):0]   sm_dat, 
   output  wire                     sm_lst,  // not used for now
-  output  wire                     sm_mode,
-
-  // 1st Kernel
-  output   wire                    clk1,
-  output   wire                    rstn1,
-
-  output  wire                     k1_ld_vld,  // Stream: X[a], X[b], GM constant
-  input   wire                     k1_ld_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k1_ld_dat,
-  input   wire                     k1_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
-  output  wire                     k1_sw_rdy,
-  input   wire [(pDATA_WIDTH-1):0] k1_sw_dat,
-
-  output  wire               [4:0] k1_coef_vld,
-  input   wire               [4:0] k1_coef_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k1_coef_dat,
-  input   wire               [4:0] k1_bpe_act,
-
-  output  wire               [7:0] k1_mode,
-  output  wire                     decode1,
-  input   wire                     k1_sw_lst,
-  
-  // 2nd Kernel
-  output   wire                    clk2,
-  output   wire                    rstn2,
-  output  wire                     k2_ld_vld,  // Stream: X[a], X[b], GM constant
-  input   wire                     k2_ld_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k2_ld_dat,
-  input   wire                     k2_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
-  output  wire                     k2_sw_rdy,
-  input   wire [(pDATA_WIDTH-1):0] k2_sw_dat,
-  output  wire               [7:0] k2_mode,
-  output  wire                     decode2, 
-  input   wire                     k2_sw_lst,
-  output  wire               [4:0] k2_coef_vld,
-  input   wire               [4:0] k2_coef_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k2_coef_dat,
-  input   wire               [4:0] k2_bpe_act,
-
-  // 3rd Kernel
-  output   wire                    clk3,
-  output   wire                    rstn3,
-  output  wire                     k3_ld_vld,  // Stream: X[a], X[b], GM constant
-  input   wire                     k3_ld_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k3_ld_dat,
-  input   wire                     k3_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
-  output  wire                     k3_sw_rdy,
-  input   wire [(pDATA_WIDTH-1):0] k3_sw_dat,
-  output  wire               [7:0] k3_mode,
-  output  wire                     decode3, 
-  input   wire                     k3_sw_lst,
-  output  wire               [4:0] k3_coef_vld,
-  input   wire               [4:0] k3_coef_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k3_coef_dat,
-  input   wire               [4:0] k3_bpe_act,
-  
-  // 4th Kernel
-  output   wire                    clk4,
-  output   wire                    rstn4,
-  output  wire                     k4_ld_vld,  // Stream: X[a], X[b], GM constant
-  input   wire                     k4_ld_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k4_ld_dat,
-  input   wire                     k4_sw_vld, // Stream: X[a], X[b], GM constant//Stream-in IOP, then stream-out
-  output  wire                     k4_sw_rdy,
-  input   wire [(pDATA_WIDTH-1):0] k4_sw_dat,
-  output  wire               [7:0] k4_mode,
-  output  wire                     decode4,
-  input   wire                     k4_sw_lst,
-  output  wire               [4:0] k4_coef_vld,
-  input   wire               [4:0] k4_coef_rdy,
-  output  wire [(pDATA_WIDTH-1):0] k4_coef_dat,
-  input   wire               [4:0] k4_bpe_act,
-  output  wire                     rst_mode
+  output  wire                     sm_mode
 );
 
   reg [11:0] meta_cnt;
@@ -137,6 +66,51 @@ module stage_top
   wire [3:0]  ram1_we_intt;
   reg         phase;
   reg [11:0] length_old;
+
+  // ========= kernel IO wires =========
+
+  // control
+  wire               [1:0] mode_k;
+  wire                     sw_lst;
+
+  assign mode_k = mode[1:0];
+  // ============ data RAM ============
+  /* SRAM1 512x128 */
+  wire                [3:0] WE_512_1;
+  wire                      sram_en_512_1;
+  wire              [127:0] sram_din_512_1;
+  wire              [127:0] sram_dout_512_1;
+  wire               [12:0] sram_addr_512_1;
+
+  /* SRAM2 512x128 */
+  wire                [3:0] WE_512_2;
+  wire                      sram_en_512_2;
+  wire              [127:0] sram_din_512_2;
+  wire              [127:0] sram_dout_512_2;
+  wire               [12:0] sram_addr_512_2;
+
+  // ============ coef RAM ============
+  /* fft/ifft 512x128 */
+  wire                [3:0] coef_WE_512;
+  wire                      coef_sram_en_512;
+  wire              [127:0] coef_sram_din_512;
+  wire              [127:0] coef_sram_dout_512;
+  wire               [12:0] coef_sram_addr_512;
+
+  /* ntt 128x128 */
+  wire                [3:0] coef_WE_ntt;
+  wire                      coef_sram_en_ntt;
+  wire              [127:0] coef_sram_din_ntt;
+  wire              [127:0] coef_sram_dout_ntt;
+  wire               [12:0] coef_sram_addr_ntt;
+
+  /* intt 128x128 */
+  wire                [3:0] coef_WE_intt;
+  wire                      coef_sram_en_intt;
+  wire              [127:0] coef_sram_din_intt;
+  wire              [127:0] coef_sram_dout_intt;
+  wire               [12:0] coef_sram_addr_intt;
+
 
   localparam COEF_FFT  = 8'b00010100;
   localparam COEF_iFFT = 8'b00010101;
@@ -394,20 +368,18 @@ module stage_top
       end
     end
   end
-  reg [3:0] ram1_we_fft_r;
 
+  reg [3:0] ram1_we_fft_r;
   always @(posedge clk) begin
     ram1_we_fft_r <= ram1_we_fft;
   end
 
   reg [3:0] ram1_we_ntt_r;
-
   always @(posedge clk) begin
     ram1_we_ntt_r <= ram1_we_ntt;
   end
 
   reg [3:0] ram1_we_intt_r;
-
   always @(posedge clk) begin
     ram1_we_intt_r <= ram1_we_intt;
   end
@@ -500,7 +472,7 @@ module stage_top
     end else begin
       if (state == 0 &&ss_vld && ss_rdy && meta_cnt == length && destination[4] == 0) begin
         state <= 1;
-      end else if (state == 1 && k1_sw_lst) begin
+      end else if (state == 1 && sw_lst) begin
         state <= 2;
       end else if (state == 2 && output_cnt == length_old - 1) begin
         state <= 0;
@@ -518,16 +490,13 @@ module stage_top
 
   assign decode_q = state && ram1_we == 4'hf  && (state != 2);
 
-  always @ (posedge clk or negedge rstn) begin
+  always @ (posedge clk_s or negedge rstn) begin
     if (!rstn) begin
       decode <= 0;
     end else begin
       decode <= decode_q;
     end
   end
-
-  assign decode1 = decode;
-
 
   /*---------------------------------------------
                     output
@@ -568,10 +537,6 @@ module stage_top
   end
 
   assign sm_vld = state == 2;
-
-  //                                                  /////////////////////////////////
-  //assign k1_sw_lst = decode1; /// for test  <====== //////   REMOVE THIS   //////////
-  //                                                  /////////////////////////////////
 
   /*---------------------------------------------
                     output addr
@@ -646,53 +611,140 @@ module stage_top
 
   // enable signal of ram still need to be modified
 
+  /*---------------------------------------------
+                    RAM instance
+  ---------------------------------------------*/
 
+  wire         ram1_clk_mux;
+  wire [  3:0] ram1_we_mux;
+  wire         ram1_en_mux;
+  wire [127:0] ram1_di_mux;
+  wire [127:0] ram1_do_mux;
+  wire [ 12:0] ram1_a_mux;
+
+  assign ram1_we_mux  = (state == 1) ? WE_512_1 : ram1_we;
+  assign ram1_en_mux  = (state == 1) ? sram_en_512_1 : l;
+  assign ram1_di_mux  = (state == 1) ? sram_din_512_1 : ram1_di;
+  assign ram1_do_mux  = (state == 1) ? sram_dout_512_1 : ram1_do;
+  assign ram1_a_mux   = (state == 1) ? sram_addr_512_1 : ram1_a;
+
+  wire        ram2_clk_mux;
+  wire [  3:0] ram2_we_mux;
+  wire         ram2_en_mux;
+  wire [127:0] ram2_di_mux;
+  wire [127:0] ram2_do_mux;
+  wire [ 12:0] ram2_a_mux;
+
+  assign ram2_en_mux  = (state == 1) ? sram_en_512_2 : l;
+  assign ram2_do_mux  = (state == 1) ? sram_dout_512_2 : ram_2_do;
+  assign ram2_a_mux   = (state == 1) ? sram_addr_512_2 : output_a;
+
+  wire         fft_coef_ram_en_mux;
+  wire [ 12:0] fft_coef_ram_a_mux;
+
+  assign fft_coef_ram_en_mux  = (state == 1) ? coef_sram_en_512 : l;
+  assign fft_coef_ram_a_mux   = (state == 1) ? coef_sram_addr_512 : fft_coef_ram_a;
+
+  wire        ntt_coef_ram_en_mux;
+  wire [ 12:0] ntt_coef_ram_a_mux;
+
+  assign ntt_coef_ram_en_mux  = (state == 1) ? coef_sram_en_ntt : l;
+  assign ntt_coef_ram_a_mux   = (state == 1) ? coef_sram_addr_ntt : ntt_coef_ram_a;
+
+  wire        intt_coef_ram_en_mux;
+  wire [ 12:0] intt_coef_ram_a_mux;
+
+  assign intt_coef_ram_en_mux  = (state == 1) ? coef_sram_en_intt : l;
+  assign intt_coef_ram_a_mux   = (state == 1) ? coef_sram_addr_intt : intt_coef_ram_a;
 
   bram512x128 RAM1 (
     .CLK  (clk),
-    .WE   (ram1_we),
-    .EN   (l),
-    .Di   (ram1_di),
-    .Do   (ram1_do),
-    .A    (ram1_a)
+    .WE   (ram1_we_mux),
+    .EN   (ram1_en_mux),
+    .Di   (ram1_di_mux),
+    .Do   (ram1_do_mux),
+    .A    (ram1_a_mux)
   );
-
-  /// here the signal connections of RAM1 is for input data
 
   bram512x128 RAM2 (
     .CLK  (clk),
-    .WE   (),
-    .EN   (l),
-    .Di   (),
-    .Do   (ram_2_do),
-    .A    (output_a)
+    .WE   (WE_512_2),
+    .EN   (ram2_en_mux),
+    .Di   (sram_din_512_2),
+    .Do   (ram2_do_mux),
+    .A    (ram2_a_mux)
   );
 
   bram512x128 FFT_COEF_RAM (
     .CLK  (clk),
     .WE   (fft_coef_ram_we_r),
-    .EN   (l),
+    .EN   (fft_coef_ram_en_mux),
     .Di   (ss_buffer),
-    .Do   (),
-    .A    (fft_coef_ram_a)
+    .Do   (coef_sram_dout_512),
+    .A    (fft_coef_ram_a_mux)
   );
 
   bram128x128 NTT_COEF_RAM (
     .CLK  (clk),
     .WE   (ntt_coef_ram_we_r),
-    .EN   (l),
+    .EN   (ntt_coef_ram_en_mux),
     .Di   (ss_buffer),
-    .Do   (),
-    .A    (ntt_coef_ram_a)
+    .Do   (coef_sram_dout_ntt),
+    .A    (ntt_coef_ram_a_mux)
   );
 
   bram128x128 iNTT_COEF_RAM (
     .CLK  (clk),
     .WE   (intt_coef_ram_we_r),
-    .EN   (l),
+    .EN   (intt_coef_ram_en_mux),
     .Di   (ss_buffer),
-    .Do   (),
-    .A    (intt_coef_ram_a)
+    .Do   (coef_sram_dout_intt),
+    .A    (intt_coef_ram_a_mux)
   );
+
+  kernel kernel_inst (
+    .clk(clk_s),
+    .clk_2x(clk),
+    .rstn(rstn),
+
+    .mode(mode_k),
+    .decode(decode),
+    .sw_lst(sw_lst),
+
+    .WE_512_1(WE_512_1),
+    .sram_en_512_1(sram_en_512_1),
+    .sram_din_512_1(sram_din_512_1),
+    .sram_dout_512_1(sram_dout_512_1),
+    .sram_addr_512_1(sram_addr_512_1),
+
+    .WE_512_2(WE_512_2),
+    .sram_en_512_2(sram_en_512_2),
+    .sram_din_512_2(sram_din_512_2),
+    .sram_dout_512_2(sram_dout_512_2),
+    .sram_addr_512_2(sram_addr_512_2),
+
+    .coef_WE_512(coef_WE_512),
+    .coef_sram_en_512(coef_sram_en_512),
+    .coef_sram_din_512(coef_sram_din_512),
+    .coef_sram_dout_512(coef_sram_dout_512),
+    .coef_sram_addr_512(coef_sram_addr_512),
+
+    .coef_WE_ntt(coef_WE_ntt),
+    .coef_sram_en_ntt(coef_sram_en_ntt),
+    .coef_sram_din_ntt(coef_sram_din_ntt),
+    .coef_sram_dout_ntt(coef_sram_dout_ntt),
+    .coef_sram_addr_ntt(coef_sram_addr_ntt),
+
+    .coef_WE_intt(coef_WE_intt),
+    .coef_sram_en_intt(coef_sram_en_intt),
+    .coef_sram_din_intt(coef_sram_din_intt),
+    .coef_sram_dout_intt(coef_sram_dout_intt),
+    .coef_sram_addr_intt(coef_sram_addr_intt)
+
+  );
+
+
+
+
 
 endmodule
