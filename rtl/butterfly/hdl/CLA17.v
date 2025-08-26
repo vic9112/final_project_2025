@@ -61,22 +61,22 @@ FA FA1(.A(stage0_in_A[(pCLA8_WIDTH*2)]), .B(stage0_in_B[(pCLA8_WIDTH*2)]), .Cin(
 FA FA2(.A(stage0_in_A[(pCLA8_WIDTH*2)]), .B(stage0_in_B[(pCLA8_WIDTH*2)]), .Cin(one), .Cout(stage0_fa_r[1][1]), .Sum(stage0_fa_r[1][0]));
 
 integer i;
-always @(posedge clk or negedge rst_n) begin
+always @(*) begin
     if (!rst_n) begin
-        out_valid <= 0;
+        out_valid = 0;
         for (i=0; i<3; i=i+1) begin
-            stage1_in[i] <= {(pCLA8_WIDTH+1){1'b0}};
+            stage1_in[i] = {(pCLA8_WIDTH+1){1'b0}};
         end
         for (i=0; i<2; i=i+1) begin
-          stage1_in_fa[i] <= {2'b0};
+          stage1_in_fa[i] = {2'b0};
         end
     end else begin
-        out_valid <= stage0_invalid;
+        out_valid = stage0_invalid;
         for (i=0; i<3; i=i+1) begin
-            stage1_in[i] <= stage0_result[i];
+            stage1_in[i] = stage0_result[i];
         end
         for (i=0; i<2; i=i+1) begin
-          stage1_in_fa[i] <= stage0_fa_r[i];
+          stage1_in_fa[i] = stage0_fa_r[i];
         end
     end
 end

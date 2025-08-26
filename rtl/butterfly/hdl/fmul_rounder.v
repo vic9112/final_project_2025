@@ -1,10 +1,10 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// `include "CLA_8.v"
-// `include "add_13.v"
-// `include "sub_13.v"
-// `include "add_13_overflow.v"
-// `include "add_53_overflow.v"
-// `include "LOD_64.v"
+//  `include "CLA_8.v"
+//  `include "add_13.v"
+//  `include "sub_13.v"
+//  `include "add_13_overflow.v"
+//  `include "add_53_overflow.v"
+//  `include "LOD_64.v"
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -30,6 +30,7 @@
 // 2025.7.2   hsuan_jung,lo       5.0       modify the operator alogrithm to follow IEEE 754 format
 // 2025.7.6   hsuan_jung,lo       6.0       re-allocate the pipeline stage to improve the timming   
 // 2025.7.9   hsuan_jung,lo       7.0       solve error of zero case in fmul
+// 2025.8.15  hsuan_jung,lo       8.0       reduce pipeline stage to improve area
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //================================================================================================================================================================================//
@@ -44,9 +45,9 @@
 //      frac_i    >   xx  |  f0  |  f1  |           xx                    * input fraction(mul result from wallace tree)                                                          //
 //      exp_i     >   xx  |  e0  |  e1  |           xx                    * input exponent(exponent result form fmul_exp) <= this will be the real value of exponent              //
 //      inf_case  >_______________/------\_____________________________   * while input data contain infinite number ,asserted high.                                              //
-//      out_valid >_____________________________/--------------\_______   * output valid asserted high for data output                                                            //
-//      frac_o    >|         xx                |  F0  |  F1  |  xx  |     * output fraction (normalized into IEEE 754 format)                                                     //
-//      exp_o     >|         xx                |  E0  |  INF |  xx  |     * output exponent (normalized into IEEE 754 format)                                                     //
+//      out_valid >______________/--------------\______________________   * output valid asserted high for data output                                                            //
+//      frac_o    >|             |  F0  |  F1  |  xx  |                   * output fraction (normalized into IEEE 754 format)                                                     //
+//      exp_o     >|      xx     |  E0  |  INF |  xx  |                   * output exponent (normalized into IEEE 754 format)                                                     //
 //                                                                                                                                                                                //
 //================================================================================================================================================================================//
 
@@ -58,20 +59,20 @@
 //  *   step4 . Encode the fraction and exp into IEEE 754                                                                                                                         //
 //                                                                                                                                                                                //
 //                                                                                                                                                                                //
-//                                     pip_stage1                                 pip_stage2                                pip_stage3                     pip_stage4             //
-//                                        ___                                         ___                                       ___                           ___                 //
-//                   ______________      |   |     ____________________________      |   |      __________________________     |   |      _____________      |   |                //
-//                   |             |     |   |     |                          |      |   |      |                        |     |   |      |            |     |   |                //
-//   data input  =>  |  rounding   |  => |   | =>  |   normalization part 0   |  =>  |   |  =>  |  normalization part 1  | =>  |   |  =>  |   Encode   |  => |   |  =>  Result    //
-//                   |_____________|     |   |     |__________________________|      |   |      |________________________|     |   |      |____________|     |   |                //
-//                                       |   |                                       |   |                                     |   |                         |   |                //
-//                                       |___|                                       |___|                                     |___|                         |___|                //
+//                                                                                                                           pip_stage1                                           //
+//                                                                                                                               ___                                              //
+//                   ______________        ____________________________      __________________________       _____________     |   |                                             //
+//                   |             |       |                          |      |                        |      |            |     |   |                                             //
+//   data input  =>  |  rounding   |   =>  |   normalization part 0   |  =>  |  normalization part 1  |  =>  |   Encode   |  => |   |  =>  Result                                 //
+//                   |_____________|       |__________________________|      |________________________|      |____________|     |   |                                             //
+//                                                                                                                              |   |                                             //
+//                                                                                                                              |___|                                             //
 //                                                                                                                                                                                //
 //================================================================================================================================================================================//
 
 //================================================================================================================================================================================//
 //                                                                                                                                                                                //
-// < First stage > : Rounding                                                                                                                                                     //
+// < First Part > : Rounding                                                                                                                                                      //
 //                                                                                                                                                                                //
 // * Step 1 . Detect whether there is  overflow from fraction mul                                                                                                                 //
 //                                                                                                                                                                                //
@@ -104,11 +105,10 @@
 //                                            ^                                                                                                                                   //
 //                                      floating point                                                                                                                            //
 //                                                                                                                                                                                //
-// --------------------------------- pipeline stage --------------------------------------------------------                                                                      //
 //================================================================================================================================================================================//
 
 //================================================================================================================================================================================//
-//  < Second stage > : normalization 0                                                                                                                                            //
+//  < Second Part > : normalization 0                                                                                                                                             //
 //                                                                                                                                                                                //
 // * Step 1. Check whether there is overflow in rounding stage                                                                                                                    //
 //                                                                                                                                                                                //
@@ -124,12 +124,11 @@
 //          (if exp is positive , don't do anything)                                                                                                                              //
 //                                                                                                                                                                                //
 //  **** After this stage we get positive exp ( or zero exp ) , and 53bits rounded frac *****                                                                                     //
-//                                                                                                                                                                                //
-// ----------------------------------- pipeline stage -------------------------------------------------------                                                                     //
+//                                                                                                                                                                                //                                                                     
 //================================================================================================================================================================================//
 
 //================================================================================================================================================================================//
-//  < Third stage > : normalization 1                                                                                                                                             //
+//  < Third Part > : normalization 1                                                                                                                                             //
 //                                                                                                                                                                                //
 // * Step 1. expand fraction into 64 bits [ Leading one dector (LOD) is limit in 64bits 、 128bits ] .                                                                            //
 //                                                                                                                                                                                //
@@ -148,12 +147,11 @@
 //                                       exp_normalized_1 = pip2_exp - shift                                                                                                      //
 //                                                                                                                                                                                //
 // * Step 4. Shift the fraction left as shift_amount                                                                                                                              //                                                  
-//                                                                                                                                                                                //
-// ----------------------------------- pipeline stage -------------------------------------------------------                                                                     //
+//                                                                                                                                                                                //                                                                   
 //================================================================================================================================================================================//
 
 //================================================================================================================================================================================//
-// < Forth stage > : Encode into IEEE 754 format ( hid the leading bit of fraction )                                                                                              //
+// < Forth Part > : Encode into IEEE 754 format ( hid the leading bit of fraction )                                                                                              //
 //                                                                                                                                                                                //
 //         *************************************************************************                                                                                              //
 //         *                      Subnormal Case of inf exp                        *                                                                                              //
@@ -220,11 +218,6 @@ wire                                    lsb       ;
 wire                                    guard_bit ;
 wire                                    round_bit ;
 wire                                    sticky    ;
-//================================ Pipeline stage 1 ========================================//
-reg [(pFRAC_WIDTH+1):0]                 pip1_frac ;
-reg [(pEXP_WIDTH+1) :0]                 pip1_exp  ;
-reg                                     pip1_v    ;
-reg                                     pip1_inf  ;
 //================================ Normalization 0 =========================================//
 wire [(pFRAC_WIDTH) :0]                 frac_shift_0      ;
 wire [(pFRAC_WIDTH) :0]                 frac_normalized_0 ;
@@ -233,11 +226,6 @@ wire [(pEXP_WIDTH+1):0]                 exp_norm          ;
 wire [(pEXP_WIDTH+1):0]                 exp_abs           ;
 wire [(pEXP_WIDTH+1):0]                 logic_norm_0      ;
 wire [(pEXP_WIDTH  ):0]                 exp_normalized_0  ;
-//================================ Pipeline stage 2 ========================================// 
-reg                                     pip2_v     ;
-reg                                     pip2_inf   ;
-reg  [(pFRAC_WIDTH) :0]                 pip2_frac  ;
-reg  [(pEXP_WIDTH)  :0]                 pip2_exp   ;
 //================================ Normalization 1 =========================================//
 wire [(pLOD_WIDTH-1):0]                 frac_expand       ;
 wire [(pEXP_WIDTH+1):0]                 exp_expand        ;
@@ -247,18 +235,13 @@ wire [(pEXP_WIDTH+1):0]                 shift_expand      ;
 wire [(pEXP_WIDTH+1):0]                 exp_sub           ;
 wire [(pEXP_WIDTH)  :0]                 exp_normalized_1  ;
 wire [(pFRAC_WIDTH) :0]                 frac_normalized_1 ; 
-//================================ Pipeline stage 3 ========================================// 
-reg                                     pip3_v      ;
-reg                                     pip3_inf    ;
-reg  [(pEXP_WIDTH) :0]                  pip3_exp    ;
-reg  [(pFRAC_WIDTH):0]                  pip3_frac   ;
 //=============================== Encode into IEEE 754 ====================================//
 reg  [(pFRAC_WIDTH-1):0]                frac_result ;
 reg  [(pEXP_WIDTH-1) :0]                exp_result  ;
-//================================ Pipeline stage 4 ========================================// 
-reg                                     pip4_v      ;
-reg [(pEXP_WIDTH-1): 0]                 pip4_exp    ;
-reg [(pFRAC_WIDTH-1):0]                 pip4_frac   ;
+//================================ Pipeline stage 1 ========================================// 
+reg                                     pip1_v      ;
+reg [(pEXP_WIDTH-1): 0]                 pip1_exp    ;
+reg [(pFRAC_WIDTH-1):0]                 pip1_frac   ;
 //==========================================================================================//
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,90 +261,36 @@ assign logic_one    = {{(pDIN_WIDTH-1){1'b0}} , 1'b1};
 add_13_overflow add_13_00 ( .in_A( exp_i ) , .in_B( logic_one[(pEXP_WIDTH+1):0] ) , .result( exp_add  ) ) ;
 add_53_overflow add_53_00 ( .in_A( frac  ) , .in_B( logic_one[(pFRAC_WIDTH) :0] ) , .result( frac_add ) ) ;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                  Pipeline stage 1                                                                                    //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)begin
-        pip1_v     <= 1'b0;
-        pip1_inf   <= 1'b0;
-        pip1_frac  <= {(pFRAC_WIDTH+2){1'b0}};
-        pip1_exp   <= {(pEXP_WIDTH+2){1'b0}};
-    end else begin
-        pip1_v     <= in_valid ;
-        pip1_inf   <= inf_case ;
-        pip1_frac  <= frac_rounded ;
-        pip1_exp   <= exp          ;
-    end
-end
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                     Normalization 0                                                                                   //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-assign frac_shift_0      = ( pip1_frac[pFRAC_WIDTH+1] )? pip1_frac[(pFRAC_WIDTH+1):1] : pip1_frac[(pFRAC_WIDTH):0] ;
+assign frac_shift_0      = ( frac_rounded[pFRAC_WIDTH+1] )? frac_rounded[(pFRAC_WIDTH+1):1] : frac_rounded[(pFRAC_WIDTH):0] ;
 
-assign exp_normalized_0  = ( pip1_frac[pFRAC_WIDTH+1] )? (( exp_norm[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}}   : exp_norm[(pEXP_WIDTH):0] ) : (( pip1_exp [pEXP_WIDTH+1]  )? {(pEXP_WIDTH+1){1'b0}} : pip1_exp[(pEXP_WIDTH):0]);
-assign frac_normalized_0 = ( pip1_frac[pFRAC_WIDTH+1] )? (( exp_norm[pEXP_WIDTH+1] )? (frac_shift_0 >> exp_abs) : frac_shift_0 )            : (( pip1_exp [pEXP_WIDTH+1 ] )? ( frac_shift_0 >> exp_abs ) : frac_shift_0 );
+assign exp_normalized_0  = ( frac_rounded[pFRAC_WIDTH+1] )? (( exp_norm[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}}   : exp_norm[(pEXP_WIDTH):0] ) : (( exp [pEXP_WIDTH+1]  )? {(pEXP_WIDTH+1){1'b0}} : exp[(pEXP_WIDTH):0]);
+assign frac_normalized_0 = ( frac_rounded[pFRAC_WIDTH+1] )? (( exp_norm[pEXP_WIDTH+1] )? (frac_shift_0 >> exp_abs) : frac_shift_0 )            : (( exp [pEXP_WIDTH+1 ] )? ( frac_shift_0 >> exp_abs ) : frac_shift_0 );
 
-assign logic_norm_0      = ( pip1_frac[pFRAC_WIDTH+1] )?  {(pEXP_WIDTH+2){1'b0}} : {{(pEXP_WIDTH+1){1'b0}} , 1'b1};  // if overflow , exp_abs = exp_abs + 1
+assign logic_norm_0      = ( frac_rounded[pFRAC_WIDTH+1] )?  {(pEXP_WIDTH+2){1'b0}} : {{(pEXP_WIDTH+1){1'b0}} , 1'b1};  // if overflow , exp_abs = exp_abs + 1
 
-add_13 add_13_01 ( .in_A( pip1_exp  ) , .in_B( logic_one   [(pEXP_WIDTH+1):0] ) , .result( exp_norm ) );
-add_13 add_13_02 ( .in_A( ~pip1_exp ) , .in_B( logic_norm_0[(pEXP_WIDTH+1):0] ) , .result( exp_abs )  );
+add_13 add_13_01 ( .in_A( exp  ) , .in_B( logic_one   [(pEXP_WIDTH+1):0] ) , .result( exp_norm ) );
+add_13 add_13_02 ( .in_A( ~exp ) , .in_B( logic_norm_0[(pEXP_WIDTH+1):0] ) , .result( exp_abs )  );
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                  Pipeline stage 2                                                                                    //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)begin
-        pip2_v     <= 1'b0;
-        pip2_inf   <= 1'b0;
-        pip2_frac  <= {(pFRAC_WIDTH+1){1'b0}};
-        pip2_exp   <= {(pEXP_WIDTH+1){1'b0}};
-    end else begin
-        pip2_v     <= pip1_v   ;
-        pip2_inf   <= pip1_inf ;
-        pip2_frac  <= frac_normalized_0 ;
-        pip2_exp   <= exp_normalized_0  ;
-    end
-end
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                     Normalization 1                                                                                   //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-assign frac_expand       = { pip2_frac , {(pLOD_WIDTH-pFRAC_WIDTH-1){1'b1}} } ;
-assign exp_expand        = { 1'b0      , pip2_exp } ;    // * add sign bit
+assign frac_expand       = { frac_normalized_0 , {(pLOD_WIDTH-pFRAC_WIDTH-1){1'b1}} } ;
+assign exp_expand        = { 1'b0      , exp_normalized_0 } ;    // * add sign bit
 assign shift_expand      = { 1'b0      , shift    } ;    // * add sign bit
 
-assign shift_amount      = ( exp_sub[pEXP_WIDTH+1] )? pip2_exp : shift      ;
+assign shift_amount      = ( exp_sub[pEXP_WIDTH+1] )? exp_normalized_0 : shift      ;
 
-assign exp_normalized_1  = (|pip2_frac)? (( exp_sub[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}} : exp_sub[(pEXP_WIDTH) : 0]) : {(pEXP_WIDTH+1){1'b0}} ;
-assign frac_normalized_1 = pip2_frac << shift_amount ;
+assign exp_normalized_1  = (|frac_normalized_0)? (( exp_sub[pEXP_WIDTH+1] )? {(pEXP_WIDTH+1){1'b0}} : exp_sub[(pEXP_WIDTH) : 0]) : {(pEXP_WIDTH+1){1'b0}} ;
+assign frac_normalized_1 = frac_normalized_0 << shift_amount ;
 
 LOD_64 LOD_00    ( .A( frac_expand   ) ,  .position( shift ));
 sub_13 sub_13_00 ( .in_A( exp_expand ) ,  .in_B( shift_expand ) , .result( exp_sub )  );
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                  Pipeline stage 3                                                                                    //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)begin
-        pip3_v     <= 1'b0;
-        pip3_inf   <= 1'b0;
-        pip3_frac  <= {(pFRAC_WIDTH+1){1'b0}};
-        pip3_exp   <= {(pEXP_WIDTH+1 ){1'b0}};
-    end else begin
-        pip3_v     <= pip2_v   ;
-        pip3_inf   <= pip2_inf ;
-        pip3_frac  <= frac_normalized_1 ;
-        pip3_exp   <= exp_normalized_1  ;
-    end
-end
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                    Encode into IEEE754                                                                                //
@@ -372,36 +301,36 @@ localparam FRAC_ZERO = 52'd0    ;
 
 
 always @(*) begin
-    if(pip3_exp[pEXP_WIDTH] || pip3_inf || (& pip3_exp[(pEXP_WIDTH-1):0]))begin
+    if( exp_normalized_1[pEXP_WIDTH] || inf_case || (& exp_normalized_1[(pEXP_WIDTH-1):0]))begin
         frac_result = FRAC_ZERO ;
-    end else if (|pip3_exp)  begin
-        frac_result = pip3_frac[(pFRAC_WIDTH-1):0] ;
+    end else if (|exp_normalized_1)  begin
+        frac_result = frac_normalized_1[(pFRAC_WIDTH-1):0] ;
     end else begin
-        frac_result = pip3_frac[(pFRAC_WIDTH) :1]  ;
+        frac_result = frac_normalized_1[(pFRAC_WIDTH) :1]  ;
     end
 end
 
 always @(*) begin
-    if(pip3_exp[pEXP_WIDTH] || pip3_inf || (& pip3_exp[(pEXP_WIDTH-1):0]))begin
+    if( exp_normalized_1[pEXP_WIDTH] || inf_case || (& exp_normalized_1[(pEXP_WIDTH-1):0]))begin
         exp_result = EXP_INF ;
     end else begin
-        exp_result = pip3_exp[(pEXP_WIDTH-1):0] ;
+        exp_result = exp_normalized_1[(pEXP_WIDTH-1):0] ;
     end
 end
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                  Pipeline stage 4                                                                                    //
+//                                                                  Pipeline stage 1                                                                                    //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)begin
-        pip4_v     <= 1'b0                  ;
-        pip4_frac  <= {(pFRAC_WIDTH){1'b0}} ;
-        pip4_exp   <= {(pEXP_WIDTH ){1'b0}} ;
+        pip1_v     <= 1'b0                  ;
+        pip1_frac  <= {(pFRAC_WIDTH){1'b0}} ;
+        pip1_exp   <= {(pEXP_WIDTH ){1'b0}} ;
     end else begin
-        pip4_v     <= pip3_v      ;
-        pip4_frac  <= frac_result ;
-        pip4_exp   <= exp_result  ;
+        pip1_v     <= in_valid      ;
+        pip1_frac  <= frac_result ;
+        pip1_exp   <= exp_result  ;
     end
 end
 
@@ -409,9 +338,9 @@ end
 //                                                                  Output interface                                                                                    //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-assign exp_o     = pip4_exp  ;
-assign frac_o    = pip4_frac ;
-assign out_valid = pip4_v    ;   
+assign exp_o     = pip1_exp  ;
+assign frac_o    = pip1_frac ;
+assign out_valid = pip1_v    ;   
 
 
 endmodule

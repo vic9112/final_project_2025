@@ -5,10 +5,13 @@
 
 module butterfly_tb();
 
-localparam FFT_MODE  =  2'b00 ;
-localparam IFFT_MODE =  2'b01;
-localparam NTT_MODE  =  2'b10;
-localparam INTT_MODE =  2'b11;
+localparam FFT_MODE  =  3'b000;
+localparam IFFT_MODE =  3'b001;
+localparam NTT_MODE  =  3'b010;
+localparam INTT_MODE =  3'b011;
+localparam NTM_MODE  =  3'b100;
+localparam MTN_MODE  =  3'b101;
+localparam MTND_MODE =  3'b110;
 
 `ifdef FSDB
     initial begin
@@ -26,7 +29,7 @@ localparam INTT_MODE =  2'b11;
     reg [127:0]     A_in;
     reg [127:0]     B_in;
     reg [127:0]     G_in;
-    reg [1:0]       mode;
+    reg [2:0]       mode;
     reg             in_valid;
     wire            in_ready;
 //------- output port --------//
@@ -43,7 +46,7 @@ localparam INTT_MODE =  2'b11;
 localparam PAT_NUM = 200;
 
 butterfly BUTTERFLY_DUT(
-    . clk(clk),
+    .clk(clk),
     .rst_n(rst_n),
     .mode(mode), // FFT/iFFT/NTT/iNTT
     .i_vld(in_valid),
@@ -129,6 +132,40 @@ butterfly BUTTERFLY_DUT(
 
     reg[127:0]   iNTT_A_golden_list [0:(PAT_NUM-1)];
     reg[127:0]   iNTT_B_golden_list [0:(PAT_NUM-1)];
+
+
+    integer Din_a_NTM  , Din_b_NTM  , Din_g_NTM;
+    integer Din_a_MTN  , Din_b_MTN  , Din_g_MTN;
+    integer Din_a_MTND , Din_b_MTND , Din_g_MTND;
+
+    integer Gin_a_NTM  , Gin_b_NTM;
+    integer Gin_a_MTN  , Gin_b_MTN;
+    integer Gin_a_MTND , Gin_b_MTND;
+
+    integer din_ntm [0:2], din_mtn [0:2], din_mtnd [0:2];
+    integer golden_ntm[0:1], golden_mtn[0:1], golden_mtnd[0:1];
+
+    reg[127:0]   NTM_Ai_list   [0:(PAT_NUM-1)];
+    reg[127:0]   NTM_Bi_list   [0:(PAT_NUM-1)];
+    reg[127:0]   NTM_Gi_list   [0:(PAT_NUM-1)];
+
+    reg[127:0]   MTN_Ai_list   [0:(PAT_NUM-1)];
+    reg[127:0]   MTN_Bi_list   [0:(PAT_NUM-1)];
+    reg[127:0]   MTN_Gi_list   [0:(PAT_NUM-1)];
+
+    reg[127:0]   MTND_Ai_list  [0:(PAT_NUM-1)];
+    reg[127:0]   MTND_Bi_list  [0:(PAT_NUM-1)];
+    reg[127:0]   MTND_Gi_list  [0:(PAT_NUM-1)];
+
+    reg[127:0]   NTM_A_golden_list  [0:(PAT_NUM-1)];
+    reg[127:0]   NTM_B_golden_list  [0:(PAT_NUM-1)];
+
+    reg[127:0]   MTN_A_golden_list  [0:(PAT_NUM-1)];
+    reg[127:0]   MTN_B_golden_list  [0:(PAT_NUM-1)];
+
+    reg[127:0]   MTND_A_golden_list [0:(PAT_NUM-1)];
+    reg[127:0]   MTND_B_golden_list [0:(PAT_NUM-1)];
+
 // set pattern //
     initial begin
         // fft pat
@@ -147,9 +184,9 @@ butterfly BUTTERFLY_DUT(
         Din_g_NTT  = $fopen("./NTT_pat/ntt_gm.dat" , "r");
         
         // intt pat
-        Din_a_iNTT = $fopen("./NTT_pat/ntt_ai.dat" ,"r");
-        Din_b_iNTT = $fopen("./NTT_pat/ntt_bi.dat" , "r");
-        Din_g_iNTT = $fopen("./NTT_pat/ntt_gm.dat" , "r");
+        Din_a_iNTT = $fopen("./iNTT_pat/ntt_ai.dat" ,"r");
+        Din_b_iNTT = $fopen("./iNTT_pat/ntt_bi.dat" , "r");
+        Din_g_iNTT = $fopen("./iNTT_pat/ntt_gm.dat" , "r");
         
         // fft golden
         Gin_a_FFT = $fopen("./FFT_pat/golden_a.dat" , "r");
@@ -164,8 +201,36 @@ butterfly BUTTERFLY_DUT(
         Gin_b_NTT = $fopen("./NTT_pat/ntt_bo.dat" , "r");
 
         // intt golden
-        Gin_a_iNTT = $fopen("./NTT_pat/ntt_ao.dat" , "r");
-        Gin_b_iNTT = $fopen("./NTT_pat/ntt_bo.dat" , "r");
+        Gin_a_iNTT = $fopen("./iNTT_pat/ntt_ao.dat" , "r");
+        Gin_b_iNTT = $fopen("./iNTT_pat/ntt_bo.dat" , "r");
+
+        // ntm pat
+        Din_a_NTM  = $fopen("./NTM_pat/ntm_ai.dat" ,"r");
+        Din_b_NTM  = $fopen("./NTM_pat/ntm_bi.dat" , "r");
+        Din_g_NTM  = $fopen("./NTM_pat/ntm_gm.dat" , "r");
+
+        // mtn pat
+        Din_a_MTN  = $fopen("./MTN_pat/mtn_ai.dat" ,"r");
+        Din_b_MTN  = $fopen("./MTN_pat/mtn_bi.dat" , "r");
+        Din_g_MTN  = $fopen("./MTN_pat/mtn_gm.dat" , "r");
+
+        // mtnd pat
+        Din_a_MTND = $fopen("./MTND_pat/mtnd_ai.dat" ,"r");
+        Din_b_MTND = $fopen("./MTND_pat/mtnd_bi.dat" , "r");
+        Din_g_MTND = $fopen("./MTND_pat/mtnd_gm.dat" , "r");
+
+        // ntm golden
+        Gin_a_NTM  = $fopen("./NTM_pat/ntm_ao.dat" , "r");
+        Gin_b_NTM  = $fopen("./NTM_pat/ntm_bo.dat" , "r");
+
+        // mtn golden
+        Gin_a_MTN  = $fopen("./MTN_pat/mtn_ao.dat" , "r");
+        Gin_b_MTN  = $fopen("./MTN_pat/mtn_bo.dat" , "r");
+
+        // mtnd golden
+        Gin_a_MTND = $fopen("./MTND_pat/mtnd_ao.dat" , "r");
+        Gin_b_MTND = $fopen("./MTND_pat/mtnd_bo.dat" , "r");
+
 
 
         if ((Din_a_FFT == 0) || (Din_b_FFT == 0) || (Din_g_FFT == 0) || (Gin_a_FFT == 0) || (Gin_b_FFT == 0) ) begin
@@ -179,6 +244,15 @@ butterfly BUTTERFLY_DUT(
             $finish;
         end else if ((Din_a_iNTT == 0) || (Din_b_iNTT == 0) || (Din_g_iNTT == 0) || (Gin_a_iNTT == 0) || (Gin_b_iNTT == 0) )begin
             $display("[ERROR] Failed to load iNTT pattern files .....   (Q_Q) ");
+            $finish;
+        end else if ((Din_a_NTM==0)||(Din_b_NTM==0)||(Din_g_NTM==0)||(Gin_a_NTM==0)||(Gin_b_NTM==0)) begin
+            $display("[ERROR] Failed to load NTM pattern files .....   (Q_Q) ");
+            $finish;
+        end else if ((Din_a_MTN==0)||(Din_b_MTN==0)||(Din_g_MTN==0)||(Gin_a_MTN==0)||(Gin_b_MTN==0)) begin
+            $display("[ERROR] Failed to load MTN pattern files .....   (Q_Q) ");
+            $finish;
+        end else if ((Din_a_MTND==0)||(Din_b_MTND==0)||(Din_g_MTND==0)||(Gin_a_MTND==0)||(Gin_b_MTND==0)) begin
+            $display("[ERROR] Failed to load MTND pattern files .....  (Q_Q) ");
             $finish;
         end else begin    
             for(m=0 ; m<PAT_NUM ;m=m+1)begin
@@ -218,6 +292,33 @@ butterfly BUTTERFLY_DUT(
                 golden_intt[0]  = $fscanf(Gin_a_iNTT , "%h" , iNTT_A_golden_list[m]);
                 golden_intt[1]  = $fscanf(Gin_b_iNTT , "%h" , iNTT_B_golden_list[m]);
 
+                // ntm pat
+                din_ntm[0] = $fscanf(Din_a_NTM , "%h" , NTM_Ai_list[m]);
+                din_ntm[1] = $fscanf(Din_b_NTM , "%h" , NTM_Bi_list[m]);
+                din_ntm[2] = $fscanf(Din_g_NTM , "%h" , NTM_Gi_list[m]);
+
+                // mtn pat
+                din_mtn[0] = $fscanf(Din_a_MTN , "%h" , MTN_Ai_list[m]);
+                din_mtn[1] = $fscanf(Din_b_MTN , "%h" , MTN_Bi_list[m]);
+                din_mtn[2] = $fscanf(Din_g_MTN , "%h" , MTN_Gi_list[m]);
+
+                // mtnd pat
+                din_mtnd[0] = $fscanf(Din_a_MTND , "%h" , MTND_Ai_list[m]);
+                din_mtnd[1] = $fscanf(Din_b_MTND , "%h" , MTND_Bi_list[m]);
+                din_mtnd[2] = $fscanf(Din_g_MTND , "%h" , MTND_Gi_list[m]);
+
+                // ntm golden
+                golden_ntm[0] = $fscanf(Gin_a_NTM , "%h" , NTM_A_golden_list[m]);
+                golden_ntm[1] = $fscanf(Gin_b_NTM , "%h" , NTM_B_golden_list[m]);
+
+                // mtn golden
+                golden_mtn[0] = $fscanf(Gin_a_MTN , "%h" , MTN_A_golden_list[m]);
+                golden_mtn[1] = $fscanf(Gin_b_MTN , "%h" , MTN_B_golden_list[m]);
+
+                // mtnd golden
+                golden_mtnd[0] = $fscanf(Gin_a_MTND , "%h" , MTND_A_golden_list[m]);
+                golden_mtnd[1] = $fscanf(Gin_b_MTND , "%h" , MTND_B_golden_list[m]);
+
             end
         end
         $display("------------------ Pattern initializeation done , start simulation  ---------------------------");
@@ -229,7 +330,6 @@ butterfly BUTTERFLY_DUT(
     integer second_switch   = 50;  // * latency between  fft  ->  intt (slowly switch)
     integer third_switch    = 50;  // * latency between  intt ->  ifft (slowly switch)
     integer forth_switch    = 50;  // * latency between  ifft ->  ntt  (slowly switch)
-
 
     integer fifth_switch    = 4 ;  // * latency betewwn  ntt  ->  fft  (fast switch)
     integer sixth_switch    = 22;  // * latency between  fft  ->  intt (fast switch)
@@ -374,6 +474,21 @@ butterfly BUTTERFLY_DUT(
         for(i=PAT_NUM*9/10 ;i< PAT_NUM ; i=i+1)begin
             ntt_input(NTT_Ai_list[i] , NTT_Bi_list[i] ,  NTT_Gi_list[i] , 100 );
         end
+        //============================ fourth level (new modes) ===========================//
+        switch_count <= 4'd7;
+        // feed NTM
+        for(i=0 ; i<PAT_NUM ; i=i+1) begin
+            ntm_input(NTM_Ai_list[i], NTM_Bi_list[i], NTM_Gi_list[i], 20);
+        end
+        // feed MTN
+        for(i=0 ; i<PAT_NUM ; i=i+1) begin
+            mtn_input(MTN_Ai_list[i], MTN_Bi_list[i], MTN_Gi_list[i], 20);
+        end
+        // feed MTND
+        for(i=0 ; i<PAT_NUM ; i=i+1) begin
+            mtnd_input(MTND_Ai_list[i], MTND_Bi_list[i], MTND_Gi_list[i], 20);
+        end
+
         //=========================== input finish ===================================//
         A_in      <= 0;
         B_in      <= 0;
@@ -387,6 +502,11 @@ butterfly BUTTERFLY_DUT(
     reg[31:0] fft_error;
     reg[31:0] intt_error;
     reg[31:0] ifft_error;
+    reg[31:0] ntm_error;
+    reg[31:0] mtn_error;
+    reg[31:0] mtnd_error;
+
+
 // * output check
     initial begin
         error     <=0;
@@ -394,6 +514,9 @@ butterfly BUTTERFLY_DUT(
         fft_error <= 0;
         intt_error <=0;
         ifft_error <= 0;
+        ntm_error <= 0;
+        mtn_error <= 0;
+        mtnd_error <= 0;
         wait(rst_n == 0);
         wait(rst_n == 1);
         @(posedge clk);
@@ -446,6 +569,22 @@ butterfly BUTTERFLY_DUT(
         for(j=PAT_NUM*9/10 ; j<PAT_NUM ;j=j+1)begin
             ntt_output_check(NTT_A_golden_list[j] , NTT_B_golden_list[j] , 100 ,j );
         end
+        $display("/////////////////////////////////////////////////////////////////");
+        $display("//               Fourth level (NTM/MTN/MTND) start              //");
+        $display("/////////////////////////////////////////////////////////////////");
+        // NTM
+        for(j=0 ; j<PAT_NUM ; j=j+1) begin
+            ntm_output_check(NTM_A_golden_list[j], NTM_B_golden_list[j], 0, j);
+        end
+        // MTN
+        for(j=0 ; j<PAT_NUM ; j=j+1) begin
+            mtn_output_check(MTN_A_golden_list[j], MTN_B_golden_list[j], 0, j);
+        end
+        // MTND
+        for(j=0 ; j<PAT_NUM ; j=j+1) begin
+            mtnd_output_check(MTND_A_golden_list[j], MTND_B_golden_list[j], 0, j);
+        end
+
         @(posedge clk);
         if(error)begin
             $display(" ========================================================================================");
@@ -456,6 +595,9 @@ butterfly BUTTERFLY_DUT(
             $display("  Number of NTT error  :                                 %d  " , ntt_error  );
             $display("  Number of iFFT error :                                 %d  " , ifft_error );
             $display("  Number of iNTT error :                                 %d  " , intt_error );
+            $display("  Number of NTM error  :                                 %d  " , ntm_error  );
+            $display("  Number of MTN error  :                                 %d  " , mtn_error  );
+            $display("  Number of MTND error :                                 %d  " , mtnd_error );
         end else begin
             $display("#########################################################################################");
             $display("##                                Simulation  PASS !                                   ##");
@@ -699,6 +841,135 @@ butterfly BUTTERFLY_DUT(
             end else begin
                 $display("[PASS]  [iNTT_Pattern %d] Golden A :  %h  , Your A : %h " , intt_ocnt, intt_answer_a  , A_out  );
                 $display("[PASS]  [iNTT_Pattern %d] Golden B :  %h  , Your B : %h " , intt_ocnt, intt_answer_b  , B_out );
+            end
+            out_ready <= 0;
+        end
+    endtask
+
+    integer in_p;
+    task ntm_input ;
+        input [127:0] ntm_in_a ;
+        input [127:0] ntm_in_b ;
+        input [127:0] ntm_in_g ;
+        input [31:0]  ntm_input_latency ;
+        begin
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+            for (in_p=0 ; in_p < ntm_input_latency ; in_p = in_p + 1) @(posedge clk);
+            @(posedge clk);
+            in_valid <= 1; mode <= NTM_MODE;
+            A_in <= ntm_in_a; B_in <= ntm_in_b; G_in <= ntm_in_g;
+            @(posedge clk);
+            while (!in_ready) @(posedge clk);
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+        end
+    endtask
+
+    integer in_q;
+    task mtn_input ;
+        input [127:0] mtn_in_a ;
+        input [127:0] mtn_in_b ;
+        input [127:0] mtn_in_g ;
+        input [31:0]  mtn_input_latency ;
+        begin
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+            for (in_q=0 ; in_q < mtn_input_latency ; in_q = in_q + 1) @(posedge clk);
+            @(posedge clk);
+            in_valid <= 1; mode <= MTN_MODE;
+            A_in <= mtn_in_a; B_in <= mtn_in_b; G_in <= mtn_in_g;
+            @(posedge clk);
+            while (!in_ready) @(posedge clk);
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+        end
+    endtask
+
+    integer in_r;
+    task mtnd_input ;
+        input [127:0] mtnd_in_a ;
+        input [127:0] mtnd_in_b ;
+        input [127:0] mtnd_in_g ;
+        input [31:0]  mtnd_input_latency ;
+        begin
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+            for (in_r=0 ; in_r < mtnd_input_latency ; in_r = in_r + 1) @(posedge clk);
+            @(posedge clk);
+            in_valid <= 1; mode <= MTND_MODE;
+            A_in <= mtnd_in_a; B_in <= mtnd_in_b; G_in <= mtnd_in_g;
+            @(posedge clk);
+            while (!in_ready) @(posedge clk);
+            in_valid <= 0; mode <= FFT_MODE; A_in <= 0; B_in <= 0; G_in <= 0;
+        end
+    endtask
+
+    integer out_p;
+    task ntm_output_check ;
+        input   [127:0] ntm_answer_a;
+        input   [127:0] ntm_answer_b;
+        input   [31:0]  ntm_slave_latency ;
+        input   [31:0]  ntm_ocnt;
+        begin
+            out_ready <= 1;
+            @(posedge clk);
+            out_ready <= 1;
+            while (!(out_valid && out_ready)) @(posedge clk);
+            out_ready <= 1;   
+            if ( (A_out !== ntm_answer_a) || (B_out !== ntm_answer_b) ) begin
+                $display("[ERROR] [NTM_Pattern %0d] Golden A:%h , Your A:%h", ntm_ocnt, ntm_answer_a, A_out);
+                $display("[ERROR] [NTM_Pattern %0d] Golden B:%h , Your B:%h", ntm_ocnt, ntm_answer_b, B_out);
+                error <= 1;
+                ntm_error <= ntm_error + 1 ;
+            end else begin
+                $display("[PASS ] [NTM_Pattern %0d] Golden A:%h , Your A:%h", ntm_ocnt, ntm_answer_a, A_out);
+                $display("[PASS ] [NTM_Pattern %0d] Golden B:%h , Your B:%h", ntm_ocnt, ntm_answer_b, B_out);
+            end
+            out_ready <= 0;
+        end
+    endtask
+
+    integer out_q;
+    task mtn_output_check ;
+        input   [127:0] mtn_answer_a;
+        input   [127:0] mtn_answer_b;
+        input   [31:0]  mtn_slave_latency ;
+        input   [31:0]  mtn_ocnt;
+        begin
+            out_ready <= 1;
+            @(posedge clk);
+            out_ready <= 1;
+            while (!(out_valid && out_ready)) @(posedge clk);
+            out_ready <= 1;   
+            if ( (A_out !== mtn_answer_a) || (B_out !== mtn_answer_b) ) begin
+                $display("[ERROR] [MTN_Pattern %0d] Golden A:%h , Your A:%h", mtn_ocnt, mtn_answer_a, A_out);
+                $display("[ERROR] [MTN_Pattern %0d] Golden B:%h , Your B:%h", mtn_ocnt, mtn_answer_b, B_out);
+                error <= 1;
+                mtn_error <= mtn_error + 1 ;
+            end else begin
+                $display("[PASS ] [MTN_Pattern %0d] Golden A:%h , Your A:%h", mtn_ocnt, mtn_answer_a, A_out);
+                $display("[PASS ] [MTN_Pattern %0d] Golden B:%h , Your B:%h", mtn_ocnt, mtn_answer_b, B_out);
+            end
+            out_ready <= 0;
+        end
+    endtask
+
+    integer out_r;
+    task mtnd_output_check ;
+        input   [127:0] mtnd_answer_a;
+        input   [127:0] mtnd_answer_b;
+        input   [31:0]  mtnd_slave_latency ;
+        input   [31:0]  mtnd_ocnt;
+        begin
+            out_ready <= 1;
+            @(posedge clk);
+            out_ready <= 1;
+            while (!(out_valid && out_ready)) @(posedge clk);
+            out_ready <= 1;   
+            if ( (A_out !== mtnd_answer_a) || (B_out !== mtnd_answer_b) ) begin
+                $display("[ERROR] [MTND_Pattern %0d] Golden A:%h , Your A:%h", mtnd_ocnt, mtnd_answer_a, A_out);
+                $display("[ERROR] [MTND_Pattern %0d] Golden B:%h , Your B:%h", mtnd_ocnt, mtnd_answer_b, B_out);
+                error <= 1;
+                mtnd_error <= mtnd_error + 1 ;
+            end else begin
+                $display("[PASS ] [MTND_Pattern %0d] Golden A:%h , Your A:%h", mtnd_ocnt, mtnd_answer_a, A_out);
+                $display("[PASS ] [MTND_Pattern %0d] Golden B:%h , Your B:%h", mtnd_ocnt, mtnd_answer_b, B_out);
             end
             out_ready <= 0;
         end

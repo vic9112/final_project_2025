@@ -1,5 +1,3 @@
-
-
 module CLA_8(
     input  wire        Cin,
     input  wire [7:0]  A,

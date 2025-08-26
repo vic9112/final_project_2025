@@ -18,7 +18,7 @@ wire cla_out_valid;
 wire [(pNTT_WIDTH+1):0] cla1_result;
 wire [(pNTT_WIDTH-1):0] cla1_result_tmp;
 wire [(pNTT_WIDTH+1):0] cla2_result;
-reg  [(pNTT_WIDTH-1):0] mont_add_reg[0:1];
+reg  [(pNTT_WIDTH-1):0] mont_add_reg;
 CLA17 CLA17_1(
     .clk(clk),
     .rst_n(rst_n),
@@ -32,11 +32,9 @@ CLA17 CLA17_1(
 assign cla1_result_tmp = cla1_result[(pNTT_WIDTH-1):0];
 always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        mont_add_reg[0] <= {(pNTT_WIDTH){1'b0}};
-        mont_add_reg[1] <= {(pNTT_WIDTH){1'b0}};
+        mont_add_reg <= {(pNTT_WIDTH){1'b0}};
     end else begin
-        mont_add_reg[0] <= cla1_result_tmp;
-        mont_add_reg[1] <= mont_add_reg[0];
+        mont_add_reg <= cla1_result_tmp;
     end
 end
 CLA17 CLA17_2(
@@ -49,7 +47,7 @@ CLA17 CLA17_2(
     .out_valid(out_valid),
     .result(cla2_result)
 );
-assign result = (cla2_result[(pNTT_WIDTH)] == 1'b1)? mont_add_reg[1]:cla2_result[(pNTT_WIDTH-1):0];
+assign result = (cla2_result[(pNTT_WIDTH)] == 1'b1)? mont_add_reg:cla2_result[(pNTT_WIDTH-1):0];
 
 
 endmodule //mont_add

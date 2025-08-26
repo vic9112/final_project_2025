@@ -22,13 +22,14 @@
 
 module butterfly
 #(  
-    parameter pDATA_WIDTH = 128 // two 64-bit numbers represent real & imaginary part
+    parameter pDATA_WIDTH = 128, // two 64-bit numbers represent real & imaginary part
+    parameter pMODE_WIDTH = 3
 )
 (
     input   wire clk,
     input   wire rst_n,
 
-    input   wire [1:0] mode, // /iNTT(11)/NTT(10)/iFFT(01)/FFT(00)
+    input   wire [(pMODE_WIDTH-1):0] mode, // /iNTT(011)/NTT(010)/iFFT(001)/FFT(000)
 
     input   wire i_vld,
     output  wire i_rdy,
@@ -45,26 +46,35 @@ module butterfly
 );
 //==================================================================================//
 
-localparam NTT_MUL_LATENCY = 17;
-localparam FFT_MUL_LATENCY = 21;
-localparam FP_ADD_LATENCY  = 5 ;
-localparam NTT_ADD_LATENCY = 4 ;
+localparam NTT_MUL_LATENCY = 6;
+localparam FFT_MUL_LATENCY = 7;
+localparam FP_ADD_LATENCY  = 2 ;
+localparam NTT_ADD_LATENCY = 2 ;
 
-localparam NTT_LATENCY     = 22;
-localparam iNTT_LATENCY    = 22;//?
-localparam FFT_LATENCY     = 28;
-localparam iFFT_LATENCY    = 28;//?
+localparam NTT_LATENCY     = 9;
+localparam iNTT_LATENCY    = 9;//?
+localparam FFT_LATENCY     = 11;
+localparam iFFT_LATENCY    = 11;//?
+localparam NTM_LATENCY     = 7;
+localparam MTN_LATENCY     = 7;
+localparam MTND_LATENCY    = 7;
 
-localparam mode_FFT        = 2'b00;
-localparam mode_iFFT       = 2'b01;
-localparam mode_NTT        = 2'b10;
-localparam mode_iNTT       = 2'b11;
+localparam mode_FFT        = 3'b000;
+localparam mode_iFFT       = 3'b001;
+localparam mode_NTT        = 3'b010;
+localparam mode_iNTT       = 3'b011;
+localparam mode_NTM        = 3'b100;
+localparam mode_MTN        = 3'b101;
+localparam mode_MTND       = 3'b110;
 
 
 localparam FFT_WAIT  = 3'b000;
 localparam iFFT_WAIT = 3'b001;
 localparam NTT_WAIT  = 3'b010;
 localparam iNTT_WAIT = 3'b011;
+localparam NTM_WAIT  = 3'b100;
+localparam MTN_WAIT  = 3'b101;
+localparam MTND_WAIT = 3'b110;
 localparam READY     = 3'b111;
 //==================================================================================//
 localparam pFP_WIDTH       = 64 ;
@@ -78,8 +88,8 @@ localparam pEXP_INF        = 11'b111_1111_1111;
 //-------------------- Input interface and mode control ----------------------------//
 reg  [2:0]                  state;
 reg  [2:0]                  state_next;
-reg  [1:0]                  mode_state ; //control datapath
-reg  [1:0]                  mode_state_next;
+reg  [(pMODE_WIDTH-1):0]    mode_state ; //control datapath
+reg  [(pMODE_WIDTH-1):0]    mode_state_next;
 
 reg                         buf_en;
 reg  [(pDATA_WIDTH-1):0]    buf_ai;
@@ -94,9 +104,9 @@ reg  [(pDATA_WIDTH-1):0]    MUL_FIFO[0:(FFT_MUL_LATENCY-1)];
 reg  [(pDATA_WIDTH-1):0]    ADD_FIFO[0:(FP_ADD_LATENCY-1)] ;
 //-------------------------- Multiplier operand & result  -------------------------//
 wire [(pDATA_WIDTH-1):0]    a_result;
-wire [(pFP_WIDTH*2-1):0]    mul_in1 ;
-wire [(pFP_WIDTH*2-1):0]    mul_in2 ;
-wire                        mul_in_valid ;
+reg  [(pFP_WIDTH*2-1):0]    mul_in1 ;
+reg  [(pFP_WIDTH*2-1):0]    mul_in2 ;
+reg                         mul_in_valid ;
 wire [(pDATA_WIDTH-1):0]    mul_result_int;
 wire [(pDATA_WIDTH-1):0]    mul_result_com;
 wire [(pDATA_WIDTH-1):0]    mul_result;
@@ -169,6 +179,18 @@ always @(*) begin
                 state_next = iNTT_WAIT;
                 buf_en     = 1'b1;
                 i_vld_en   = 1'b0;
+            end else if (mode_state == mode_NTM) begin
+                state_next = NTM_WAIT;
+                buf_en     = 1'b1;
+                i_vld_en   = 1'b0;
+            end else if (mode_state == mode_MTN) begin
+                state_next = MTN_WAIT;
+                buf_en     = 1'b1;
+                i_vld_en   = 1'b0;
+            end else if (mode_state == mode_MTND) begin
+                state_next = MTND_WAIT;
+                buf_en     = 1'b1;
+                i_vld_en   = 1'b0;
             end else begin
                 state_next = READY;
                 buf_en     = 1'b0;
@@ -212,6 +234,39 @@ always @(*) begin
           buf_en   = 1'b0;
           i_vld_en = 1'b0;
           if (count == iNTT_LATENCY - 1) begin
+            state_next = READY;
+            trans_en   = 1'b1;
+          end else begin
+            state_next = state;
+            trans_en   = 1'b0;
+          end
+        end 
+        NTM_WAIT: begin
+          buf_en   = 1'b0;
+          i_vld_en = 1'b0;
+          if (count == NTM_LATENCY - 1) begin
+            state_next = READY;
+            trans_en   = 1'b1;
+          end else begin
+            state_next = state;
+            trans_en   = 1'b0;
+          end
+        end 
+        MTN_WAIT: begin
+          buf_en   = 1'b0;
+          i_vld_en = 1'b0;
+          if (count == MTN_LATENCY - 1) begin
+            state_next = READY;
+            trans_en   = 1'b1;
+          end else begin
+            state_next = state;
+            trans_en   = 1'b0;
+          end
+        end 
+        MTND_WAIT: begin
+          buf_en   = 1'b0;
+          i_vld_en = 1'b0;
+          if (count == MTND_LATENCY - 1) begin
             state_next = READY;
             trans_en   = 1'b1;
           end else begin
@@ -328,11 +383,60 @@ end
 // * If  NTT mode , do montmul(bi * gm)
 // * If iNTT mode , do montmul(montsub(ai - bi) * gm)                                                                                                                                 //
 //=====================================================================================================================================================================//
-assign mul_in1       = (mode_state[0] == 1'b0)? buf_bi : (mode_state == mode_iFFT)? fp_add_result[1] : mont_sub_result;
+always @(*) begin
+  case(mode_state)
+  mode_FFT: begin
+    mul_in1 = buf_bi;
+    mul_in2 = buf_gm;
+  end
+  mode_iFFT: begin
+    mul_in1 = fp_add_result[1];
+    mul_in2 = ADD_FIFO[FP_ADD_LATENCY-1];
+  end
+  mode_NTT: begin
+    mul_in1 = buf_bi;
+    mul_in2 = buf_gm;
+  end
+  mode_iNTT: begin
+    mul_in1 = mont_sub_result;
+    mul_in2 = ADD_FIFO[NTT_ADD_LATENCY-1];
+  end
+  mode_NTM: begin
+    mul_in1 = buf_gm;
+    mul_in2 = buf_bi;
+  end
+  mode_MTN: begin
+    mul_in1 = buf_gm;
+    mul_in2 = buf_bi;
+  end
+  mode_MTND: begin
+    mul_in1 = buf_gm;
+    mul_in2 = buf_bi;
+  end
+  default : begin
+    mul_in1 = buf_gm;
+    mul_in2 = buf_bi;
+  end
+  endcase
+end
+//==assign mul_in1       = (mode_state[0] == 1'b0)? buf_bi : (mode_state == mode_iFFT)? fp_add_result[1] : mont_sub_result;
 //assign mul_in1       = (mode_state == mode_iFFT )?          fp_add_result[1]     : buf_bi ;
-assign mul_in2       = (mode_state[0] == 1'b0)? buf_gm : (mode_state == mode_iFFT)? ADD_FIFO[FP_ADD_LATENCY-1] : ADD_FIFO[NTT_ADD_LATENCY-1];
+//==assign mul_in2       = (mode_state[0] == 1'b0)? buf_gm : (mode_state == mode_iFFT)? ADD_FIFO[FP_ADD_LATENCY-1] : ADD_FIFO[NTT_ADD_LATENCY-1];
 //assign mul_in2       = (mode_state == mode_iFFT )?    ADD_FIFO[FP_ADD_LATENCY-1] : buf_gm ;
-assign mul_in_valid  = (mode_state == mode_NTT | mode_state == mode_FFT)? (buf_i_vld & i_vld_en) : (mode_state == mode_iFFT)? fp_add_out_valid[0] : mont_add_valid_o0[0];
+//assign mul_in_valid  = (mode_state == mode_NTT | mode_state == mode_FFT)? (buf_i_vld & i_vld_en) : (mode_state == mode_iFFT)? fp_add_out_valid[0] : mont_add_valid_o0[0];
+always @(*) begin
+  case (mode_state)
+  mode_iFFT: begin
+    mul_in_valid = fp_add_out_valid[0];
+  end
+  mode_iNTT: begin
+    mul_in_valid = mont_add_valid_o0[0];
+  end
+  default: begin
+    mul_in_valid = (buf_i_vld & i_vld_en);
+  end
+  endcase
+end
 //assign mul_in_valid  = (mode_state == mode_iFFT )?       fp_add_out_valid[0]     : (buf_i_vld & i_vld_en);
 
 mul mul1(
@@ -346,7 +450,7 @@ mul mul1(
     .result_int(mul_result_int),
     .out_valid(mul_out_valid[0])
 );
-assign mul_result        = (mode_state[1] == 1'b0 )? mul_result_com : mul_result_int;
+assign mul_result        = ((mode_state[2] | mode_state[1]) == 1'b0 )? mul_result_com : mul_result_int;
 
 assign mul_result_re_inv = {~mul_result_com[(pFP_WIDTH*2-1)], mul_result_com[(pFP_WIDTH*2-2):pFP_WIDTH]};
 assign mul_result_im_inv = {~mul_result_com[(pFP_WIDTH-1)]  , mul_result_com[(pFP_WIDTH-2):0]};
@@ -533,6 +637,10 @@ always @(*) begin
         ao_buf[0] = MUL_FIFO[NTT_MUL_LATENCY-1];
         bo_buf[0] = mul_result;
     end
+    default: begin
+        ao_buf[0] = mul_result;
+        bo_buf[0] = mul_result;
+    end
     endcase
     //o_vld_buf[0] = (mode_state[0] == 1'b1)? mul_out_valid[0] : (mode_state == mode_FFT)? fp_add_out_valid[0] : mont_add_valid_o0[0];
     // o_vld_buf[0] = (mode_state[1] == 1'b0)? 
@@ -546,6 +654,9 @@ always @(*) begin
         mode_iFFT:  o_vld_buf[0] = mul_out_valid[0];
         mode_NTT:   o_vld_buf[0] = mont_add_valid_o0[0];
         mode_iNTT:  o_vld_buf[0] = mul_out_valid[0];
+        mode_NTM:   o_vld_buf[0] = mul_out_valid[0];
+        mode_MTN:   o_vld_buf[0] = mul_out_valid[0];
+        mode_MTND:  o_vld_buf[0] = mul_out_valid[0];
         default:    o_vld_buf[0] = 1'b0; // safe default
     endcase
 end
