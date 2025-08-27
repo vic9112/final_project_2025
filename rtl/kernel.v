@@ -493,7 +493,7 @@ end
 
               coef_sram_addr_512 = (mode[0]) ? {8'b0, 1'b1, out2[1:0], 2'b0} : {6'b0, 1'b1, counter_1[7:2], 2'b0};
               coef_sram_addr_ntt = {6'b0, 1'b1, counter_1[5:2], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? S9 : S8) :
                                (counter_2[8] ? S9 : S8);
@@ -519,9 +519,9 @@ end
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
 
-              coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b1, out1[0], 2'b0} : {5'b0, 1'b1, counter_1[7:1], 2'b0};
+              coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b1, out1, 2'b0} : {5'b0, 1'b1, counter_1[7:1], 2'b0};
               coef_sram_addr_ntt = {5'b0, 1'b1, counter_1[5:1], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? S10 : S9) :
                                (counter_2[8] ? S10 : S9);
@@ -549,7 +549,7 @@ end
 
               coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b0, 1'b1, 2'b0} : {5'b0, 1'b1, counter_1[7:0], 2'b0};
               coef_sram_addr_ntt = {4'b0, 1'b1, counter_1[5:0], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? MS_3 : S10) :
                                (counter_2[8] ? IDLE : S10);
@@ -799,8 +799,8 @@ end
 always @(*) begin
   case (stage)
     NTM: begin // 1: BPE_input  2: BPE_output
-      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b00000, counter_1[6:0]} : 0;
-      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b00000, counter_2[6:0]} : 0;
+      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b0000, counter_1[6:0]} : 0;
+      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b0000, counter_2[6:0]} : 0;
     end
     S1: begin // 1: BPE_output  2: BPE_input
       data_ram_addr_1 = (mode[1]) ? {4'b0, counter_2[5], 1'b1, counter_2[4:0], 4'b0, counter_2[5], 1'b0, counter_2[4:0]} : 0;
@@ -861,8 +861,8 @@ always @(*) begin
                                     {2'b0, counter_2[7:0], 1'b1, 2'b0, counter_2[7:0], 1'b0};
     end
     MTN:begin // 1: BPE_output  2: BPE_input
-      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b00000, counter_2[6:0]} : 0;
-      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b00000, counter_1[6:0]} : 0;
+      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b0000, counter_2[6:0]} : 0;
+      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b0000, counter_1[6:0]} : 0;
     end
     default: begin
       data_ram_addr_1 = 0;
