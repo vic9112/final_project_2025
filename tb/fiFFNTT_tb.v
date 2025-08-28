@@ -209,120 +209,120 @@ reg [4:0] curr_o_vld;
 reg [4:0] rise_i;
 reg [4:0] rise_o;
 
-initial begin
-  prev_i_vld   = 5'b0;
-  prev_o_vld   = 5'b0;
-  i_count      = 5'd0;
-  o_count      = 5'd0;
-  input_count  = 32'd0;
-  output_count = 32'd0;
-end
+// initial begin
+//   prev_i_vld   = 5'b0;
+//   prev_o_vld   = 5'b0;
+//   i_count      = 5'd0;
+//   o_count      = 5'd0;
+//   input_count  = 32'd0;
+//   output_count = 32'd0;
+// end
 
-always @(posedge clk, negedge rstn) begin
-  if (!rstn) begin
-    curr_i_vld <= 5'd0;
-    curr_o_vld <= 5'd0;
-    rise_i <= 5'd0;
-    rise_o <= 5'd0;
-    prev_i_vld   <= 5'b0;
-    prev_o_vld   <= 5'b0;
-    i_count      <= 5'd0;
-    o_count      <= 5'd0;
-    input_count  <= 32'd0;
-    output_count <= 32'd0;
-  end else begin
-    // 取得現在的 vld 訊號
-    curr_i_vld <= {
-      DUT.kernel1.BPE5_i_vld,
-      DUT.kernel1.BPE4_i_vld,
-      DUT.kernel1.BPE3_i_vld,
-      DUT.kernel1.BPE2_i_vld,
-      DUT.kernel1.BPE1_i_vld
-    };
+// always @(posedge clk, negedge rstn) begin
+//   if (!rstn) begin
+//     curr_i_vld <= 5'd0;
+//     curr_o_vld <= 5'd0;
+//     rise_i <= 5'd0;
+//     rise_o <= 5'd0;
+//     prev_i_vld   <= 5'b0;
+//     prev_o_vld   <= 5'b0;
+//     i_count      <= 5'd0;
+//     o_count      <= 5'd0;
+//     input_count  <= 32'd0;
+//     output_count <= 32'd0;
+//   end else begin
+//     // 取得現在的 vld 訊號
+//     curr_i_vld <= {
+//       DUT.kernel1.BPE5_i_vld,
+//       DUT.kernel1.BPE4_i_vld,
+//       DUT.kernel1.BPE3_i_vld,
+//       DUT.kernel1.BPE2_i_vld,
+//       DUT.kernel1.BPE1_i_vld
+//     };
 
-    curr_o_vld <= {
-      DUT.kernel1.BPE5_o_vld,
-      DUT.kernel1.BPE4_o_vld,
-      DUT.kernel1.BPE3_o_vld,
-      DUT.kernel1.BPE2_o_vld,
-      DUT.kernel1.BPE1_o_vld
-    };
+//     curr_o_vld <= {
+//       DUT.kernel1.BPE5_o_vld,
+//       DUT.kernel1.BPE4_o_vld,
+//       DUT.kernel1.BPE3_o_vld,
+//       DUT.kernel1.BPE2_o_vld,
+//       DUT.kernel1.BPE1_o_vld
+//     };
 
-    // 偵測上升沿
-    rise_i <= curr_i_vld & ~prev_i_vld;
-    rise_o <= curr_o_vld & ~prev_o_vld;
+//     // 偵測上升沿
+//     rise_i <= curr_i_vld & ~prev_i_vld;
+//     rise_o <= curr_o_vld & ~prev_o_vld;
 
-    // 累加每條線的計數
-    i_count <= i_count + rise_i;
-    o_count <= o_count + rise_o;
+//     // 累加每條線的計數
+//     i_count <= i_count + rise_i;
+//     o_count <= o_count + rise_o;
 
-    // 累加總 input/output
-    input_count  <= input_count  + rise_i[0] + rise_i[1] + rise_i[2] + rise_i[3] + rise_i[4];
-    output_count <= output_count + rise_o[0] + rise_o[1] + rise_o[2] + rise_o[3] + rise_o[4];
+//     // 累加總 input/output
+//     input_count  <= input_count  + rise_i[0] + rise_i[1] + rise_i[2] + rise_i[3] + rise_i[4];
+//     output_count <= output_count + rise_o[0] + rise_o[1] + rise_o[2] + rise_o[3] + rise_o[4];
 
-    // 更新 previous 訊號
-    prev_i_vld <= curr_i_vld;
-    prev_o_vld <= curr_o_vld;
-  end
-end
+//     // 更新 previous 訊號
+//     prev_i_vld <= curr_i_vld;
+//     prev_o_vld <= curr_o_vld;
+//   end
+// end
 
-//////////////////////////////////////////////////////////////// calculate kernel utilization
-  reg [31:0] idle_cycle_count_kernel1, idle_cycle_count_kernel2, idle_cycle_count_kernel3, idle_cycle_count_kernel4;
-  always @(posedge clk, negedge rstn) begin
-    if (!rstn) begin
-      idle_cycle_count_kernel1 <= 32'd0;
-      idle_cycle_count_kernel2 <= 32'd0;
-      idle_cycle_count_kernel3 <= 32'd0;
-      idle_cycle_count_kernel4 <= 32'd0;
-    end else begin
-      if (DUT.kernel1.BPE1.i_vld == 1'b0 && DUT.kernel1.BPE1.i_rdy == 1'b1) begin
-        idle_cycle_count_kernel1 <= idle_cycle_count_kernel1 + 32'd1;
-      end else begin
-        idle_cycle_count_kernel1 <= idle_cycle_count_kernel1;
-      end
-      if (DUT.kernel2.BPE1.i_vld == 1'b0 && DUT.kernel2.BPE1.i_rdy == 1'b1) begin
-        idle_cycle_count_kernel2 <= idle_cycle_count_kernel2 + 32'd1;
-      end else begin
-        idle_cycle_count_kernel2 <= idle_cycle_count_kernel2;
-      end
-      if (DUT.kernel3.BPE1.i_vld == 1'b0 && DUT.kernel3.BPE1.i_rdy == 1'b1) begin
-        idle_cycle_count_kernel3 <= idle_cycle_count_kernel3 + 32'd1;
-      end else begin
-        idle_cycle_count_kernel3 <= idle_cycle_count_kernel3;
-      end
-      if (DUT.kernel4.BPE1.i_vld == 1'b0 && DUT.kernel4.BPE1.i_rdy == 1'b1) begin
-        idle_cycle_count_kernel4 <= idle_cycle_count_kernel4 + 32'd1;
-      end else begin
-        idle_cycle_count_kernel4 <= idle_cycle_count_kernel4;
-      end
-    end
-  end
+// //////////////////////////////////////////////////////////////// calculate kernel utilization
+//   reg [31:0] idle_cycle_count_kernel1, idle_cycle_count_kernel2, idle_cycle_count_kernel3, idle_cycle_count_kernel4;
+//   always @(posedge clk, negedge rstn) begin
+//     if (!rstn) begin
+//       idle_cycle_count_kernel1 <= 32'd0;
+//       idle_cycle_count_kernel2 <= 32'd0;
+//       idle_cycle_count_kernel3 <= 32'd0;
+//       idle_cycle_count_kernel4 <= 32'd0;
+//     end else begin
+//       if (DUT.kernel1.BPE1.i_vld == 1'b0 && DUT.kernel1.BPE1.i_rdy == 1'b1) begin //we can change signal here to know different kernel and bpe's idle rate
+//         idle_cycle_count_kernel1 <= idle_cycle_count_kernel1 + 32'd1;
+//       end else begin
+//         idle_cycle_count_kernel1 <= idle_cycle_count_kernel1;
+//       end
+//       if (DUT.kernel2.BPE1.i_vld == 1'b0 && DUT.kernel2.BPE1.i_rdy == 1'b1) begin
+//         idle_cycle_count_kernel2 <= idle_cycle_count_kernel2 + 32'd1;
+//       end else begin
+//         idle_cycle_count_kernel2 <= idle_cycle_count_kernel2;
+//       end
+//       if (DUT.kernel3.BPE4.i_vld == 1'b0 && DUT.kernel3.BPE4.i_rdy == 1'b1) begin
+//         idle_cycle_count_kernel3 <= idle_cycle_count_kernel3 + 32'd1;
+//       end else begin
+//         idle_cycle_count_kernel3 <= idle_cycle_count_kernel3;
+//       end
+//       if (DUT.kernel4.BPE4.i_vld == 1'b0 && DUT.kernel4.BPE4.i_rdy == 1'b1) begin
+//         idle_cycle_count_kernel4 <= idle_cycle_count_kernel4 + 32'd1;
+//       end else begin
+//         idle_cycle_count_kernel4 <= idle_cycle_count_kernel4;
+//       end
+//     end
+//   end
 
-  initial begin
-    log_file_1_1 = $fopen("moniter_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
-    log_file_2_1 = $fopen("moniter_time_kernek2.txt", "w");
-    log_file_3_1 = $fopen("moniter_time_kernek3.txt", "w");
-    log_file_4_1 = $fopen("moniter_time_kernek4.txt", "w");
-    log_file_1_2 = $fopen("require_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
-    log_file_2_2 = $fopen("require_time_kernek2.txt", "w");
-    log_file_3_2 = $fopen("require_time_kernek3.txt", "w");
-    log_file_4_2 = $fopen("require_time_kernek4.txt", "w");
+  // initial begin
+  //   log_file_1_1 = $fopen("moniter_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
+  //   log_file_2_1 = $fopen("moniter_time_kernek2.txt", "w");
+  //   log_file_3_1 = $fopen("moniter_time_kernek3.txt", "w");
+  //   log_file_4_1 = $fopen("moniter_time_kernek4.txt", "w");
+  //   log_file_1_2 = $fopen("require_time_kernek1.txt", "w");  // "w" 表示寫入模式（會覆蓋原檔）
+  //   log_file_2_2 = $fopen("require_time_kernek2.txt", "w");
+  //   log_file_3_2 = $fopen("require_time_kernek3.txt", "w");
+  //   log_file_4_2 = $fopen("require_time_kernek4.txt", "w");
 
-    if (log_file_1_1 == 0 || log_file_2_1 == 0 || log_file_3_1 == 0 || log_file_4_1 == 0) begin
-      $display("Error opening file!");
-      $finish;
-    end
+  //   if (log_file_1_1 == 0 || log_file_2_1 == 0 || log_file_3_1 == 0 || log_file_4_1 == 0) begin
+  //     $display("Error opening file!");
+  //     $finish;
+  //   end
 
-    // 類似 $monitor，只是輸出到檔案
-    $fmonitor(log_file_1_1, "Time=%0t, DUT.kernel1.BPE1.i_vld=%b, DUT.kernel1.BPE5.o_vld=%b", $time, DUT.kernel1.BPE1.i_vld, DUT.kernel1.BPE5.o_vld);
-    $fmonitor(log_file_2_1, "Time=%0t, DUT.kernel2.BPE1.i_vld=%b, DUT.kernel2.BPE5.o_vld=%b", $time, DUT.kernel2.BPE1.i_vld, DUT.kernel2.BPE5.o_vld);
-    $fmonitor(log_file_3_1, "Time=%0t, DUT.kernel3.BPE1.i_vld=%b, DUT.kernel3.BPE4.o_vld=%b", $time, DUT.kernel3.BPE1.i_vld, DUT.kernel3.BPE4.o_vld);
-    $fmonitor(log_file_4_1, "Time=%0t, DUT.kernel4.BPE1.i_vld=%b, DUT.kernel4.BPE4.o_vld=%b", $time, DUT.kernel4.BPE1.i_vld, DUT.kernel4.BPE4.o_vld); 
-    $fmonitor(log_file_1_2, "Time=%0t, idle cycle count kernel1=%d", $time, idle_cycle_count_kernel1);
-    $fmonitor(log_file_2_2, "Time=%0t, idle cycle count kernel2=%d", $time, idle_cycle_count_kernel2);
-    $fmonitor(log_file_3_2, "Time=%0t, idle cycle count kernel3=%d", $time, idle_cycle_count_kernel3);
-    $fmonitor(log_file_4_2, "Time=%0t, idle cycle count kernel4=%d", $time, idle_cycle_count_kernel4);
-  end
+  //   // 類似 $monitor，只是輸出到檔案
+  //   $fmonitor(log_file_1_1, "Time=%0t, DUT.kernel1.BPE1.i_vld=%b, DUT.kernel1.BPE5.o_vld=%b", $time, DUT.kernel1.BPE1.i_vld, DUT.kernel1.BPE5.o_vld);
+  //   $fmonitor(log_file_2_1, "Time=%0t, DUT.kernel2.BPE1.i_vld=%b, DUT.kernel2.BPE5.o_vld=%b", $time, DUT.kernel2.BPE1.i_vld, DUT.kernel2.BPE5.o_vld);
+  //   $fmonitor(log_file_3_1, "Time=%0t, DUT.kernel3.BPE1.i_vld=%b, DUT.kernel3.BPE4.o_vld=%b", $time, DUT.kernel3.BPE1.i_vld, DUT.kernel3.BPE4.o_vld);
+  //   $fmonitor(log_file_4_1, "Time=%0t, DUT.kernel4.BPE1.i_vld=%b, DUT.kernel4.BPE4.o_vld=%b", $time, DUT.kernel4.BPE1.i_vld, DUT.kernel4.BPE4.o_vld); 
+  //   $fmonitor(log_file_1_2, "Time=%0t, idle cycle count kernel1=%d", $time, idle_cycle_count_kernel1);
+  //   $fmonitor(log_file_2_2, "Time=%0t, idle cycle count kernel2=%d", $time, idle_cycle_count_kernel2);
+  //   $fmonitor(log_file_3_2, "Time=%0t, idle cycle count kernel3=%d", $time, idle_cycle_count_kernel3);
+  //   $fmonitor(log_file_4_2, "Time=%0t, idle cycle count kernel4=%d", $time, idle_cycle_count_kernel4);
+  // end
 
 ////////////////////////////////////////////////////////////////
 
@@ -455,12 +455,12 @@ end
     input [15:0] length
   );
     begin
-      ss_tdata = {dt, mode, length};
-      ss_tvalid = 1;
-      ss_tlast = 0;
+      ss_tdata <= {dt, mode, length};
+      ss_tvalid <= 1;
+      ss_tlast <= 0;
 
       wait(ss_tready);
-      @(posedge clk);
+      @(posedge clk_2x);
       ss_tvalid <= 0;
     end
   endtask
@@ -473,13 +473,13 @@ end
   );
     begin
       for (i = 0; i < N; i = i + 1) begin
-        @(posedge clk);
+        @(posedge clk_2x);
         ss_tdata <= in_mem[M][i];
         ss_tvalid <= 1;
         ss_tlast <= (i == N - 1);
 
         wait(ss_tready);
-        @(posedge clk);
+        @(posedge clk_2x);
         ss_tvalid <= 0;
         ss_tlast <= 0;
       end
@@ -492,12 +492,12 @@ end
   );
     begin
       for (i = 0; i < N; i = i + 1) begin
-        @(posedge clk);
+        @(posedge clk_2x);
         ss_tdata <= coef_mem[M][i];
         ss_tvalid <= 1;
         
         wait(ss_tready);
-        @(posedge clk);
+        @(posedge clk_2x);
         ss_tvalid <= 0;
       end
     end
@@ -508,11 +508,11 @@ end
     output integer mode_out
   );
     begin
-      @(posedge clk);
+      @(posedge clk_2x);
       sm_tready <= 1;
 
       wait(sm_tvalid);
-      @(posedge clk);
+      @(posedge clk_2x);
       length_out <= sm_tdata[15:0];
       mode_out <= sm_tdata[23:16] - 8'd4;
       sm_tready <= 0;
@@ -528,7 +528,7 @@ end
       j = 0; 
       while (j < N) begin
         sm_tready <= 1;
-        @(posedge clk);
+        @(posedge clk_2x);
         if (sm_tvalid) begin
           case (M)
             0: out_FFT[j]  = sm_tdata;
@@ -854,78 +854,127 @@ endtask
     for (k = 0; k < 4; k = k + 1) begin
       axilite_read_mb(MB_BASE_ADDR + k * MB_STRIDE, check);
       if (check != PAT_KER_FREE) begin
-        $display("Test1 Error: Kernel %d is not free", k + 1);
+        $display("Test1 Error: Kernel %d is not free", 0 + 1);
         $finish;
       end else begin
-        $display("Test1: Kernel %d is free", k + 1);
+        $display("Test1: Kernel %d is free", 0 + 1);
         axilite_write_mb(MB_BASE_ADDR + k * MB_STRIDE, PAT_KER_BUSY);
       end
 
-      stream_meta(KERNEL_BASE + k, MODE_BASE + k, get_LEN(k));
+      stream_meta(KERNEL_BASE + 0, MODE_BASE + k, get_LEN(k));
       // DMA in
       ss_stream_in(get_LEN(k), k);
-    end
 
-    for (k = 0; k < 4; k = k + 1) begin
-      //start_time = $time;
-      //$display("here %d", k);
       sm_stream_out(get_LEN(k), k);
       
       $display("here %d", k);
-      wait_ap_done(k);
+      wait_ap_done(0);
       
       //end_time = $time;
       //latency = end_time - start_time;
       //$display("Test1: Kernel 1 latency for data %d is %d ns", k + 1, latency);
       axilite_write_mb(MB_BASE_ADDR + k, PAT_KER_FREE);
+
+      // Check results
+      case (k)
+        0 : begin
+          for (i = 0; i < 2048; i = i + 2) begin
+            golden_tmp = {golden_FFT[i], golden_FFT[i+1]};
+            output_tmp = {out_FFT[i], out_FFT[i+1]};
+            compare_fp64(golden_tmp, output_tmp, err_tmp);
+            if (err_tmp == 1) begin
+              $display("\033[1;31m[ERROR] FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+              $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+            end else begin
+              $display("\033[1;32m[SUCCESS] FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+              $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+            end
+          end
+        end
+        1 : begin
+          for (i = 0; i < 2048; i = i + 2) begin
+            golden_tmp = {golden_iFFT[i], golden_iFFT[i+1]};
+            output_tmp = {out_iFFT[i], out_iFFT[i+1]};
+            compare_fp64(golden_tmp, output_tmp, err_tmp);
+            if (err_tmp == 1) begin
+              $display("\033[1;31m[ERROR] iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+              $fwrite(fd, "iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+            end else begin
+              $display("\033[1;32m[SUCCESS] iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+              $fwrite(fd, "iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+            end
+          end
+        end
+        2 : begin
+          for (i = 0; i < 1024; i = i + 1) begin
+            if (out_NTT[i][15:0] != golden_NTT[i]) begin
+              $display("\033[1;31m[ERROR] NTT mismatch idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
+            end else begin
+              $display("\033[1;32m[SUCCESS] NTT match idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
+            end
+          end
+        end
+        3 : begin
+          for (i = 0; i < 1024; i = i + 1) begin
+            if (out_iNTT[i][15:0] != golden_iNTT[i]) begin
+              $display("\033[1;31m[ERROR] iNTT mismatch idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
+            end else begin
+              $display("\033[1;32m[SUCCESS] iNTT match idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
+            end
+          end
+        end
+      endcase
+      
     end
 
-    // Check results
-    for (i = 0; i < 2048; i = i + 2) begin
-      golden_tmp = {golden_FFT[i], golden_FFT[i+1]};
-      output_tmp = {out_FFT[i], out_FFT[i+1]};
-      compare_fp64(golden_tmp, output_tmp, err_tmp);
-      if (err_tmp == 1) begin
-        $display("\033[1;31m[ERROR] FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
-        $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
-      end else begin
-        $display("\033[1;32m[SUCCESS] FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
-        $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
-      end
-    end
+
+
+    // // Check results
+    // for (i = 0; i < 2048; i = i + 2) begin
+    //   golden_tmp = {golden_FFT[i], golden_FFT[i+1]};
+    //   output_tmp = {out_FFT[i], out_FFT[i+1]};
+    //   compare_fp64(golden_tmp, output_tmp, err_tmp);
+    //   if (err_tmp == 1) begin
+    //     $display("\033[1;31m[ERROR] FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+    //     $fwrite(fd, "FFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+    //   end else begin
+    //     $display("\033[1;32m[SUCCESS] FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+    //     $fwrite(fd, "FFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_FFT[i], out_FFT[i+1], golden_FFT[i], golden_FFT[i+1]);
+    //   end
+    // end
 
     $display("\n=== Valid Signal Statistics ===");
     $display("Total Input  Valid Count  = %0d", input_count);
     $display("Total Output Valid Count  = %0d", output_count);
 
-    for (i = 0; i < 2048; i = i + 2) begin
-      golden_tmp = {golden_iFFT[i], golden_iFFT[i+1]};
-      output_tmp = {out_iFFT[i], out_iFFT[i+1]};
-      compare_fp64(golden_tmp, output_tmp, err_tmp);
-      if (err_tmp == 1) begin
-        $display("\033[1;31m[ERROR] iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
-        $fwrite(fd, "iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
-      end else begin
-        $display("\033[1;32m[SUCCESS] iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
-        $fwrite(fd, "iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
-      end
-    end
+    // for (i = 0; i < 2048; i = i + 2) begin
+    //   golden_tmp = {golden_iFFT[i], golden_iFFT[i+1]};
+    //   output_tmp = {out_iFFT[i], out_iFFT[i+1]};
+    //   compare_fp64(golden_tmp, output_tmp, err_tmp);
+    //   if (err_tmp == 1) begin
+    //     $display("\033[1;31m[ERROR] iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+    //     $fwrite(fd, "iFFT mismatch idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+    //   end else begin
+    //     $display("\033[1;32m[SUCCESS] iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\033[0m", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+    //     $fwrite(fd, "iFFT match idx=%d got:0x%8h_%8h exp:0x%8h_%8h\n", i/4, out_iFFT[i], out_iFFT[i+1], golden_iFFT[i], golden_iFFT[i+1]);
+    //   end
+    // end
 
-    for (i = 0; i < 1024; i = i + 1) begin
-      if (out_NTT[i][15:0] != golden_NTT[i]) begin
-        $display("\033[1;31m[ERROR] NTT mismatch idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
-      end else begin
-        $display("\033[1;32m[SUCCESS] NTT match idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
-      end
-    end
+    // for (i = 0; i < 1024; i = i + 1) begin
+    //   if (out_NTT[i][15:0] != golden_NTT[i]) begin
+    //     $display("\033[1;31m[ERROR] NTT mismatch idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
+    //   end else begin
+    //     $display("\033[1;32m[SUCCESS] NTT match idx=%d got 0x%4h exp 0x%4h\033[0m", i, out_NTT[i][15:0], golden_NTT[i]);
+    //   end
+    // end
 
-    for (i = 0; i < 1024; i = i + 1) begin
-      if (out_iNTT[i][15:0] != golden_iNTT[i]) begin
-        $display("\033[1;31m[ERROR] iNTT mismatch idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
-      end else begin
-        $display("\033[1;32m[SUCCESS] iNTT match idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
-      end
-    end
+    // for (i = 0; i < 1024; i = i + 1) begin
+    //   if (out_iNTT[i][15:0] != golden_iNTT[i]) begin
+    //     $display("\033[1;31m[ERROR] iNTT mismatch idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
+    //   end else begin
+    //     $display("\033[1;32m[SUCCESS] iNTT match idx=%d got 0x%8h exp 0x%8h\033[0m", i, out_iNTT[i][15:0], golden_iNTT[i]);
+    //   end
+    // end
 
     $display("Kernel %d PASS", k);
     $display("First test end");

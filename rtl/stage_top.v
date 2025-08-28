@@ -625,7 +625,6 @@ module stage_top
   assign ram1_we_mux  = (state == 1) ? WE_512_1 : ram1_we;
   assign ram1_en_mux  = (state == 1) ? sram_en_512_1 : l;
   assign ram1_di_mux  = (state == 1) ? sram_din_512_1 : ram1_di;
-  assign ram1_do_mux  = (state == 1) ? sram_dout_512_1 : ram1_do;
   assign ram1_a_mux   = (state == 1) ? sram_addr_512_1 : ram1_a;
 
   wire        ram2_clk_mux;
@@ -636,7 +635,6 @@ module stage_top
   wire [ 12:0] ram2_a_mux;
 
   assign ram2_en_mux  = (state == 1) ? sram_en_512_2 : l;
-  assign ram2_do_mux  = (state == 1) ? sram_dout_512_2 : ram_2_do;
   assign ram2_a_mux   = (state == 1) ? sram_addr_512_2 : output_a;
 
   wire         fft_coef_ram_en_mux;
@@ -662,7 +660,7 @@ module stage_top
     .WE   (ram1_we_mux),
     .EN   (ram1_en_mux),
     .Di   (ram1_di_mux),
-    .Do   (ram1_do_mux),
+    .Do   (ram1_do),
     .A    (ram1_a_mux)
   );
 
@@ -671,7 +669,7 @@ module stage_top
     .WE   (WE_512_2),
     .EN   (ram2_en_mux),
     .Di   (sram_din_512_2),
-    .Do   (ram2_do_mux),
+    .Do   (ram_2_do),
     .A    (ram2_a_mux)
   );
 
@@ -714,13 +712,13 @@ module stage_top
     .WE_512_1(WE_512_1),
     .sram_en_512_1(sram_en_512_1),
     .sram_din_512_1(sram_din_512_1),
-    .sram_dout_512_1(sram_dout_512_1),
+    .sram_dout_512_1(ram1_do),
     .sram_addr_512_1(sram_addr_512_1),
 
     .WE_512_2(WE_512_2),
     .sram_en_512_2(sram_en_512_2),
     .sram_din_512_2(sram_din_512_2),
-    .sram_dout_512_2(sram_dout_512_2),
+    .sram_dout_512_2(ram_2_do),
     .sram_addr_512_2(sram_addr_512_2),
 
     .coef_WE_512(coef_WE_512),
