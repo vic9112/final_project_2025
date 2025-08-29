@@ -19,6 +19,8 @@ def complex_to_hex128(c):
 N = 512  # 複數筆數
 INPUT_DEC_FILE = "fft_input_complex_dec.txt"
 INPUT_HEX_FILE = "FFT_in.hex"
+INPUT_DEC_FILE_IFFT = "ifft_input_complex_dec.txt"
+INPUT_HEX_FILE_IFFT = "iFFT_in.hex"
 OUTPUT_DEC_FILE = "fft_output_complex_dec.txt"
 OUTPUT_HEX_FILE = "FFT_out.hex"
 OUTPUT_DEC_FILE_IFFT = "ifft_output_complex_dec.txt"
@@ -29,6 +31,12 @@ data = [complex(random.uniform(-10, 10), random.uniform(-10, 10)) for _ in range
 
 # ===== 輸出原始輸入（十進位與128-bit HEX）=====
 with open(INPUT_DEC_FILE, "w") as f_dec, open(INPUT_HEX_FILE, "w") as f_hex:
+    for c in data:
+        f_dec.write(f"{c.real:.17e}, {c.imag:.17e}\n")
+        f_hex.write(complex_to_hex128(c) + "\n")
+        
+# ===== 輸出原始輸入（十進位與128-bit HEX）=====
+with open(INPUT_DEC_FILE_IFFT, "w") as f_dec, open(INPUT_HEX_FILE_IFFT, "w") as f_hex:
     for c in data:
         f_dec.write(f"{c.real:.17e}, {c.imag:.17e}\n")
         f_hex.write(complex_to_hex128(c) + "\n")
