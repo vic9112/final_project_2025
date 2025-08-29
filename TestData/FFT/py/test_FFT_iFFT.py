@@ -18,11 +18,11 @@ def complex_to_hex128(c):
 # ===== 設定 =====
 N = 512  # 複數筆數
 INPUT_DEC_FILE = "fft_input_complex_dec.txt"
-INPUT_HEX_FILE = "fft_input_complex_hex.txt"
+INPUT_HEX_FILE = "FFT_in.hex"
 OUTPUT_DEC_FILE = "fft_output_complex_dec.txt"
-OUTPUT_HEX_FILE = "fft_output_complex_hex.txt"
+OUTPUT_HEX_FILE = "FFT_out.hex"
 OUTPUT_DEC_FILE_IFFT = "ifft_output_complex_dec.txt"
-OUTPUT_HEX_FILE_IFFT = "ifft_output_complex_hex.txt"
+OUTPUT_HEX_FILE_IFFT = "iFFT_out.hex"
 
 # ===== 產生隨機複數輸入 =====
 data = [complex(random.uniform(-10, 10), random.uniform(-10, 10)) for _ in range(N)]
