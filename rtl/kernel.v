@@ -56,7 +56,7 @@ module kernel
     reg  [(pDATA_WIDTH-1):0] BPE_coef;
     wire [(pDATA_WIDTH-1):0] BPE_aout;
     wire [(pDATA_WIDTH-1):0] BPE_bout;
-    reg  [2:0] mode_state;
+    reg  [2:0] mode_state, mode_state_prv;
     reg  BPE_i_vld;
     wire BPE_i_rdy;
     wire BPE_o_vld;
@@ -123,6 +123,7 @@ wire in_range;
 reg [(pDATA_WIDTH-1):0] BPE_reg;
 reg [(pDATA_WIDTH-1):0] sram_dout_512_1_prv, sram_dout_512_2_prv;
 reg [(pDATA_WIDTH_2x -1) : 0] sram_dout_tmp;
+
 //===========BPE_coef=================//
 reg [(pDATA_WIDTH-1):0] BPE_coef_reg;
 wire [(pDATA_WIDTH-1):0] BPE_coef_fft_ifft;
@@ -130,7 +131,6 @@ wire [(pDATA_WIDTH-1):0] BPE_coef_fft_ifft;
 //===========SRAM_ADDR=================//
 reg [21:0] data_ram_addr_1;
 reg [21:0] data_ram_addr_2;
-
 
 //===========COEF_RAM=================//
 wire [7:0] out8;
@@ -142,38 +142,31 @@ wire [2:0] out3;
 wire [1:0] out2;
 wire out1;
 
-
-
-
 //==================================== FSM ===================================//
 //============= fsm control==============// 
 
-reg [6:0] cnt_vld, nxt_cnt_vld, cnt_vld_prv;
-// state update
+// stage/mode_state update
 always @(posedge clk or negedge rstn) begin
   if (~rstn) begin
     stage <= 0;
-    cnt_vld <= 0;
-    cnt_vld_prv <= 0;
+    mode_state_prv <= 0;
   end else begin
     stage <= stage_next;
-    cnt_vld <= nxt_cnt_vld;
-    cnt_vld_prv <= cnt_vld;
+    mode_state_prv <= (stage != stage_next) ? mode_state : mode_state_prv;
   end
 end
 
-// mode switch : vld == 1 timing
+// mode switch 
 // data flow
     always @(*) begin
         case (stage)
-            // notification for mode switch and store s1 data in sram 512
             IDLE: begin
               BPE_i_vld = 0;
               BPE_o_rdy = 0;
               BPE_ain = 0;
               BPE_bin = 0;
               BPE_coef = 0;
-              mode_state = 0;
+              mode_state = mode_state_prv;
 
               sram_en_512_1 = 0;
               WE_512_1 = 0;
@@ -189,12 +182,11 @@ end
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
 
-              nxt_cnt_vld = 0;
               stage_next = (decode) ? MS_1 : IDLE;
               sw_lst = 0;
             end
-            MS_1: begin // FFT -> current mode (latency == 11)
-              BPE_i_vld = (mode == 2'b11) ? (cnt_vld == 1 || cnt_vld == 8) : (cnt_vld == 1 || cnt_vld == 12);
+            MS_1: begin 
+              BPE_i_vld = (mode_state_prv[2]) ? (counter_1 == 1 || counter_1 == 8) : (counter_1 == 1 || counter_1 == 12);
               BPE_o_rdy = 1;
               BPE_ain = 0;
               BPE_bin = 0;
@@ -214,17 +206,15 @@ end
               coef_sram_addr_512 = 0; 
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
-
-              nxt_cnt_vld = cnt_vld + 1;
               
-              stage_next = (cnt_vld == 23) ? ((mode[1]) ? NTM : S2) : MS_1;  //可改cnt_vld
+              stage_next = (counter_1 == 23) ? ((mode[1]) ? NTM : S2) : MS_1; 
               sw_lst = 0;
             end
             NTM: begin 
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = in_range ? sram_dout_512_1 : 0; // 之後改成0
-              BPE_bin = in_range ? sram_dout_512_1 : 0; // 之後改成0
+              BPE_ain = 0; 
+              BPE_bin = 0; 
               BPE_coef = in_range ? sram_dout_512_1 : 0;
               mode_state = 3'b100;
 
@@ -242,13 +232,11 @@ end
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
 
-              nxt_cnt_vld = 0;
-
               stage_next = counter_2[7] ? MS_2 : NTM;  
               sw_lst = 0;
             end
-            MS_2: begin  // NTM -> NTT/iNTT (latency == 7)
-              BPE_i_vld = (cnt_vld == 1 || cnt_vld == 8);
+            MS_2: begin 
+              BPE_i_vld = (counter_1 == 1 || counter_1 == 8);
               BPE_o_rdy = 1;
               BPE_ain = 0;
               BPE_bin = 0;
@@ -269,8 +257,7 @@ end
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
 
-              nxt_cnt_vld = cnt_vld + 1;
-              stage_next = (cnt_vld == 23) ? S1 : stage; //可改cnt_vld
+              stage_next = (counter_1 == 23) ? S1 : stage; 
               sw_lst = 0;
             end
             S1: begin
@@ -294,9 +281,6 @@ end
               coef_sram_addr_512 = 0; 
               coef_sram_addr_ntt = 13'b0;
               coef_sram_addr_intt = (~phase) ? {4'b0, 1'b0, counter_1[5:0], 2'b0} : coef_sram_addr_intt;
-
-              
-              nxt_cnt_vld = 0;
 
               stage_next = (counter_2[6] ? S2 : S1);
               sw_lst = 0;
@@ -548,8 +532,8 @@ end
                                (counter_2[8] ? IDLE : S10);
               sw_lst = (mode[1] == 0 && counter_2[8]);
             end
-            MS_3: begin  // NTT/iNTT -> MTN (latency == 9)
-              BPE_i_vld = (cnt_vld == 1 || cnt_vld == 10);
+            MS_3: begin  
+              BPE_i_vld = (counter_1 == 1 || counter_1 == 10);
               BPE_o_rdy =1;
               BPE_ain = 0;
               BPE_bin = 0;
@@ -572,15 +556,14 @@ end
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
 
-              nxt_cnt_vld = cnt_vld + 1;
-              stage_next = (cnt_vld == 64) ? MTN : MS_3;
+              stage_next = (counter_1 == 64) ? MTN : MS_3;
               sw_lst = 0;
             end
-            MTN: begin // 待改
+            MTN: begin 
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = in_range ? sram_dout_512_1 : 0;
-              BPE_bin = in_range ? sram_dout_512_1 : 0;
+              BPE_ain = 0;
+              BPE_bin = 0;
               BPE_coef =  in_range ? sram_dout_512_1 : 0;
               mode_state = (mode[0]) ? 3'b110 : 3'b101;
 
@@ -597,8 +580,6 @@ end
               coef_sram_addr_512 = 0; 
               coef_sram_addr_ntt = 0;
               coef_sram_addr_intt = 0;
-
-              nxt_cnt_vld = 0;
 
               stage_next = counter_2[7] ? IDLE : MTN; 
               sw_lst = (mode[1] && counter_2[7]) ? 1 : 0;
@@ -619,21 +600,23 @@ end
 
 assign phase_next = ~phase;
 
-
-
 //==================================== counter_1, counter_2===================================//
 
-///////////////////////////////////////////////////////////////////////////////////////
-// 當切state時，counter會同步reset，在切換完的第一個Cycle傳給外面的COEF_RAM這個Stage     //
-// 第一個要用的coef的位址，並在下半週期傳BPE_in_a需要的Data位址給外面，下個Cycle後即可恢復 //
-// 正常，上半週期給當個週期要用的BPE_in_b需要的Data位址，下半週期給BPE_in_a的位址，僅有    //
-// BPE_in_a的data需要先存在一個Reg裡，BPE_in_b可以直接接到sram_do。                     //
-////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// When switching states, the counter is synchronously reset. On the first cycle after the switch, //
+// the address of the first coefficient to be used is sent to the outside COEF_RAM stage.          // 
+// During the second half of the cycle, the data address needed by BPE_in_a is sent to the outside.//
+// From the next cycle onward, normal operation resumes: in the first half of the cycle, the data  //
+// address for BPE_in_b is provided, and in the second half, the address for BPE_in_a is provided. //
+// Only the data for BPE_in_a needs to be stored in a register in advance; BPE_in_b can directly   //
+// take the value from sram_do.                                                                    //
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // counter_reset
 assign counter_reset = (stage_next != stage);
 
-// counter_1 
+// counter
 always @(posedge clk or negedge rstn) begin
   if (~rstn) begin
     counter_1 <= 0;
@@ -646,66 +629,10 @@ always @(posedge clk or negedge rstn) begin
   end
 end
 
-
-// counter_1_next 
 always @(*) begin
-  case (stage)
-    NTM: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S1: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S2: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S3: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S4: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S5: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S6: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S7: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S8: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S9: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    S10: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    MTN: begin
-      counter_1_next = (BPE_i_rdy) ? counter_1 + 1 : counter_1;
-      counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
-    end
-    default: begin
-      counter_1_next = 0;
-      counter_2_next = 0;
-    end
-  endcase
+  counter_1_next = (stage == MS_1 || stage == MS_2 || stage == MS_3) ? counter_1 + 1 : (BPE_i_rdy) ? counter_1 + 1 : counter_1;
+  counter_2_next = (BPE_o_vld & BPE_o_rdy) ? counter_2 + 1 : counter_2;
 end
-
-
 
 
 //==================================== BPE_i_vld ===================================//
@@ -781,13 +708,10 @@ always @(*) begin
 
     end
     default: begin
-      //BPE_coef = 0;
       BPE_coef_reg = 0;
     end    
   endcase
 end
-
-
 
 //================================ sram_512_12 ===================================//
 //data_ram_addr
@@ -856,9 +780,9 @@ always @(*) begin
                                     {2'b0, counter_2[7:0], 1'b1, 2'b0, counter_2[7:0], 1'b0};
     end
     MS_3: begin // 2 -> 1
-      data_ram_addr_1 = (mode[1]) ? {{4'b0, cnt_vld_prv[5:0], 1'b1}, {4'b0, cnt_vld_prv[5:0], 1'b0}}:
+      data_ram_addr_1 = (mode[1]) ? {{4'b0, counter_1_prv[5:0], 1'b1}, {4'b0, counter_1_prv[5:0], 1'b0}}:
                                     0;
-      data_ram_addr_2 = (mode[1]) ? {{4'b0, cnt_vld[5:0], 1'b1}, {4'b0, cnt_vld[5:0], 1'b0}} :
+      data_ram_addr_2 = (mode[1]) ? {{4'b0, counter_1[5:0], 1'b1}, {4'b0, counter_1[5:0], 1'b0}} :
                                     0;
     end
     MTN:begin // 1: BPE_output  2: BPE_input
@@ -871,9 +795,6 @@ always @(*) begin
     end
   endcase
 end
-
-//================================data reorder===================================//
-
 
 //================================ coef_ram ===================================//
 
