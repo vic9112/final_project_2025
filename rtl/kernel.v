@@ -81,11 +81,6 @@ module kernel
 //===============PHASE=============== //
 reg phase;
 wire phase_next;
-//============BPE MODE=============== //
-localparam MODE_FFT  = 2'b00;
-localparam MODE_IFFT = 2'b01;
-localparam MODE_NTT  = 2'b10;
-localparam MODE_INTT = 2'b11;
 //============FSM STATE=============== //
 
 localparam IDLE = 4'b0000;  // 0
@@ -111,14 +106,14 @@ reg [3:0] stage_next;
 //===========counter_1=================//
 
 wire counter_reset;
-reg [15:0] counter_1;
-reg [15:0] counter_1_next;
-reg [15:0] counter_1_prv;
+reg [9:0] counter_1;
+reg [9:0] counter_1_next;
+reg [9:0] counter_1_prv;
 
 //===========counter_2=================//
 
-reg [15:0] counter_2;
-reg [15:0] counter_2_next;
+reg [9:0] counter_2;
+reg [9:0] counter_2_next;
 
 
 //===========BPE_i_vld=================//
@@ -127,7 +122,7 @@ wire in_range;
 //===========BPE_ain=================//
 reg [(pDATA_WIDTH-1):0] BPE_reg;
 reg [(pDATA_WIDTH-1):0] sram_dout_512_1_prv, sram_dout_512_2_prv;
-
+reg [(pDATA_WIDTH_2x -1) : 0] sram_dout_tmp;
 //===========BPE_coef=================//
 reg [(pDATA_WIDTH-1):0] BPE_coef_reg;
 wire [(pDATA_WIDTH-1):0] BPE_coef_fft_ifft;
@@ -148,24 +143,22 @@ wire [1:0] out2;
 wire out1;
 
 
-//===========DATA PERMUTE=================//
-reg [(pDATA_WIDTH-1):0] sram_dout_reorder;
-reg [(pDATA_WIDTH-1):0] BPE_ain_tmp;
-reg [(pDATA_WIDTH-1):0] BPE_bin_tmp;
 
 
 //==================================== FSM ===================================//
 //============= fsm control==============// 
 
-reg [4:0] cnt_vld, nxt_cnt_vld;
+reg [6:0] cnt_vld, nxt_cnt_vld, cnt_vld_prv;
 // state update
 always @(posedge clk or negedge rstn) begin
   if (~rstn) begin
     stage <= 0;
     cnt_vld <= 0;
+    cnt_vld_prv <= 0;
   end else begin
     stage <= stage_next;
     cnt_vld <= nxt_cnt_vld;
+    cnt_vld_prv <= cnt_vld;
   end
 end
 
@@ -201,7 +194,7 @@ end
               sw_lst = 0;
             end
             MS_1: begin // FFT -> current mode (latency == 11)
-              BPE_i_vld = (cnt_vld == 1 || cnt_vld == 12);
+              BPE_i_vld = (mode == 2'b11) ? (cnt_vld == 1 || cnt_vld == 8) : (cnt_vld == 1 || cnt_vld == 12);
               BPE_o_rdy = 1;
               BPE_ain = 0;
               BPE_bin = 0;
@@ -493,7 +486,7 @@ end
 
               coef_sram_addr_512 = (mode[0]) ? {8'b0, 1'b1, out2[1:0], 2'b0} : {6'b0, 1'b1, counter_1[7:2], 2'b0};
               coef_sram_addr_ntt = {6'b0, 1'b1, counter_1[5:2], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? S9 : S8) :
                                (counter_2[8] ? S9 : S8);
@@ -521,7 +514,7 @@ end
 
               coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b1, out1, 2'b0} : {5'b0, 1'b1, counter_1[7:1], 2'b0};
               coef_sram_addr_ntt = {5'b0, 1'b1, counter_1[5:1], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? S10 : S9) :
                                (counter_2[8] ? S10 : S9);
@@ -549,7 +542,7 @@ end
 
               coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b0, 1'b1, 2'b0} : {5'b0, 1'b1, counter_1[7:0], 2'b0};
               coef_sram_addr_ntt = {4'b0, 1'b1, counter_1[5:0], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
 
               stage_next = (mode[1]) ? (counter_2[6] ? MS_3 : S10) :
                                (counter_2[8] ? IDLE : S10);
@@ -563,14 +556,16 @@ end
               BPE_coef = 0;
               mode_state = (mode[0]) ? 3'b110 : 3'b101;
 
-              sram_en_512_1 = 0;
-              WE_512_1 = 0;
-              sram_addr_512_1 = 0;
-              sram_din_512_1 = 0;
-   
-              sram_en_512_2 = 0;
+              sram_en_512_1 = 1;
+              WE_512_1 = 4'b1111;
+              sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
+              sram_din_512_1 = (!phase) ? sram_dout_tmp[255:128] : sram_dout_tmp[127:0];
+              sram_dout_tmp = (phase) ? {sram_dout_512_2[127:112], sram_dout_512_2_prv[127:112],  sram_dout_512_2[111:96], sram_dout_512_2_prv[111:96], sram_dout_512_2[95:80], sram_dout_512_2_prv[95:80],  sram_dout_512_2[79:64], sram_dout_512_2_prv[79:64],
+                sram_dout_512_2[63:48], sram_dout_512_2_prv[63:48],  sram_dout_512_2[47:32], sram_dout_512_2_prv[47:32], sram_dout_512_2[31:16], sram_dout_512_2_prv[31:16],  sram_dout_512_2[15:0], sram_dout_512_2_prv[15:0]}: sram_dout_tmp;
+
+              sram_en_512_2 = 1;
               WE_512_2 = 0;
-              sram_addr_512_2 = 0;
+              sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = 0;
 
               coef_sram_addr_512 = 0; 
@@ -578,26 +573,26 @@ end
               coef_sram_addr_intt = 0;
 
               nxt_cnt_vld = cnt_vld + 1;
-              stage_next = (cnt_vld == 23) ? MTN : MS_3;
+              stage_next = (cnt_vld == 64) ? MTN : MS_3;
               sw_lst = 0;
             end
-            MTN: begin
+            MTN: begin // 待改
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = in_range ? sram_dout_512_2 : 0; // 之後改成0
-              BPE_bin = in_range ? sram_dout_512_2 : 0; // 之後改成0
-              BPE_coef = in_range ? sram_dout_512_2 : 0;
+              BPE_ain = in_range ? sram_dout_512_1 : 0;
+              BPE_bin = in_range ? sram_dout_512_1 : 0;
+              BPE_coef =  in_range ? sram_dout_512_1 : 0;
               mode_state = (mode[0]) ? 3'b110 : 3'b101;
 
               sram_en_512_1 = 1;
-              WE_512_1 = {4{BPE_o_vld && BPE_o_rdy}};
+              WE_512_1 = 0;
               sram_addr_512_1 = {data_ram_addr_1[10:0], 2'b0};
-              sram_din_512_1 = BPE_aout;
+              sram_din_512_1 = 0;
    
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = {4{BPE_o_vld && BPE_o_rdy}};
               sram_addr_512_2 = {data_ram_addr_2[10:0], 2'b0};
-              sram_din_512_2 = 0;
+              sram_din_512_2 = BPE_aout;
 
               coef_sram_addr_512 = 0; 
               coef_sram_addr_ntt = 0;
@@ -717,8 +712,8 @@ end
 
 // mode[1] == 1 --> NTT/INTT, mode[1] == 0 --> FFT/IFFT
 
-assign in_range =  (mode[1]) ? ((stage == NTM || stage == MTN) ?  ~(|counter_1[15:7]) : ((|counter_1[5:0]) & ~(|counter_1[15:6])) | (~(|counter_1[5:0]) & counter_1[6] & ~(|counter_1[15:7]))) :
-                            ((|counter_1[7:0]) & ~(|counter_1[15:8])) | (~(|counter_1[7:0]) & counter_1[8] & ~(|counter_1[15:9])) ; // 1~256
+assign in_range =  (mode[1]) ? ((stage == NTM || stage == MTN) ?  ~(|counter_1[9:7]) : ((|counter_1[5:0]) & ~(|counter_1[9:6])) | (~(|counter_1[5:0]) & counter_1[6] & ~(|counter_1[9:7]))) :
+                            ((|counter_1[7:0]) & ~(|counter_1[9:8])) | (~(|counter_1[7:0]) & counter_1[8] & ~(counter_1[9])) ; // 1~256
 
                                                 
 always @(posedge clk_2x) begin
@@ -860,9 +855,15 @@ always @(*) begin
       data_ram_addr_2 = (mode[1]) ? {{4'b0, counter_2[5:0], 1'b1}, {4'b0, counter_2[5:0], 1'b0}} :
                                     {2'b0, counter_2[7:0], 1'b1, 2'b0, counter_2[7:0], 1'b0};
     end
+    MS_3: begin // 2 -> 1
+      data_ram_addr_1 = (mode[1]) ? {{4'b0, cnt_vld_prv[5:0], 1'b1}, {4'b0, cnt_vld_prv[5:0], 1'b0}}:
+                                    0;
+      data_ram_addr_2 = (mode[1]) ? {{4'b0, cnt_vld[5:0], 1'b1}, {4'b0, cnt_vld[5:0], 1'b0}} :
+                                    0;
+    end
     MTN:begin // 1: BPE_output  2: BPE_input
-      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b0000, counter_2[6:0]} : 0;
-      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b0000, counter_1[6:0]} : 0;
+      data_ram_addr_1 = (mode[1]) ? {11'b0, 4'b0000, counter_1[6:0]} : 0;
+      data_ram_addr_2 = (mode[1]) ? {11'b0, 4'b0000, counter_2[6:0]} : 0;
     end
     default: begin
       data_ram_addr_1 = 0;
@@ -900,8 +901,6 @@ bit_reverse #(.WIDTH(4)) b4 (.din(counter_1[3:0]),  .dout(out4));
 bit_reverse #(.WIDTH(3)) b3 (.din(counter_1[2:0]),  .dout(out3));
 bit_reverse #(.WIDTH(2)) b2 (.din(counter_1[1:0]),  .dout(out2));
 bit_reverse #(.WIDTH(1)) b1 (.din(counter_1[0]),  .dout(out1));
-
-
 
 endmodule
 
