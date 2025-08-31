@@ -53,6 +53,9 @@ module kernel
 //============BPE============//
     reg  [(pDATA_WIDTH-1):0] BPE_ain;
     reg  [(pDATA_WIDTH-1):0] BPE_bin;
+    reg  [(pDATA_WIDTH-1):0] BPE_ain_tmp;
+    reg  [(pDATA_WIDTH-1):0] BPE_bin_tmp;
+
     reg  [(pDATA_WIDTH-1):0] BPE_coef;
     wire [(pDATA_WIDTH-1):0] BPE_aout;
     wire [(pDATA_WIDTH-1):0] BPE_bout;
@@ -122,10 +125,10 @@ wire in_range;
 //===========BPE_ain=================//
 reg [(pDATA_WIDTH-1):0] BPE_reg;
 reg [(pDATA_WIDTH-1):0] sram_dout_512_1_prv, sram_dout_512_2_prv;
-reg [(pDATA_WIDTH_2x -1) : 0] sram_dout_tmp;
+reg [(pDATA_WIDTH_2x -1) : 0] sram_dout_tmp, sram_dout_tmp_prv;
 
 //===========BPE_coef=================//
-reg [(pDATA_WIDTH-1):0] BPE_coef_reg;
+reg [(pDATA_WIDTH-1):0] BPE_coef_reg, BPE_coef_reg_prv;
 wire [(pDATA_WIDTH-1):0] BPE_coef_fft_ifft;
 
 //===========SRAM_ADDR=================//
@@ -156,6 +159,16 @@ always @(posedge clk or negedge rstn) begin
   end
 end
 
+always @(posedge clk_2x or negedge rstn) begin
+  if (!rstn) begin
+    BPE_ain_tmp <= 128'b0;
+    BPE_bin_tmp <= 128'b0;
+  end else begin
+    BPE_ain_tmp <=  BPE_ain ;
+    BPE_bin_tmp <=  BPE_bin ;
+  end
+end
+
 // mode switch 
 // data flow
     always @(*) begin
@@ -163,24 +176,25 @@ end
             IDLE: begin
               BPE_i_vld = 0;
               BPE_o_rdy = 0;
-              BPE_ain = 0;
-              BPE_bin = 0;
-              BPE_coef = 0;
+              BPE_ain = 128'b0;
+              BPE_bin = 128'b0;
+              BPE_coef = 128'b0;
               mode_state = mode_state_prv;
 
               sram_en_512_1 = 0;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = 0;
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 0;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = 0;
               sram_din_512_2 = 0;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
 
               stage_next = (decode) ? MS_1 : IDLE;
               sw_lst = 0;
@@ -188,24 +202,25 @@ end
             MS_1: begin 
               BPE_i_vld = (mode_state_prv[2]) ? (counter_1 == 1 || counter_1 == 8) : (counter_1 == 1 || counter_1 == 12);
               BPE_o_rdy = 1;
-              BPE_ain = 0;
-              BPE_bin = 0;
-              BPE_coef = 0;
+              BPE_ain = 128'b0;
+              BPE_bin = 128'b0;
+              BPE_coef = 128'b0;
               mode_state = (mode[1]) ? 3'b100 : {1'b0, mode[1:0]};
 
               sram_en_512_1 = 0;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = 0;
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 0;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = 0;
               sram_din_512_2 = 0;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
               
               stage_next = (counter_1 == 23) ? ((mode[1]) ? NTM : S2) : MS_1; 
               sw_lst = 0;
@@ -213,24 +228,25 @@ end
             NTM: begin 
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = 0; 
-              BPE_bin = 0; 
+              BPE_ain = 128'b0; 
+              BPE_bin = 128'b0; 
               BPE_coef = in_range ? sram_dout_512_1 : 0;
               mode_state = 3'b100;
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = {data_ram_addr_1[10:0], 2'b0};
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 1;
               WE_512_2 = {4{BPE_o_vld & BPE_o_rdy}};
               sram_addr_512_2 = {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = BPE_aout;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
 
               stage_next = counter_2[7] ? MS_2 : NTM;  
               sw_lst = 0;
@@ -238,24 +254,25 @@ end
             MS_2: begin 
               BPE_i_vld = (counter_1 == 1 || counter_1 == 8);
               BPE_o_rdy = 1;
-              BPE_ain = 0;
-              BPE_bin = 0;
-              BPE_coef = 0;
+              BPE_ain = 128'b0;
+              BPE_bin = 128'b0;
+              BPE_coef = 128'b0;
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 0;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = 0;
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 0;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = 0;
               sram_din_512_2 = 0;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
 
               stage_next = (counter_1 == 23) ? S1 : stage; 
               sw_lst = 0;
@@ -274,13 +291,14 @@ end
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
    
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = 0;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
+              coef_sram_addr_512 = 128'b0; 
               coef_sram_addr_ntt = 13'b0;
-              coef_sram_addr_intt = (~phase) ? {4'b0, 1'b0, counter_1[5:0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 1'b0, counter_1[5:0], 2'b0};
 
               stage_next = (counter_2[6] ? S2 : S1);
               sw_lst = 0;
@@ -295,7 +313,7 @@ end
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
 
@@ -304,10 +322,11 @@ end
               WE_512_2 = {4{BPE_o_rdy & BPE_o_vld}};
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {2'b0, 1'b1, out8[7:0], 2'b0} : {10'b0 ,1'b1, 2'b0};
               coef_sram_addr_ntt = 13'b0;
-              coef_sram_addr_intt = (~phase) ? {4'b0, 2'b10, counter_1[4:0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 2'b10, counter_1[4:0], 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S3 : S2) :
                                (counter_2[8] ? S3 : S2);
@@ -328,13 +347,14 @@ end
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
 
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {3'b0, 1'b1, out7[6:0], 2'b0} : {9'b0, 1'b1, counter_1[7], 2'b0};
               coef_sram_addr_ntt = 13'b0;
-              coef_sram_addr_intt = (~phase) ? {4'b0, 3'b110, counter_1[3:0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 3'b110, counter_1[3:0], 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S4 : S3) :
                                (counter_2[8] ? S4 : S3); 
@@ -350,7 +370,7 @@ end
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
    
@@ -358,10 +378,11 @@ end
               WE_512_2 = {4{BPE_o_rdy & BPE_o_vld}};
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {4'b0, 1'b1, out6[5:0], 2'b0} : {8'b0, 1'b1, counter_1[7:6], 2'b0};
               coef_sram_addr_ntt = {10'b0, 1'b1, 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 4'b1110, counter_1[2:0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 4'b1110, counter_1[2:0], 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S5 : S4) :
                                (counter_2[8] ? S5 : S4);
@@ -382,13 +403,14 @@ end
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
 
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {5'b0, 1'b1, out5[4:0], 2'b0} : {7'b0, 1'b1, counter_1[7:5], 2'b0};
               coef_sram_addr_ntt = {9'b0, 1'b1, counter_1[5], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 5'b11110, counter_1[1:0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 5'b11110, counter_1[1:0], 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S6 : S5) :
                                (counter_2[8] ? S6 : S5);
@@ -404,7 +426,7 @@ end
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
    
@@ -412,10 +434,11 @@ end
               WE_512_2 = {4{BPE_o_rdy & BPE_o_vld}};
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {6'b0, 1'b1, out4[3:0], 2'b0} : {6'b0, 1'b1, counter_1[7:4], 2'b0};
               coef_sram_addr_ntt = {8'b0, 1'b1, counter_1[5:4], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 6'b111110, counter_1[0], 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 6'b111110, counter_1[0], 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S7 : S6) :
                                (counter_2[8] ? S7 : S6);
@@ -436,13 +459,14 @@ end
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
 
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {7'b0, 1'b1, out3[2:0], 2'b0} : {5'b0, 1'b1, counter_1[7:3], 2'b0};
               coef_sram_addr_ntt = {7'b0, 1'b1, counter_1[5:3], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b1111110, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 7'b1111110, 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S8 : S7) :
                                (counter_2[8] ? S8 : S7);
@@ -451,26 +475,27 @@ end
             S8: begin
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_1[63:0], sram_dout_512_1_prv[63:0]} : BPE_ain): BPE_reg;
-              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_1[127:64], sram_dout_512_1_prv[127:64]} : BPE_bin) : sram_dout_512_1;
+              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_1[63:0], sram_dout_512_1_prv[63:0]} : BPE_ain_tmp): BPE_reg;
+              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_1[127:64], sram_dout_512_1_prv[127:64]} : BPE_bin_tmp) : sram_dout_512_1;
 
               BPE_coef = in_range ? ((mode[1]) ?  ((mode[0]) ? {2{coef_sram_dout_intt[63:0]}} : BPE_coef_reg) : 
                               BPE_coef_fft_ifft) : 0;
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 1;
               WE_512_2 = {4{BPE_o_rdy & BPE_o_vld}};
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {8'b0, 1'b1, out2[1:0], 2'b0} : {6'b0, 1'b1, counter_1[7:2], 2'b0};
               coef_sram_addr_ntt = {6'b0, 1'b1, counter_1[5:2], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 7'b1111111, 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S9 : S8) :
                                (counter_2[8] ? S9 : S8);
@@ -479,8 +504,8 @@ end
             S9: begin
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_2[95:64], sram_dout_512_2_prv[95:64], sram_dout_512_2[31:0], sram_dout_512_2_prv[31:0]} : BPE_ain): BPE_reg;
-              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_2[127:96], sram_dout_512_2_prv[127:96], sram_dout_512_2[63:32], sram_dout_512_2_prv[63:32]} : BPE_bin) : sram_dout_512_2;
+              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_2[95:64], sram_dout_512_2_prv[95:64], sram_dout_512_2[31:0], sram_dout_512_2_prv[31:0]} : BPE_ain_tmp): BPE_reg;
+              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_2[127:96], sram_dout_512_2_prv[127:96], sram_dout_512_2[63:32], sram_dout_512_2_prv[63:32]} : BPE_bin_tmp) : sram_dout_512_2;
 
               BPE_coef = in_range ? ((mode[1]) ?  ((mode[0]) ? {4{coef_sram_dout_intt[95:64]}} : BPE_coef_reg) : 
                               BPE_coef_fft_ifft) : 0;
@@ -492,13 +517,14 @@ end
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
    
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
-
+              sram_dout_tmp = 256'b0;
+              
               coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b1, out1, 2'b0} : {5'b0, 1'b1, counter_1[7:1], 2'b0};
               coef_sram_addr_ntt = {5'b0, 1'b1, counter_1[5:1], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 7'b1111111, 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? S10 : S9) :
                                (counter_2[8] ? S10 : S9);
@@ -507,15 +533,15 @@ end
             S10: begin
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_1[111:96], sram_dout_512_1_prv[111:96],  sram_dout_512_1[79:64], sram_dout_512_1_prv[79:64], sram_dout_512_1[47:32], sram_dout_512_1_prv[47:32],  sram_dout_512_1[15:0], sram_dout_512_1_prv[15:0]} : BPE_ain): BPE_reg;
-              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_1[127:112], sram_dout_512_1_prv[127:112],  sram_dout_512_1[95:80], sram_dout_512_1_prv[95:80], sram_dout_512_1[63:48], sram_dout_512_1_prv[63:48],  sram_dout_512_1[31:16], sram_dout_512_1_prv[31:16]} : BPE_bin) : sram_dout_512_1;
+              BPE_ain = (mode[1]) ? ((phase) ? {sram_dout_512_1[111:96], sram_dout_512_1_prv[111:96],  sram_dout_512_1[79:64], sram_dout_512_1_prv[79:64], sram_dout_512_1[47:32], sram_dout_512_1_prv[47:32],  sram_dout_512_1[15:0], sram_dout_512_1_prv[15:0]} : BPE_ain_tmp): BPE_reg;
+              BPE_bin = (mode[1]) ? ((phase) ? {sram_dout_512_1[127:112], sram_dout_512_1_prv[127:112],  sram_dout_512_1[95:80], sram_dout_512_1_prv[95:80], sram_dout_512_1[63:48], sram_dout_512_1_prv[63:48],  sram_dout_512_1[31:16], sram_dout_512_1_prv[31:16]} : BPE_bin_tmp) : sram_dout_512_1;
 
               BPE_coef = in_range ? ((mode[1]) ?  ((mode[0]) ? {8{coef_sram_dout_intt[111:96]}}  : BPE_coef_reg) : 
                               BPE_coef_fft_ifft) :0;
               mode_state = {1'b0, mode[1:0]};
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
               sram_din_512_1 = (~phase) ? BPE_bout : BPE_aout;
    
@@ -523,10 +549,11 @@ end
               WE_512_2 = {4{BPE_o_rdy & BPE_o_vld}};
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = (~phase) ? BPE_bout : BPE_aout;
+              sram_dout_tmp = 256'b0;
 
               coef_sram_addr_512 = (mode[0]) ? {9'b0, 1'b0, 1'b1, 2'b0} : {5'b0, 1'b1, counter_1[7:0], 2'b0};
               coef_sram_addr_ntt = {4'b0, 1'b1, counter_1[5:0], 2'b0};
-              coef_sram_addr_intt = (~phase) ? {4'b0, 7'b11111111, 2'b0} : coef_sram_addr_intt;
+              coef_sram_addr_intt = {4'b0, 7'b1111111, 2'b0};
 
               stage_next = (mode[1]) ? (counter_2[6] ? MS_3 : S10) :
                                (counter_2[8] ? IDLE : S10);
@@ -535,9 +562,9 @@ end
             MS_3: begin  
               BPE_i_vld = (counter_1 == 1 || counter_1 == 10);
               BPE_o_rdy =1;
-              BPE_ain = 0;
-              BPE_bin = 0;
-              BPE_coef = 0;
+              BPE_ain = 128'b0;
+              BPE_bin = 128'b0;
+              BPE_coef = 128'b0;
               mode_state = (mode[0]) ? 3'b110 : 3'b101;
 
               sram_en_512_1 = 1;
@@ -545,16 +572,16 @@ end
               sram_addr_512_1 = (~phase) ? {data_ram_addr_1[21:11], 2'b0} : {data_ram_addr_1[10:0], 2'b0};
               sram_din_512_1 = (!phase) ? sram_dout_tmp[255:128] : sram_dout_tmp[127:0];
               sram_dout_tmp = (phase) ? {sram_dout_512_2[127:112], sram_dout_512_2_prv[127:112],  sram_dout_512_2[111:96], sram_dout_512_2_prv[111:96], sram_dout_512_2[95:80], sram_dout_512_2_prv[95:80],  sram_dout_512_2[79:64], sram_dout_512_2_prv[79:64],
-                sram_dout_512_2[63:48], sram_dout_512_2_prv[63:48],  sram_dout_512_2[47:32], sram_dout_512_2_prv[47:32], sram_dout_512_2[31:16], sram_dout_512_2_prv[31:16],  sram_dout_512_2[15:0], sram_dout_512_2_prv[15:0]}: sram_dout_tmp;
+                sram_dout_512_2[63:48], sram_dout_512_2_prv[63:48],  sram_dout_512_2[47:32], sram_dout_512_2_prv[47:32], sram_dout_512_2[31:16], sram_dout_512_2_prv[31:16],  sram_dout_512_2[15:0], sram_dout_512_2_prv[15:0]}: sram_dout_tmp_prv;
 
               sram_en_512_2 = 1;
-              WE_512_2 = 0;
+              WE_512_2 = 4'b0;
               sram_addr_512_2 = (~phase) ? {data_ram_addr_2[21:11], 2'b0} : {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = 0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
 
               stage_next = (counter_1 == 64) ? MTN : MS_3;
               sw_lst = 0;
@@ -562,24 +589,25 @@ end
             MTN: begin 
               BPE_i_vld = in_range;
               BPE_o_rdy = 1;
-              BPE_ain = 0;
-              BPE_bin = 0;
+              BPE_ain = 128'b0;
+              BPE_bin = 128'b0;
               BPE_coef =  in_range ? sram_dout_512_1 : 0;
               mode_state = (mode[0]) ? 3'b110 : 3'b101;
 
               sram_en_512_1 = 1;
-              WE_512_1 = 0;
+              WE_512_1 = 4'b0;
               sram_addr_512_1 = {data_ram_addr_1[10:0], 2'b0};
-              sram_din_512_1 = 0;
+              sram_din_512_1 = 128'b0;
    
               sram_en_512_2 = 1;
               WE_512_2 = {4{BPE_o_vld && BPE_o_rdy}};
               sram_addr_512_2 = {data_ram_addr_2[10:0], 2'b0};
               sram_din_512_2 = BPE_aout;
+              sram_dout_tmp = 256'b0;
 
-              coef_sram_addr_512 = 0; 
-              coef_sram_addr_ntt = 0;
-              coef_sram_addr_intt = 0;
+              coef_sram_addr_512 = 128'b0; 
+              coef_sram_addr_ntt = 128'b0;
+              coef_sram_addr_intt = 128'b0;
 
               stage_next = counter_2[7] ? IDLE : MTN; 
               sw_lst = (mode[1] && counter_2[7]) ? 1 : 0;
@@ -643,67 +671,76 @@ assign in_range =  (mode[1]) ? ((stage == NTM || stage == MTN) ?  ~(|counter_1[9
                             ((|counter_1[7:0]) & ~(|counter_1[9:8])) | (~(|counter_1[7:0]) & counter_1[8] & ~(counter_1[9])) ; // 1~256
 
                                                 
-always @(posedge clk_2x) begin
-  BPE_reg <= BPE_bin;
-  sram_dout_512_1_prv <= sram_dout_512_1;
-  sram_dout_512_2_prv <= sram_dout_512_2;
+always @(posedge clk_2x or negedge rstn) begin
+  if(!rstn) begin
+    BPE_reg <= 128'b0;
+    sram_dout_512_1_prv <= 128'b0;
+    sram_dout_512_2_prv <= 128'b0;
+    sram_dout_tmp_prv <= 256'b0;
+  end else begin
+    BPE_reg <= BPE_bin;
+    sram_dout_512_1_prv <= sram_dout_512_1;
+    sram_dout_512_2_prv <= sram_dout_512_2;
+    sram_dout_tmp_prv <= sram_dout_tmp;
+  end
 end
 
 //==================================== BPE_coef ===================================//
 
 assign BPE_coef_fft_ifft = (phase) ? ((mode[0]) ? {coef_sram_dout_512[127:64], ~coef_sram_dout_512[63], coef_sram_dout_512[62:0]} : coef_sram_dout_512) : BPE_coef_fft_ifft; 
 
+
 always @(*) begin
   case (stage)
     S1: begin
-      BPE_coef_reg = phase ? {8{coef_sram_dout_ntt[31:16]}} : BPE_coef_reg;
+      BPE_coef_reg = {8{coef_sram_dout_ntt[31:16]}};
     end
     S2: begin                     
-      BPE_coef_reg = phase ? (counter_1_prv[5]) ? {8{coef_sram_dout_ntt[63:48]}} : {8{coef_sram_dout_ntt[47:32]}} : BPE_coef_reg;
+      BPE_coef_reg = (counter_1_prv[5]) ? {8{coef_sram_dout_ntt[63:48]}} : {8{coef_sram_dout_ntt[47:32]}};
     end
     S3: begin
-      BPE_coef_reg = phase ? (counter_1_prv[5]) ? ((counter_1_prv[4]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) : 
-                                      ((counter_1_prv[4]) ? {8{coef_sram_dout_ntt[95:80]}} : {8{coef_sram_dout_ntt[79:64]}}) : BPE_coef_reg;
+      BPE_coef_reg = (counter_1_prv[5]) ? ((counter_1_prv[4]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) : 
+                                      ((counter_1_prv[4]) ? {8{coef_sram_dout_ntt[95:80]}} : {8{coef_sram_dout_ntt[79:64]}});
     end
     S4: begin
-      BPE_coef_reg = phase ? (counter_1_prv[5]) ? ((counter_1_prv[4]) ? ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
+      BPE_coef_reg = (counter_1_prv[5]) ? ((counter_1_prv[4]) ? ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
                                                             ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[95:80]}} : {8{coef_sram_dout_ntt[79:64]}}))   :
                                       ((counter_1_prv[4]) ? ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[63:48]}} : {8{coef_sram_dout_ntt[47:32]}}) :
-                                                            ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})) : BPE_coef_reg; 
+                                                            ((counter_1_prv[3]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})); 
     end                                                
     S5: begin
-      BPE_coef_reg = phase ? ((counter_1_prv[4]) ? ((counter_1_prv[3]) ? ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
+      BPE_coef_reg = ((counter_1_prv[4]) ? ((counter_1_prv[3]) ? ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
                                                                 ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[95:80]}}   : {8{coef_sram_dout_ntt[79:64]}}))   :
                                           ((counter_1_prv[3]) ? ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[63:48]}}   : {8{coef_sram_dout_ntt[47:32]}}) :
-                                                                ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[31:16]}}   : {8{coef_sram_dout_ntt[15:0]}}))) : BPE_coef_reg;   
+                                                                ((counter_1_prv[2]) ? {8{coef_sram_dout_ntt[31:16]}}   : {8{coef_sram_dout_ntt[15:0]}})));   
     end
     S6: begin
-      BPE_coef_reg = phase ?(counter_1_prv[3]) ? ((counter_1_prv[2]) ? ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
+      BPE_coef_reg = (counter_1_prv[3]) ? ((counter_1_prv[2]) ? ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
                                                             ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[95:80]}} : {8{coef_sram_dout_ntt[79:64]}}))   :
                                       ((counter_1_prv[2]) ? ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[63:48]}} : {8{coef_sram_dout_ntt[47:32]}}) :
-                                                            ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})) : BPE_coef_reg; 
+                                                            ((counter_1_prv[1]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})); 
     end
     S7: begin
-      BPE_coef_reg = phase ?(counter_1_prv[2]) ? ((counter_1_prv[1]) ? ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
+      BPE_coef_reg = (counter_1_prv[2]) ? ((counter_1_prv[1]) ? ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[127:112]}} : {8{coef_sram_dout_ntt[111:96]}}) :
                                                                        ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[95:80]}} : {8{coef_sram_dout_ntt[79:64]}}))   :
                                                  ((counter_1_prv[1]) ? ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[63:48]}} : {8{coef_sram_dout_ntt[47:32]}}) :
-                                                                       ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})) : BPE_coef_reg; 
+                                                                       ((counter_1_prv[0]) ? {8{coef_sram_dout_ntt[31:16]}} : {8{coef_sram_dout_ntt[15:0]}})); 
     end
     S8: begin
-      BPE_coef_reg = phase ? (counter_1_prv[1] ? (counter_1_prv[0] ? {{4{coef_sram_dout_ntt[127:112]}}, {4{coef_sram_dout_ntt[111:96]}}}: 
+      BPE_coef_reg = (counter_1_prv[1] ? (counter_1_prv[0] ? {{4{coef_sram_dout_ntt[127:112]}}, {4{coef_sram_dout_ntt[111:96]}}}: 
                                                                      {{4{coef_sram_dout_ntt[95:80]}}, {4{coef_sram_dout_ntt[79:64]}}}): 
                                                  (counter_1_prv[0] ? {{4{coef_sram_dout_ntt[63:48]}}, {4{coef_sram_dout_ntt[47:32]}}} :
-                                                                     {{4{coef_sram_dout_ntt[31:16]}}, {4{coef_sram_dout_ntt[15:0]}}})) : BPE_coef_reg;
+                                                                     {{4{coef_sram_dout_ntt[31:16]}}, {4{coef_sram_dout_ntt[15:0]}}}));
 
     end
     S9: begin
-     BPE_coef_reg = phase ? (counter_1_prv[0] ? {{2{coef_sram_dout_ntt[127:112]}}, {2{coef_sram_dout_ntt[111:96]}}, {2{coef_sram_dout_ntt[95:80]}}, {2{coef_sram_dout_ntt[79:64]}}} : 
-                                                {{2{coef_sram_dout_ntt[63:48]}},  {2{coef_sram_dout_ntt[47:32]}},  {2{coef_sram_dout_ntt[31:16]}}, {2{coef_sram_dout_ntt[15:0]}}}) : BPE_coef_reg;
+     BPE_coef_reg = (counter_1_prv[0] ? {{2{coef_sram_dout_ntt[127:112]}}, {2{coef_sram_dout_ntt[111:96]}}, {2{coef_sram_dout_ntt[95:80]}}, {2{coef_sram_dout_ntt[79:64]}}} : 
+                                                {{2{coef_sram_dout_ntt[63:48]}},  {2{coef_sram_dout_ntt[47:32]}},  {2{coef_sram_dout_ntt[31:16]}}, {2{coef_sram_dout_ntt[15:0]}}});
 
 
     end
     S10: begin
-     BPE_coef_reg = phase ?  coef_sram_dout_ntt : BPE_coef_reg;
+     BPE_coef_reg =  coef_sram_dout_ntt;
 
 
     end
