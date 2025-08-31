@@ -27,7 +27,7 @@ OUTPUT_DEC_FILE_IFFT = "ifft_output_complex_dec.txt"
 OUTPUT_HEX_FILE_IFFT = "iFFT_out.hex"
 
 # ===== 產生隨機複數輸入 =====
-data = [complex(random.uniform(-10, 10), random.uniform(-10, 10)) for _ in range(N)]
+data = [complex(random.uniform(-10, 10), 0.0) for _ in range(N)]
 
 # ===== 輸出原始輸入（十進位與128-bit HEX）=====
 with open(INPUT_DEC_FILE, "w") as f_dec, open(INPUT_HEX_FILE, "w") as f_hex:
@@ -57,3 +57,4 @@ with open(OUTPUT_DEC_FILE_IFFT, "w") as f_dec, open(OUTPUT_HEX_FILE_IFFT, "w") a
     for c in data_ifft:
         f_dec.write(f"{c.real:.17e}, {c.imag:.17e}\n")
         f_hex.write(complex_to_hex128(c) + "\n")
+
