@@ -349,12 +349,24 @@ module stage_top
   // ------------------------------------------------------------
   reg  decode;
   wire decode_q;
+  reg [1:0] decode_cnt;
 
   assign decode_q = (state == ST_DECODE) && (ram1_we == 4'hF);
 
-  always @(posedge clk_s or negedge rstn) begin
-    if (!rstn) decode <= 1'b0;
-    else       decode <= decode_q;
+  always @(posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      decode <= 1'b0;
+      decode_cnt <= 0;
+    end else if (decode_q == 1 && decode_cnt < 2'd2) begin
+      decode <= 1;
+      decode_cnt <= decode_cnt + 1;
+    end else if (decode_cnt == 1) begin
+      decode <= 1;
+      decode_cnt <= 0;
+    end else begin
+      decode <= 0;
+      decode_cnt <= 0;
+    end
   end
 
   // ------------------------------------------------------------
@@ -498,6 +510,28 @@ module stage_top
   wire         intt_coef_ram_en_mux = ((state == ST_DECODE) && !decode_q) ? coef_sram_en_intt   : l;
   wire [12:0]  intt_coef_ram_a_mux  = ((state == ST_DECODE) && !decode_q) ? coef_sram_addr_intt : intt_coef_ram_a;
 
+  ///////////////////////////////
+  // clk sel
+  ///////////////////////////////
+
+  wire clk_mux = (state == ST_DECODE) ? clk_s : clk;
+
+  //------------------------------------------------
+  // ap_ctrl
+  //------------------------------------------------
+  reg ap_done;
+
+  assign ap_ctrl[3:0] = {3'b0, {ap_done}};
+  assign ap_ctrl[7:4] = {3'b0, {state != ST_DECODE}};
+  assign ap_ctrl[31:8] = 0;
+
+  always @(posedge clk or negedge rstn) begin
+    if (!rstn) ap_done <= 1'b0;
+    else if (output_cnt == (length_old - 12'd1)) ap_done <= 1'b1;
+    else if (sw_lst) ap_done <= 1'b0;
+    else ap_done <= ap_done;
+  end
+
   bram512x128 RAM1 (
     .CLK (clk),
     .WE  (ram1_we_mux),
@@ -517,7 +551,7 @@ module stage_top
   );
 
   bram512x128 FFT_COEF_RAM (
-    .CLK (clk),
+    .CLK (clk_mux),
     .WE  (fft_coef_ram_we_r),
     .EN  (fft_coef_ram_en_mux),
     .Di  (ss_buffer),
@@ -526,7 +560,7 @@ module stage_top
   );
 
   bram128x128 NTT_COEF_RAM (
-    .CLK (clk),
+    .CLK (clk_mux),
     .WE  (ntt_coef_ram_we_r),
     .EN  (ntt_coef_ram_en_mux),
     .Di  (ss_buffer),
@@ -535,7 +569,7 @@ module stage_top
   );
 
   bram128x128 iNTT_COEF_RAM (
-    .CLK (clk),
+    .CLK (clk_mux),
     .WE  (intt_coef_ram_we_r),
     .EN  (intt_coef_ram_en_mux),
     .Di  (ss_buffer),

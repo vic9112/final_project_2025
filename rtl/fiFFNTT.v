@@ -35,7 +35,6 @@ module fiFFNTT
     //========================== Declaration ==========================
     // =============== axi-lite =============== //
     wire [31:0] ap_ctrl;
-    wire [31:0] coef_ctrl;
     // axi write seems to be useless in the current plan
     reg awready_tmp;
     reg awready_next;
@@ -58,6 +57,8 @@ module fiFFNTT
     reg read_ap_stat_tmp;
     reg read_ap_stat_next;
     wire ap_read;
+    reg  [31:0] coef_ctrl_next;
+    reg  [31:0] coef_ctrl;
 
     // local parameter
     localparam PULL_DN = 0; // pull down
@@ -138,6 +139,7 @@ module fiFFNTT
         araddr_tmp <= PULL_DN;
         awaddr_tmp <= PULL_DN;
         read_ap_stat_tmp <= PULL_DN;
+        coef_ctrl <= PULL_DN;
       end else begin
         awready_tmp <= awready_next;
         wready_tmp <= wready_next;
@@ -146,6 +148,7 @@ module fiFFNTT
         araddr_tmp <= araddr_next;
         awaddr_tmp <= awaddr_next;
         read_ap_stat_tmp <= read_ap_stat_next;
+        coef_ctrl <= coef_ctrl_next;
       end
     end
 
@@ -205,12 +208,14 @@ module fiFFNTT
       end else begin
         read_ap_stat_next = PULL_DN;
       end
+    end
 
-      // if (araddr_tmp == COEF_STAT && wready && wvalid && !coef_ctrl_tmp) begin
-      //   coef_ctrl_next = PULL_UP; //wdata
-      // end else begin
-      //   coef_ctrl_next = coef_ctrl_tmp;
-      // end
+    always @(posedge clk or negedge rstn) begin
+      if (!rstn) begin
+        coef_ctrl <= 0;
+      end else begin
+        coef_ctrl <= ((awaddr_tmp == COEF_STAT) && wready && wvalid) ? wdata : coef_ctrl;
+      end
     end
 
     // assign to port wire
