@@ -124,20 +124,23 @@ module stage_top
   wire [127:0] coef_sram_dout_intt;
   wire [12:0]  coef_sram_addr_intt;
 
+  wire clk_mux_sel = (state == ST_DECODE);
+  wire clk_mux;
+
   // ------------------------------------------------------------
   // Decode meta data
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) mode <= 8'd0;
     else if (ss_rdy && ss_vld && (meta_cnt == 12'd0)) mode <= ss_dat[23:16];
   end
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) length <= 16'hffff;
     else if (ss_rdy && ss_vld && (meta_cnt == 12'd0)) length <= ss_dat[15:0];
   end
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) destination <= 8'd0;
     else if (ss_rdy && ss_vld && (meta_cnt == 12'd0)) destination <= ss_dat[31:24];
   end
@@ -145,7 +148,7 @@ module stage_top
   // ------------------------------------------------------------
   // meta counter
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) meta_cnt <= 12'd0;
     else if (ss_rdy && ss_vld) meta_cnt <= (meta_cnt == length) ? 12'd0 : (meta_cnt + 12'd1);
   end
@@ -153,7 +156,7 @@ module stage_top
   // ------------------------------------------------------------
   // pack counter
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) pack_cnt <= 3'd0;
     else if (ss_rdy && ss_vld) begin
       if ((meta_cnt == 12'd0) || (pack_cnt == 3'd7)) pack_cnt <= 3'd0;
@@ -165,7 +168,7 @@ module stage_top
   // coef addr counter
   // ------------------------------------------------------------
   // fft
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) coef_addr_cnt_fft <= 12'd0;
     else if (ss_rdy && ss_vld) begin
       if (meta_cnt == 12'd0) coef_addr_cnt_fft <= 12'd0;
@@ -174,7 +177,7 @@ module stage_top
   end
 
   // ntt
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) coef_addr_cnt_ntt <= 12'd0;
     else if (ss_rdy && ss_vld) begin
       if (meta_cnt == 12'd0) coef_addr_cnt_ntt <= 12'd0;
@@ -185,7 +188,7 @@ module stage_top
   // ------------------------------------------------------------
   // ss buffer
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) begin
       ss_buffer1 <= 16'd0; ss_buffer2 <= 16'd0; ss_buffer3 <= 16'd0; ss_buffer4 <= 16'd0;
       ss_buffer5 <= 16'd0; ss_buffer6 <= 16'd0; ss_buffer7 <= 16'd0; ss_buffer8 <= 16'd0;
@@ -217,7 +220,7 @@ module stage_top
 
   // clocked one (registered-1 to avoid combinational 1'b1 before first clk)
   reg l;
-  always @(posedge clk) begin
+  always @(posedge clk_s) begin
     l <= 1'b1;
   end
 
@@ -227,24 +230,24 @@ module stage_top
   assign fft_coef_ram_we = {4{ ((pack_cnt == 3'd3) || (pack_cnt == 3'd7))
                                && ss_vld && ss_rdy
                                && (destination == COEF_FFT || destination == COEF_iFFT)}};
-  always @(posedge clk) fft_coef_ram_we_r <= fft_coef_ram_we;
+  always @(posedge clk_s) fft_coef_ram_we_r <= fft_coef_ram_we;
   assign fft_coef_ram_a = { (coef_addr_cnt_fft), 2'b00 };
 
   assign ntt_coef_ram_we = {4{ (pack_cnt == 3'd7) && ss_vld && ss_rdy
                                && (destination == COEF_NTT)}};
-  always @(posedge clk) ntt_coef_ram_we_r <= ntt_coef_ram_we;
+  always @(posedge clk_s) ntt_coef_ram_we_r <= ntt_coef_ram_we;
   assign ntt_coef_ram_a = { (coef_addr_cnt_ntt - 12'd1), 2'b00 };
 
   assign intt_coef_ram_we = {4{ (pack_cnt == 3'd7) && ss_vld && ss_rdy
                                 && (destination == COEF_iNTT)}};
-  always @(posedge clk) intt_coef_ram_we_r <= intt_coef_ram_we;
+  always @(posedge clk_s) intt_coef_ram_we_r <= intt_coef_ram_we;
   assign intt_coef_ram_a = { (coef_addr_cnt_ntt - 12'd1), 2'b00 };
 
   // ------------------------------------------------------------
   // ss_tready
   // ------------------------------------------------------------
   reg ss_rdy_i;
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) ss_rdy_i <= 1'b0;
     else ss_rdy_i <= (mode == MODE_iNTT) ? ((ss_vld && ss_rdy_i) ? 1'b0 : 1'b1) : 1'b0;
   end
@@ -257,16 +260,16 @@ module stage_top
   // ------------------------------------------------------------
   // data input
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) phase <= 1'b0;
     else if ((mode == MODE_FFT) || (mode == MODE_NTT)) phase <= 1'b0;
     else if (mode == MODE_iNTT) phase <= (ss_rdy && ss_vld && (meta_cnt != 12'd0)) ? 1'b1 : 1'b0;
   end
 
   reg [3:0] ram1_we_fft_r, ram1_we_ntt_r, ram1_we_intt_r;
-  always @(posedge clk) ram1_we_fft_r  <= ram1_we_fft;
-  always @(posedge clk) ram1_we_ntt_r  <= ram1_we_ntt;
-  always @(posedge clk) ram1_we_intt_r <= ram1_we_intt;
+  always @(posedge clk_s) ram1_we_fft_r  <= ram1_we_fft;
+  always @(posedge clk_s) ram1_we_ntt_r  <= ram1_we_ntt;
+  always @(posedge clk_s) ram1_we_intt_r <= ram1_we_intt;
 
   assign ram1_we_fft  = {4{ ((pack_cnt == 3'd3) || (pack_cnt == 3'd7))
                             && ss_vld && ss_rdy
@@ -285,7 +288,7 @@ module stage_top
   wire [12:0]  ram1_a_intt_no;
   wire [ 9:0]  ram1_a_intt_ro; // widened to real 10-bit (lint clean), only [2:0] used.
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) latch_a <= 13'd0;
     else if (ss_rdy && ss_vld && (meta_cnt != 12'd0) && (mode == MODE_iNTT)) latch_a <= ram1_a_intt;
   end
@@ -297,7 +300,7 @@ module stage_top
                          ram1_a_fft[5],  ram1_a_fft[6],  ram1_a_fft[7],  ram1_a_fft[8],  ram1_a_fft[9],
                          ram1_a_fft[10], ram1_a_fft[11], ram1_a_fft[12] };
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) latch_ro <= 3'd0;
     else if (ss_rdy && ss_vld && (meta_cnt != 12'd0) && (mode == MODE_iNTT)) latch_ro <= ram1_a_intt_ro[2:0];
   end
@@ -337,7 +340,7 @@ module stage_top
   // ------------------------------------------------------------
   // state: input, process, output
   // ------------------------------------------------------------
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) state <= ST_INPUT;
     else if ((state == ST_INPUT)  && ss_vld && ss_rdy && (meta_cnt == length) && (destination[4] == 1'b0)) state <= ST_DECODE;
     else if ((state == ST_DECODE) && sw_lst)                                                    state <= ST_OUTPUT;
@@ -353,19 +356,11 @@ module stage_top
 
   assign decode_q = (state == ST_DECODE) && (ram1_we == 4'hF);
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s) begin
     if (!rstn) begin
-      decode <= 1'b0;
-      decode_cnt <= 0;
-    end else if (decode_q == 1 && decode_cnt < 2'd2) begin
-      decode <= 1;
-      decode_cnt <= decode_cnt + 1;
-    end else if (decode_cnt == 1) begin
-      decode <= 1;
-      decode_cnt <= 0;
-    end else begin
       decode <= 0;
-      decode_cnt <= 0;
+    end else begin
+      decode <= decode_q;
     end
   end
 
@@ -376,7 +371,7 @@ module stage_top
   reg  sm_vld_r;
 
   // output addr counter
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) output_cnt <= 12'd0;
     else if ((state == ST_OUTPUT) && sm_rdy && sm_vld_a) begin
       if (output_cnt == length_old) output_cnt <= 12'd0;
@@ -386,18 +381,18 @@ module stage_top
     end
   end
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) length_old <= 12'd0;
     else if (decode) length_old <= length;
   end
 
   reg [1:0] mode_latch;
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) mode_latch <= 2'd0;
     else if (decode) mode_latch <= mode[1:0];
   end
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) sm_vld_r <= 1'b0;
     else       sm_vld_r <= (state == ST_OUTPUT);
   end
@@ -437,7 +432,7 @@ module stage_top
                                            13'b0;
 
   reg [2:0] intt_a_latch;
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) intt_a_latch <= 3'd0;
     else       intt_a_latch <= output_cnt_ro_intt[2:0];
   end
@@ -514,7 +509,15 @@ module stage_top
   // clk sel
   ///////////////////////////////
 
-  wire clk_mux = (state == ST_DECODE) ? clk_s : clk;
+
+
+  clk_mux clk_mux_inst (
+    .clk_fast(clk_s),
+    .clk_slow(clk),
+    .rstn(rstn),
+    .sel (clk_mux_sel),
+    .clk_out(clk_mux)
+  );
 
   //------------------------------------------------
   // ap_ctrl
@@ -525,7 +528,7 @@ module stage_top
   assign ap_ctrl[7:4] = {3'b0, {state != ST_DECODE}};
   assign ap_ctrl[31:8] = 0;
 
-  always @(posedge clk or negedge rstn) begin
+  always @(posedge clk_s or negedge rstn) begin
     if (!rstn) ap_done <= 1'b0;
     else if (output_cnt == (length_old - 12'd1)) ap_done <= 1'b1;
     else if (sw_lst) ap_done <= 1'b0;
@@ -533,7 +536,7 @@ module stage_top
   end
 
   bram512x128 RAM1 (
-    .CLK (clk),
+    .CLK (clk_mux),
     .WE  (ram1_we_mux),
     .EN  (ram1_en_mux),
     .Di  (ram1_di_mux),
@@ -542,7 +545,7 @@ module stage_top
   );
 
   bram512x128 RAM2 (
-    .CLK (clk),
+    .CLK (clk_mux),
     .WE  (WE_512_2),
     .EN  (ram2_en_mux),
     .Di  (sram_din_512_2),
@@ -551,7 +554,7 @@ module stage_top
   );
 
   bram512x128 FFT_COEF_RAM (
-    .CLK (clk_mux),
+    .CLK (clk_s),
     .WE  (fft_coef_ram_we_r),
     .EN  (fft_coef_ram_en_mux),
     .Di  (ss_buffer),
@@ -560,7 +563,7 @@ module stage_top
   );
 
   bram128x128 NTT_COEF_RAM (
-    .CLK (clk_mux),
+    .CLK (clk_s),
     .WE  (ntt_coef_ram_we_r),
     .EN  (ntt_coef_ram_en_mux),
     .Di  (ss_buffer),
@@ -569,7 +572,7 @@ module stage_top
   );
 
   bram128x128 iNTT_COEF_RAM (
-    .CLK (clk_mux),
+    .CLK (clk_s),
     .WE  (intt_coef_ram_we_r),
     .EN  (intt_coef_ram_en_mux),
     .Di  (ss_buffer),
